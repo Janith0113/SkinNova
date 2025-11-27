@@ -3,7 +3,7 @@ import "../styles/globals.css";
 import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
+import Footer from "../components/footer";
 
 export const metadata = {
   title: "SkinNova",
