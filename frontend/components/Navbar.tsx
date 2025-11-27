@@ -1,50 +1,90 @@
-"use client"
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+"use client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function Navbar() {
-  const [user, setUser] = useState<any>(null)
-  const router = useRouter()
+  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem('user') : null
-    if (raw) setUser(JSON.parse(raw))
-  }, [])
+    const raw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    if (raw) setUser(JSON.parse(raw));
+  }, []);
 
   function goToDashboard(e: any) {
-    e.preventDefault()
-    const role = user?.role
-    if (role === 'admin') router.push('/admin/dashboard')
-    else if (role === 'doctor') router.push('/doctor/dashboard')
-    else router.push('/patient/dashboard')
+    e.preventDefault();
+    const role = user?.role;
+    if (role === "admin") router.push("/admin/dashboard");
+    else if (role === "doctor") router.push("/doctor/dashboard");
+    else router.push("/patient/dashboard");
   }
 
   function handleLogout() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setUser(null)
-    router.push('/')
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    router.push("/");
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white border-b shadow-sm">
-      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold">SkinNova</Link>
-        <div className="space-x-4">
+    <header className="fixed top-0 left-0 right-0 z-50 flex flex-wrap sm:justify-start sm:flex-nowrap w-full 
+                       bg-white/20 backdrop-blur-xl text-sm py-3 border-b border-white/40 shadow-sm">
+      <nav className="max-w-[85rem] w-full mx-auto px-4 sm:flex sm:items-center sm:justify-between">
+        {/* Brand */}
+        <Link
+          href="/"
+          className="flex-none font-semibold text-xl text-gray-900 drop-shadow-sm focus:outline-none focus:opacity-80"
+          aria-label="SkinNova"
+        >
+          SkinNova
+        </Link>
+
+        {/* Right side links */}
+        <div className="flex flex-row items-center gap-5 mt-3 sm:justify-end sm:mt-0 sm:ps-5">
+          <Link href="/" className="font-medium text-gray-900 hover:text-gray-700 drop-shadow-sm">
+            Home
+          </Link>
+          <Link href="/aboutus" className="font-medium text-gray-900 hover:text-gray-700 drop-shadow-sm">
+            About Us
+          </Link>
+          <Link href="/contactus" className="font-medium text-gray-900 hover:text-gray-700 drop-shadow-sm">
+            Contact Us
+          </Link>
+
           {user ? (
             <>
-              <a href="#" onClick={goToDashboard} className="text-sm text-gray-700 hover:text-gray-900">Dashboard</a>
-              <button onClick={handleLogout} className="text-sm text-gray-700 hover:text-gray-900">Logout</button>
+              <button
+                onClick={goToDashboard}
+                className="font-medium text-gray-900 hover:text-gray-700 drop-shadow-sm"
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={handleLogout}
+                className="font-medium text-gray-900 hover:text-gray-700 drop-shadow-sm"
+              >
+                Logout
+              </button>
             </>
           ) : (
             <>
-              <Link href="/login" className="text-sm text-gray-700 hover:text-gray-900">Login</Link>
-              <Link href="/signup" className="text-sm text-gray-700 hover:text-gray-900">Sign Up</Link>
+              <Link
+                href="/login"
+                className="font-medium text-gray-900 hover:text-gray-700 drop-shadow-sm"
+              >
+                Login
+              </Link>
+              <Link
+                href="/signup"
+                className="font-medium text-gray-900 hover:text-gray-700 drop-shadow-sm"
+              >
+                Sign Up
+              </Link>
             </>
           )}
         </div>
-      </div>
-    </nav>
-  )
+      </nav>
+    </header>
+  );
 }
