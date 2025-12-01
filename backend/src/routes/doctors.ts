@@ -7,6 +7,27 @@ import fs from 'fs'
 
 const router = Router()
 
+// PUBLIC: Get all doctors (for now showing all, will filter verified later)
+router.get('/verified', async (req: Request, res: Response) => {
+  try {
+    // Get ALL doctors for testing (will show all doctors regardless of verification status)
+    const allDoctors = await User.find({ role: 'doctor' }).select('_id name email role verified')
+    
+    console.log("Fetching doctors. Found total:", allDoctors.length);
+    console.log("Doctors:", allDoctors);
+    
+    // For now return all doctors, later change to filter by verified: true
+    res.json({
+      success: true,
+      doctors: allDoctors,
+      count: allDoctors.length,
+    })
+  } catch (error) {
+    console.error('Error fetching doctors:', error)
+    res.status(500).json({ error: 'Failed to fetch doctors' })
+  }
+})
+
 // Configure multer for file uploads
 const uploadDir = path.join(__dirname, '../../uploads')
 if (!fs.existsSync(uploadDir)) {

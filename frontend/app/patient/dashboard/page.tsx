@@ -153,6 +153,16 @@ const DISEASE_CONFIG: Record<
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
   const [selectedDisease, setSelectedDisease] = useState<DiseaseKey>("psoriasis");
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedDoctorId, setSelectedDoctorId] = useState("");
+  const [scheduleFormData, setScheduleFormData] = useState({
+    requestedDate: "",
+    reason: "",
+  });
+  const [doctorAvailability, setDoctorAvailability] = useState<any[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -164,6 +174,234 @@ export default function PatientDashboard() {
       router.push("/login");
     }
   }, [router]);
+
+  useEffect(() => {
+    if (user?.role === "patient") {
+      fetchAppointments();
+      fetchVerifiedDoctors();
+      const interval = setInterval(fetchAppointments, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const fetchAppointments = async () => {
+    try {
+      setLoadingAppointments(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:4000/api/appointments", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch appointments");
+      }
+
+      const data = await response.json();
+      setAppointments(data.appointments || []);
+    } catch (err) {
+      console.error("Error fetching appointments:", err);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
+
+  const fetchVerifiedDoctors = async () => {
+    try {
+      const response = await fetch("http://localhost:4000/api/doctors/verified", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.error("API Error:", response.status, response.statusText);
+        throw new Error(`Failed to fetch doctors: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Verified doctors found:", data.doctors);
+      setDoctors(data.doctors || []);
+    } catch (err) {
+      console.error("Error fetching doctors:", err);
+      setDoctors([]);
+    }
+  };
+
+  const fetchDoctorAvailability = async (doctorId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:4000/api/availability/${doctorId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch doctor availability");
+      }
+
+      const data = await response.json();
+      setDoctorAvailability(data.availabilitySlots || []);
+    } catch (err) {
+      console.error("Error fetching doctor availability:", err);
+      setDoctorAvailability([]);
+    }
+  };
+
+  const generateAvailableDates = (): string[] => {
+    if (!doctorAvailability || doctorAvailability.length === 0) {
+      return [];
+    }
+
+    const dates: Set<string> = new Set();
+    const now = new Date();
+    const maxDays = 90; // Generate dates for next 90 days
+
+    for (let daysAhead = 1; daysAhead <= maxDays; daysAhead++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() + daysAhead);
+      const dayOfWeek = date.getDay();
+
+      // Find availability for this day of week
+      const dayAvailability = doctorAvailability.find(a => a.dayOfWeek === dayOfWeek);
+      if (!dayAvailability) continue;
+
+      // Add only the date (YYYY-MM-DD), not time
+      const dateStr = date.toISOString().split('T')[0];
+      dates.add(dateStr);
+    }
+
+    return Array.from(dates).sort();
+  };
+
+  const handleScheduleAppointment = (doctorId: string) => {
+    setSelectedDoctorId(doctorId);
+    setScheduleFormData({ requestedDate: "", reason: "" });
+    setShowScheduleModal(true);
+    fetchDoctorAvailability(doctorId);
+  };
+
+  const handleConfirmScheduleAppointment = async () => {
+    if (!scheduleFormData.requestedDate || !scheduleFormData.reason) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    // Validate that the selected date is in the future
+    const selectedDate = new Date(scheduleFormData.requestedDate);
+    const now = new Date();
+    
+    if (selectedDate <= now) {
+      alert("Please select a future date");
+      return;
+    }
+
+    try {
+      // Get all appointments for this doctor on the selected date to auto-assign time
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:4000/api/appointments", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch appointments");
+      }
+
+      const appointmentsData = await response.json();
+      const allAppointments = appointmentsData.appointments || [];
+
+      // Filter appointments for this doctor on the selected date
+      const dateStr = scheduleFormData.requestedDate; // Format: YYYY-MM-DD
+      const sameDateAppointments = allAppointments.filter((apt: any) => {
+        const aptDate = new Date(apt.requestedDate).toISOString().split('T')[0];
+        return apt.doctorId === selectedDoctorId && aptDate === dateStr;
+      });
+
+      // Auto-assign time based on doctor availability and existing appointments
+      let appointmentTime = "";
+      if (doctorAvailability && doctorAvailability.length > 0) {
+        const [year, month, day] = scheduleFormData.requestedDate.split('-').map(Number);
+        const selectedDateObj = new Date(year, month - 1, day);
+        const dayOfWeek = selectedDateObj.getDay();
+        const dayAvailability = doctorAvailability.find((a: any) => a.dayOfWeek === dayOfWeek);
+
+        if (dayAvailability) {
+          const [startHour, startMin] = dayAvailability.startTime.split(':').map(Number);
+          const [endHour, endMin] = dayAvailability.endTime.split(':').map(Number);
+
+          // Create date in local timezone (not UTC)
+          const appointmentDateTime = new Date(year, month - 1, day, startHour, startMin, 0, 0);
+          
+          // Calculate appointment slot based on number of appointments that day (30 min intervals)
+          const slotMinutes = sameDateAppointments.length * 30;
+          appointmentDateTime.setMinutes(appointmentDateTime.getMinutes() + slotMinutes);
+
+          // Check if the calculated time is within doctor's available hours
+          const appointmentEndTime = new Date(appointmentDateTime);
+          appointmentEndTime.setMinutes(appointmentEndTime.getMinutes() + 30); // Appointment duration is 30 min
+
+          const endDateTime = new Date(year, month - 1, day, endHour, endMin, 0, 0);
+
+          // If appointment would go past doctor's availability, alert user
+          if (appointmentEndTime > endDateTime) {
+            alert(`Doctor's availability ends at ${dayAvailability.endTime}. No more slots available for this date.`);
+            return;
+          }
+
+          // Format time properly for sending to backend
+          const hours = String(appointmentDateTime.getHours()).padStart(2, '0');
+          const minutes = String(appointmentDateTime.getMinutes()).padStart(2, '0');
+          const dateStrFormatted = String(appointmentDateTime.getFullYear()).padStart(4, '0') + '-' +
+                         String(appointmentDateTime.getMonth() + 1).padStart(2, '0') + '-' +
+                         String(appointmentDateTime.getDate()).padStart(2, '0');
+          appointmentTime = `${dateStrFormatted}T${hours}:${minutes}`;
+        } else {
+          alert("Doctor is not available on this day");
+          return;
+        }
+      } else {
+        alert("Doctor has not set their availability yet");
+        return;
+      }
+
+      // Schedule the appointment with auto-assigned time
+      const scheduleResponse = await fetch("http://localhost:4000/api/appointments", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          doctorId: selectedDoctorId,
+          patientId: user._id,
+          requestedDate: appointmentTime,
+          reason: scheduleFormData.reason,
+        }),
+      });
+
+      if (!scheduleResponse.ok) {
+        throw new Error("Failed to schedule appointment");
+      }
+
+      alert("Appointment requested successfully!");
+      setShowScheduleModal(false);
+      setScheduleFormData({ requestedDate: "", reason: "" });
+      await fetchAppointments();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to schedule appointment");
+    }
+  };
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -331,6 +569,240 @@ export default function PatientDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Doctors Section - Book Appointment */}
+        <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            👨‍⚕️ Available Doctors - Schedule Appointment
+          </h2>
+          
+          {doctors.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-700 text-lg">No verified doctors available</p>
+              <p className="text-gray-600 text-sm mt-2">Please check back later</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {doctors.map((doctor) => (
+                <div key={doctor._id} className="bg-white/40 rounded-2xl p-5 border border-white/50 hover:shadow-lg transition-all">
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <p className="text-lg font-semibold text-gray-900">Dr. {doctor.name}</p>
+                      <p className="text-xs text-gray-600 mt-1">{doctor.email}</p>
+                      <div className="mt-2 inline-flex items-center rounded-full bg-emerald-100 px-2 py-1">
+                        <span className="text-xs font-semibold text-emerald-700">✓ Verified</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleScheduleAppointment(doctor._id)}
+                      className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all text-sm"
+                    >
+                      Book Appointment
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Appointments Section */}
+        <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            📅 Your Appointments
+          </h2>
+          
+          {appointments.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-700 text-lg">No appointments scheduled yet</p>
+              <p className="text-gray-600 text-sm mt-2">Request an appointment through the admin to schedule with a doctor</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Pending Appointments */}
+              {appointments.filter(apt => apt.status === "pending").length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-yellow-700 mb-3">⏳ Pending (Waiting for Doctor Approval)</h3>
+                  <div className="space-y-3">
+                    {appointments.filter(apt => apt.status === "pending").map((apt) => (
+                      <div key={apt._id} className="bg-yellow-50 rounded-2xl p-4 border border-yellow-200">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-900">
+                              Dr. {apt.doctorName}
+                            </p>
+                            <p className="text-xs text-gray-700 mt-1">
+                              📅 Requested: {new Date(apt.requestedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            </p>
+                            <p className="text-xs text-gray-700 mt-1">
+                              📝 Reason: {apt.reason}
+                            </p>
+                            <p className="text-xs text-yellow-700 mt-2 font-medium">
+                              ⏳ Doctor will confirm a specific time for this appointment
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Approved Appointments */}
+              {appointments.filter(apt => apt.status === "approved").length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-emerald-700 mb-3">✅ Confirmed Appointments</h3>
+                  <div className="space-y-3">
+                    {appointments.filter(apt => apt.status === "approved").map((apt) => (
+                      <div key={apt._id} className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-900">
+                              Dr. {apt.doctorName}
+                            </p>
+                            <p className="text-sm font-bold text-emerald-700 mt-2">
+                              🕐 {new Date(apt.approvedDate).toLocaleString('en-US', { 
+                                weekday: 'long', 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                            <p className="text-xs text-gray-700 mt-1">
+                              📝 {apt.reason}
+                            </p>
+                            {apt.notes && (
+                              <p className="text-xs text-gray-700 mt-2">
+                                <strong>Notes:</strong> {apt.notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Rejected Appointments */}
+              {appointments.filter(apt => apt.status === "rejected").length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-red-700 mb-3">❌ Rejected Appointments</h3>
+                  <div className="space-y-3">
+                    {appointments.filter(apt => apt.status === "rejected").map((apt) => (
+                      <div key={apt._id} className="bg-red-50 rounded-2xl p-4 border border-red-200">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-900">
+                              Dr. {apt.doctorName}
+                            </p>
+                            <p className="text-xs text-gray-700 mt-1">
+                              📅 Requested: {new Date(apt.requestedDate).toLocaleDateString()}
+                            </p>
+                            <p className="text-xs text-gray-700 mt-1">
+                              📝 Reason: {apt.reason}
+                            </p>
+                            {apt.notes && (
+                              <p className="text-xs text-red-700 mt-2">
+                                <strong>Doctor's Message:</strong> {apt.notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Schedule Appointment Modal */}
+        {showScheduleModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+              <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-600">
+                <h2 className="text-xl font-bold text-white">Schedule Appointment</h2>
+              </div>
+              <div className="px-6 py-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Appointment Date
+                  </label>
+                  <select
+                    value={scheduleFormData.requestedDate}
+                    onChange={(e) =>
+                      setScheduleFormData({ ...scheduleFormData, requestedDate: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">-- Select Available Date --</option>
+                    {generateAvailableDates().map((dateStr) => {
+                      const date = new Date(dateStr + 'T00:00:00');
+                      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                      const dayName = days[date.getDay()];
+                      const monthName = date.toLocaleString('default', { month: 'short' });
+                      const fullDateStr = `${dayName}, ${monthName} ${date.getDate()}, ${date.getFullYear()}`;
+                      return (
+                        <option key={dateStr} value={dateStr}>
+                          {fullDateStr}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  {generateAvailableDates().length === 0 && (
+                    <p className="text-xs text-red-500 mt-1">
+                      No available dates for this doctor
+                    </p>
+                  )}
+                  {doctorAvailability.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Doctor available on: {doctorAvailability.map(d => {
+                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        return `${days[d.dayOfWeek]} ${d.startTime}-${d.endTime}`;
+                      }).join(', ')}
+                    </p>
+                  )}
+                  <p className="text-xs text-blue-600 mt-2 font-medium">
+                    ✓ Time will be automatically assigned (30 min slots)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Reason for Appointment
+                  </label>
+                  <textarea
+                    value={scheduleFormData.reason}
+                    onChange={(e) =>
+                      setScheduleFormData({ ...scheduleFormData, reason: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={3}
+                    placeholder="e.g., Skin consultation, treatment follow-up..."
+                  />
+                </div>
+              </div>
+              <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end space-x-2">
+                <button
+                  onClick={() => setShowScheduleModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmScheduleAppointment}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all font-medium"
+                >
+                  Request Appointment
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

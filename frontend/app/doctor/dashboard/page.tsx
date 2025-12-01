@@ -76,8 +76,8 @@ export default function DoctorDashboard() {
   };
 
   const handleApprove = async () => {
-    if (!selectedAppointment || !approvalData.approvedDate) {
-      alert("Please select an approved date/time");
+    if (!selectedAppointment) {
+      alert("No appointment selected");
       return;
     }
 
@@ -92,7 +92,6 @@ export default function DoctorDashboard() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            approvedDate: approvalData.approvedDate,
             notes: approvalData.notes,
           }),
         }
@@ -192,12 +191,20 @@ export default function DoctorDashboard() {
             <span className="inline-flex items-center rounded-full bg-emerald-600/90 px-3 py-1 text-xs font-semibold text-white shadow-md">
               Role • {user.role?.toUpperCase()}
             </span>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-red-600 transition-all"
-            >
-              <span>Logout</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push("/doctor/availability")}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-blue-600 transition-all"
+              >
+                <span>📅 Availability</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-red-600 transition-all"
+              >
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -410,18 +417,9 @@ export default function DoctorDashboard() {
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Approve Appointment</h2>
             <p className="text-gray-600 mb-4">Patient: <strong>{selectedAppointment.patientName}</strong></p>
 
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Approved Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                value={approvalData.approvedDate}
-                onChange={(e) =>
-                  setApprovalData({ ...approvalData, approvedDate: e.target.value })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              />
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm font-semibold text-gray-700 mb-2">Scheduled Date & Time</p>
+              <p className="text-gray-600">{new Date(selectedAppointment.requestedDate).toLocaleString()}</p>
             </div>
 
             <div className="mb-6">

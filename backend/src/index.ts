@@ -9,6 +9,7 @@ import adminRoutes from './routes/admin'
 import activityRoutes from './routes/activity'
 import appointmentRoutes from './routes/appointments'
 import doctorRoutes from './routes/doctors'
+import availabilityRoutes from './routes/availability'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
@@ -24,6 +25,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/doctors', doctorRoutes)
+app.use('/api/availability', availabilityRoutes)
 app.use('/api', activityRoutes)
 app.use('/api', appointmentRoutes)
 

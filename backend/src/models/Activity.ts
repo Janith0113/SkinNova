@@ -9,6 +9,7 @@ export interface IActivity extends Document {
   description?: string
   metadata?: any
   createdAt: Date
+  expiresAt?: Date
 }
 
 const ActivitySchema = new Schema<IActivity>({
@@ -23,7 +24,11 @@ const ActivitySchema = new Schema<IActivity>({
   actionTitle: { type: String, required: true },
   description: { type: String },
   metadata: { type: Schema.Types.Mixed },
-  createdAt: { type: Date, default: () => new Date() }
+  createdAt: { type: Date, default: () => new Date() },
+  expiresAt: { type: Date, default: null }
 })
+
+// TTL (Time To Live) index - MongoDB will automatically delete documents when expiresAt is reached
+ActivitySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, sparse: true })
 
 export default model<IActivity>('Activity', ActivitySchema)

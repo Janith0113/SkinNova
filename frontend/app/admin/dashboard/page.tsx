@@ -66,11 +66,33 @@ export default function AdminDashboard() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showNewAppointmentPage, setShowNewAppointmentPage] = useState(false);
+  const [addUserFormData, setAddUserFormData] = useState({ name: "", email: "", password: "", role: "patient" as "patient" | "doctor" });
+  const [addUserLoading, setAddUserLoading] = useState(false);
   const [scheduleFormData, setScheduleFormData] = useState({ patientId: "", requestedDate: "", reason: "" });
   const [editFormData, setEditFormData] = useState({ name: "", email: "", role: "patient" });
   const [updateLoading, setUpdateLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteActivityConfirm, setDeleteActivityConfirm] = useState<string | null>(null);
+  const [deletingActivityId, setDeletingActivityId] = useState<string | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+  const [doctorAvailability, setDoctorAvailability] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  // Pagination states for each activity category
+  const [activityPagination, setActivityPagination] = useState({
+    user_registration: 1,
+    user_verified: 1,
+    password_reset_requested: 1,
+    profile_updated: 1,
+    appointment_scheduled: 1,
+    appointment_approved: 1,
+    appointment_rejected: 1,
+  });
+  const activitiesPerPage = 5;
+  
   const router = useRouter();
 
   useEffect(() => {
@@ -159,6 +181,150 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error("Error fetching activities:", err);
     }
+  };
+
+  // Helper function to get paginated activities by action
+  const getPaginatedActivities = (action: string | string[]) => {
+    const actionArray = Array.isArray(action) ? action : [action];
+    const filtered = activities.filter(a => actionArray.includes(a.action));
+    const page = activityPagination[action as keyof typeof activityPagination] || 1;
+    const startIdx = (page - 1) * activitiesPerPage;
+    const endIdx = startIdx + activitiesPerPage;
+    return filtered.slice(startIdx, endIdx);
+  };
+
+  // Helper function to get total pages for an action
+  const getTotalPages = (action: string | string[]) => {
+    const actionArray = Array.isArray(action) ? action : [action];
+    const filtered = activities.filter(a => actionArray.includes(a.action));
+    return Math.ceil(filtered.length / activitiesPerPage);
+  };
+
+  // Helper function to change page for an activity category
+  const changeActivityPage = (action: string, newPage: number) => {
+    setActivityPagination(prev => ({
+      ...prev,
+      [action]: newPage
+    }));
+  };
+
+  const handleDeleteActivity = async (activityId: string) => {
+    try {
+      setDeletingActivityId(activityId);
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(`http://localhost:4000/api/activities/${activityId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete activity");
+      }
+
+      alert("Activity deleted successfully");
+      setDeleteActivityConfirm(null);
+      setDeletingActivityId(null);
+      await fetchActivities();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete activity");
+      setDeletingActivityId(null);
+    }
+  };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setAddUserLoading(true);
+      const token = localStorage.getItem("token");
+
+      const response = await fetch("http://localhost:4000/api/auth/signup", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: addUserFormData.name,
+          email: addUserFormData.email,
+          password: addUserFormData.password,
+          role: addUserFormData.role,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create user");
+      }
+
+      alert("User created successfully!");
+      setShowAddUserModal(false);
+      setAddUserFormData({ name: "", email: "", password: "", role: "patient" });
+      await fetchAllUsers();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create user");
+    } finally {
+      setAddUserLoading(false);
+    }
+  };
+
+  const fetchDoctorAvailability = async (doctorId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      console.log("Fetching availability for doctor:", doctorId);
+      const response = await fetch(`http://localhost:4000/api/availability/${doctorId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch doctor availability: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Full API response:", data);
+      console.log("Available slots:", data.availabilitySlots);
+      
+      // Handle both response formats
+      const slots = data.availabilitySlots || data || [];
+      console.log("Setting doctor availability to:", slots);
+      setDoctorAvailability(slots);
+    } catch (err) {
+      console.error("Error fetching doctor availability:", err);
+      setDoctorAvailability([]);
+    }
+  };
+
+  // Generate available appointment slots based on doctor's availability
+  const generateAvailableDates = (): string[] => {
+    if (!doctorAvailability || doctorAvailability.length === 0) {
+      return [];
+    }
+
+    const dates: Set<string> = new Set();
+    const now = new Date();
+    const maxDays = 90; // Generate dates for next 90 days
+
+    for (let daysAhead = 1; daysAhead <= maxDays; daysAhead++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() + daysAhead);
+      const dayOfWeek = date.getDay();
+
+      // Find availability for this day of week
+      const dayAvailability = doctorAvailability.find(a => a.dayOfWeek === dayOfWeek);
+      if (!dayAvailability) continue;
+
+      // Add only the date (YYYY-MM-DD), not time
+      const dateStr = date.toISOString().split('T')[0];
+      dates.add(dateStr);
+    }
+
+    return Array.from(dates).sort();
   };
 
   function handleLogout() {
@@ -344,9 +510,12 @@ export default function AdminDashboard() {
   };
 
   const handleScheduleAppointment = (doctorId: string) => {
+    console.log("Schedule appointment clicked for doctor:", doctorId);
     setSelectedDoctorId(doctorId);
     setScheduleFormData({ patientId: "", requestedDate: "", reason: "" });
     setShowScheduleModal(true);
+    // Fetch availability immediately
+    fetchDoctorAvailability(doctorId);
   };
 
   const handleConfirmScheduleAppointment = async () => {
@@ -355,9 +524,72 @@ export default function AdminDashboard() {
       return;
     }
 
+    // Validate that the selected date is in the future
+    const selectedDate = new Date(scheduleFormData.requestedDate);
+    const now = new Date();
+    
+    if (selectedDate <= now) {
+      alert("Please select a future date");
+      return;
+    }
+
     try {
+      // Auto-assign time based on doctor availability
+      let appointmentTime = "";
+      if (doctorAvailability && doctorAvailability.length > 0) {
+        const selectedDateObj = new Date(scheduleFormData.requestedDate);
+        const dayOfWeek = selectedDateObj.getDay();
+        const dayAvailability = doctorAvailability.find((a: any) => a.dayOfWeek === dayOfWeek);
+
+        if (dayAvailability) {
+          const [startHour, startMin] = dayAvailability.startTime.split(':').map(Number);
+          const [endHour, endMin] = dayAvailability.endTime.split(':').map(Number);
+
+          // Parse the date string properly (YYYY-MM-DD format)
+          const [year, month, day] = scheduleFormData.requestedDate.split('-').map(Number);
+          
+          // Generate a simple time slot based on current time
+          // This ensures different appointments get different times
+          const now = new Date();
+          const slotIndex = Math.floor(now.getMilliseconds() / 100); // Use milliseconds for simple variation
+          
+          // Create date in local timezone (not UTC)
+          const appointmentDateTime = new Date(year, month - 1, day, startHour, startMin, 0, 0);
+          
+          // Add 30 minute intervals based on slot index
+          const slotMinutes = (slotIndex % 8) * 30; // Max 8 slots (4 hours)
+          appointmentDateTime.setMinutes(appointmentDateTime.getMinutes() + slotMinutes);
+
+          // Check if the calculated time is within doctor's available hours
+          const appointmentEndTime = new Date(appointmentDateTime);
+          appointmentEndTime.setMinutes(appointmentEndTime.getMinutes() + 30);
+
+          const endDateTime = new Date(year, month - 1, day, endHour, endMin, 0, 0);
+
+          if (appointmentEndTime > endDateTime) {
+            alert(`Doctor's availability ends at ${dayAvailability.endTime}. No more slots available for this date.`);
+            return;
+          }
+
+          // Format time properly for sending to backend
+          const hours = String(appointmentDateTime.getHours()).padStart(2, '0');
+          const minutes = String(appointmentDateTime.getMinutes()).padStart(2, '0');
+          const formattedDateStr = String(appointmentDateTime.getFullYear()).padStart(4, '0') + '-' +
+                         String(appointmentDateTime.getMonth() + 1).padStart(2, '0') + '-' +
+                         String(appointmentDateTime.getDate()).padStart(2, '0');
+          appointmentTime = `${formattedDateStr}T${hours}:${minutes}`;
+        } else {
+          alert("Doctor is not available on this day");
+          return;
+        }
+      } else {
+        alert("Doctor has not set their availability yet");
+        return;
+      }
+
+      // Schedule the appointment with auto-assigned time
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:4000/api/appointments", {
+      const scheduleResponse = await fetch("http://localhost:4000/api/appointments", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -366,17 +598,18 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           doctorId: selectedDoctorId,
           patientId: scheduleFormData.patientId,
-          requestedDate: scheduleFormData.requestedDate,
+          requestedDate: appointmentTime,
           reason: scheduleFormData.reason,
         }),
       });
 
-      if (!response.ok) {
+      if (!scheduleResponse.ok) {
         throw new Error("Failed to schedule appointment");
       }
 
       alert("Appointment scheduled successfully!");
       setShowScheduleModal(false);
+      setScheduleFormData({ patientId: "", requestedDate: "", reason: "" });
       await fetchActivities();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to schedule appointment");
@@ -600,25 +833,30 @@ export default function AdminDashboard() {
                         label: "Add User",
                         icon: "➕",
                         color: "from-green-500 to-emerald-500",
+                        action: () => setShowAddUserModal(true),
                       },
                       {
                         label: "View Reports",
                         icon: "📄",
                         color: "from-blue-500 to-cyan-500",
+                        action: () => alert("Reports feature coming soon!"),
                       },
                       {
                         label: "Send Email",
                         icon: "✉️",
                         color: "from-purple-500 to-pink-500",
+                        action: () => alert("Email feature coming soon!"),
                       },
                       {
                         label: "Settings",
                         icon: "⚙️",
                         color: "from-orange-500 to-red-500",
+                        action: () => alert("Settings coming soon!"),
                       },
                     ].map((action, index) => (
                       <button
                         key={index}
+                        onClick={action.action}
                         className={`bg-gradient-to-br ${action.color} text-white p-6 rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex flex-col items-center justify-center space-y-2`}
                       >
                         <span className="text-3xl">{action.icon}</span>
@@ -667,106 +905,163 @@ export default function AdminDashboard() {
                     <p className="text-lg font-medium">No users found</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200">
-                          <th className="text-left py-3 px-4 text-gray-600 font-semibold">
-                            Name
-                          </th>
-                          <th className="text-left py-3 px-4 text-gray-600 font-semibold">
-                            Email
-                          </th>
-                          <th className="text-left py-3 px-4 text-gray-600 font-semibold">
-                            Role
-                          </th>
-                          <th className="text-left py-3 px-4 text-gray-600 font-semibold">
-                            Joined
-                          </th>
-                          <th className="text-left py-3 px-4 text-gray-600 font-semibold">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allUsers.map((u, index) => (
-                          <tr
-                            key={u._id}
-                            className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                          >
-                            <td className="py-4 px-4">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                                  {u.name[0]}
-                                </div>
-                                <span className="font-medium text-gray-800">
-                                  {u.name}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-4 px-4 text-gray-600">
-                              {u.email}
-                            </td>
-                            <td className="py-4 px-4">
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleColor(
-                                  u.role
-                                )}`}
-                              >
-                                {u.role}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 text-sm text-gray-600">
-                              {formatDate(u.createdAt)}
-                            </td>
-                            <td className="py-4 px-4">
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => handleViewUser(u)}
-                                  className="text-blue-600 hover:text-blue-800 transition-colors"
-                                  title="View user details"
-                                >
-                                  <span className="text-lg">👁️</span>
-                                </button>
-                                <button
-                                  onClick={() => handleEditUser(u)}
-                                  className="text-green-600 hover:text-green-800 transition-colors"
-                                  title="Edit user"
-                                >
-                                  <span className="text-lg">✏️</span>
-                                </button>
-                                {u.role?.toLowerCase() === "doctor" && (
-                                  <button
-                                    onClick={() => handleVerifyUser(u._id)}
-                                    className="text-purple-600 hover:text-purple-800 transition-colors"
-                                    title="Verify doctor"
-                                  >
-                                    <span className="text-lg">✅</span>
-                                  </button>
-                                )}
-                                {u.role?.toLowerCase() === "doctor" && (
-                                  <button
-                                    onClick={() => handleScheduleAppointment(u._id)}
-                                    className="text-orange-600 hover:text-orange-800 transition-colors"
-                                    title="Schedule appointment"
-                                  >
-                                    <span className="text-lg">📅</span>
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => setDeleteConfirm(u._id)}
-                                  className="text-red-600 hover:text-red-800 transition-colors"
-                                  title="Delete user"
-                                >
-                                  <span className="text-lg">🗑️</span>
-                                </button>
-                              </div>
-                            </td>
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-3 px-4 text-gray-600 font-semibold">
+                              Name
+                            </th>
+                            <th className="text-left py-3 px-4 text-gray-600 font-semibold">
+                              Email
+                            </th>
+                            <th className="text-left py-3 px-4 text-gray-600 font-semibold">
+                              Role
+                            </th>
+                            <th className="text-left py-3 px-4 text-gray-600 font-semibold">
+                              Joined
+                            </th>
+                            <th className="text-left py-3 px-4 text-gray-600 font-semibold">
+                              Actions
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {allUsers
+                            .slice(
+                              (currentPage - 1) * itemsPerPage,
+                              currentPage * itemsPerPage
+                            )
+                            .map((u, index) => (
+                              <tr
+                                key={u._id}
+                                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                              >
+                                <td className="py-4 px-4">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                                      {u.name[0]}
+                                    </div>
+                                    <span className="font-medium text-gray-800">
+                                      {u.name}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4 text-gray-600">
+                                  {u.email}
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                      getRoleColor(u.role)
+                                    }`}
+                                  >
+                                    {u.role}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4 text-sm text-gray-600">
+                                  {formatDate(u.createdAt)}
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => handleViewUser(u)}
+                                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                                      title="View user details"
+                                    >
+                                      <span className="text-lg">👁️</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleEditUser(u)}
+                                      className="text-green-600 hover:text-green-800 transition-colors"
+                                      title="Edit user"
+                                    >
+                                      <span className="text-lg">✏️</span>
+                                    </button>
+                                    {u.role?.toLowerCase() === "doctor" && (
+                                      <button
+                                        onClick={() => handleVerifyUser(u._id)}
+                                        className="text-purple-600 hover:text-purple-800 transition-colors"
+                                        title="Verify doctor"
+                                      >
+                                        <span className="text-lg">✅</span>
+                                      </button>
+                                    )}
+                                    {u.role?.toLowerCase() === "doctor" && (
+                                      <button
+                                        onClick={() => handleScheduleAppointment(u._id)}
+                                        className="text-orange-600 hover:text-orange-800 transition-colors"
+                                        title="Schedule appointment"
+                                      >
+                                        <span className="text-lg">📅</span>
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => setDeleteConfirm(u._id)}
+                                      className="text-red-600 hover:text-red-800 transition-colors"
+                                      title="Delete user"
+                                    >
+                                      <span className="text-lg">🗑️</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    <div className="mt-6 flex items-center justify-between">
+                      <div className="text-sm text-gray-600">
+                        Showing {Math.min((currentPage - 1) * itemsPerPage + 1, allUsers.length)} to{" "}
+                        {Math.min(currentPage * itemsPerPage, allUsers.length)} of {allUsers.length} users
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                          className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Previous
+                        </button>
+                        <div className="flex items-center space-x-2">
+                          {Array.from({
+                            length: Math.ceil(allUsers.length / itemsPerPage),
+                          }).map((_, i) => (
+                            <button
+                              key={i + 1}
+                              onClick={() => setCurrentPage(i + 1)}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                currentPage === i + 1
+                                  ? "bg-blue-600 text-white"
+                                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                              }`}
+                            >
+                              {i + 1}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() =>
+                            setCurrentPage(
+                              Math.min(
+                                Math.ceil(allUsers.length / itemsPerPage),
+                                currentPage + 1
+                              )
+                            )
+                          }
+                          disabled={
+                            currentPage === Math.ceil(allUsers.length / itemsPerPage)
+                          }
+                          className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -785,35 +1080,88 @@ export default function AdminDashboard() {
                           👤 New user registration
                         </h3>
                         <div className="space-y-3">
-                          {activities
-                            .filter(a => a.action === "user_registration")
+                          {getPaginatedActivities("user_registration")
                             .map((activity) => (
-                              <div
-                                key={activity._id}
-                                className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                              >
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100 text-blue-600">
-                                  📝
-                                </div>
-                                <div className="flex-1">
-                                  <p className="font-medium text-gray-800">
-                                    {activity.actionTitle}
-                                  </p>
-                                  <p className="text-sm text-gray-600">
-                                    {activity.userName || activity.userEmail}
-                                  </p>
-                                  {activity.description && (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      {activity.description}
-                                    </p>
-                                  )}
-                                  <p className="text-xs text-gray-400 mt-1">
-                                    {new Date(activity.createdAt).toLocaleString()}
-                                  </p>
-                                </div>
+                              <div key={activity._id}>
+                                {deleteActivityConfirm === activity._id ? (
+                                  <div className="flex items-start space-x-4 p-4 rounded-xl border-2 border-red-300 bg-red-50">
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 text-red-600">
+                                      ⚠️
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="font-medium text-gray-800">
+                                        Delete this activity?
+                                      </p>
+                                      <div className="flex gap-2 mt-3">
+                                        <button
+                                          onClick={() => handleDeleteActivity(activity._id)}
+                                          disabled={deletingActivityId === activity._id}
+                                          className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+                                        >
+                                          {deletingActivityId === activity._id ? "Deleting..." : "Delete"}
+                                        </button>
+                                        <button
+                                          onClick={() => setDeleteActivityConfirm(null)}
+                                          className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100 text-blue-600">
+                                      📝
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="font-medium text-gray-800">
+                                        {activity.actionTitle}
+                                      </p>
+                                      <p className="text-sm text-gray-600">
+                                        {activity.userName || activity.userEmail}
+                                      </p>
+                                      {activity.description && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          {activity.description}
+                                        </p>
+                                      )}
+                                      <p className="text-xs text-gray-400 mt-1">
+                                        {new Date(activity.createdAt).toLocaleString()}
+                                      </p>
+                                    </div>
+                                    <button
+                                      onClick={() => setDeleteActivityConfirm(activity._id)}
+                                      className="px-2 py-1 text-red-500 hover:bg-red-50 rounded text-sm font-medium"
+                                    >
+                                      🗑️ Delete
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             ))}
                         </div>
+                        {getTotalPages("user_registration") > 1 && (
+                          <div className="flex justify-center items-center gap-2 mt-4">
+                            <button
+                              onClick={() => changeActivityPage("user_registration", Math.max(1, (activityPagination.user_registration || 1) - 1))}
+                              disabled={(activityPagination.user_registration || 1) === 1}
+                              className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                            >
+                              Prev
+                            </button>
+                            <span className="text-sm text-gray-600">
+                              Page {activityPagination.user_registration || 1} of {getTotalPages("user_registration")}
+                            </span>
+                            <button
+                              onClick={() => changeActivityPage("user_registration", Math.min(getTotalPages("user_registration"), (activityPagination.user_registration || 1) + 1))}
+                              disabled={(activityPagination.user_registration || 1) === getTotalPages("user_registration")}
+                              className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -824,35 +1172,88 @@ export default function AdminDashboard() {
                           ✅ User verified
                         </h3>
                         <div className="space-y-3">
-                          {activities
-                            .filter(a => a.action === "user_verified")
+                          {getPaginatedActivities("user_verified")
                             .map((activity) => (
-                              <div
-                                key={activity._id}
-                                className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                              >
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-green-100 text-green-600">
-                                  ✅
-                                </div>
-                                <div className="flex-1">
-                                  <p className="font-medium text-gray-800">
-                                    {activity.actionTitle}
-                                  </p>
-                                  <p className="text-sm text-gray-600">
-                                    {activity.userName || activity.userEmail}
-                                  </p>
-                                  {activity.description && (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      {activity.description}
-                                    </p>
-                                  )}
-                                  <p className="text-xs text-gray-400 mt-1">
-                                    {new Date(activity.createdAt).toLocaleString()}
-                                  </p>
-                                </div>
+                              <div key={activity._id}>
+                                {deleteActivityConfirm === activity._id ? (
+                                  <div className="flex items-start space-x-4 p-4 rounded-xl border-2 border-red-300 bg-red-50">
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 text-red-600">
+                                      ⚠️
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="font-medium text-gray-800">
+                                        Delete this activity?
+                                      </p>
+                                      <div className="flex gap-2 mt-3">
+                                        <button
+                                          onClick={() => handleDeleteActivity(activity._id)}
+                                          disabled={deletingActivityId === activity._id}
+                                          className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+                                        >
+                                          {deletingActivityId === activity._id ? "Deleting..." : "Delete"}
+                                        </button>
+                                        <button
+                                          onClick={() => setDeleteActivityConfirm(null)}
+                                          className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-green-100 text-green-600">
+                                      ✅
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="font-medium text-gray-800">
+                                        {activity.actionTitle}
+                                      </p>
+                                      <p className="text-sm text-gray-600">
+                                        {activity.userName || activity.userEmail}
+                                      </p>
+                                      {activity.description && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          {activity.description}
+                                        </p>
+                                      )}
+                                      <p className="text-xs text-gray-400 mt-1">
+                                        {new Date(activity.createdAt).toLocaleString()}
+                                      </p>
+                                    </div>
+                                    <button
+                                      onClick={() => setDeleteActivityConfirm(activity._id)}
+                                      className="px-2 py-1 text-red-500 hover:bg-red-50 rounded text-sm font-medium"
+                                    >
+                                      🗑️ Delete
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             ))}
                         </div>
+                        {getTotalPages("user_verified") > 1 && (
+                          <div className="flex justify-center items-center gap-2 mt-4">
+                            <button
+                              onClick={() => changeActivityPage("user_verified", Math.max(1, (activityPagination.user_verified || 1) - 1))}
+                              disabled={(activityPagination.user_verified || 1) === 1}
+                              className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                            >
+                              Prev
+                            </button>
+                            <span className="text-sm text-gray-600">
+                              Page {activityPagination.user_verified || 1} of {getTotalPages("user_verified")}
+                            </span>
+                            <button
+                              onClick={() => changeActivityPage("user_verified", Math.min(getTotalPages("user_verified"), (activityPagination.user_verified || 1) + 1))}
+                              disabled={(activityPagination.user_verified || 1) === getTotalPages("user_verified")}
+                              className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -863,8 +1264,7 @@ export default function AdminDashboard() {
                           ⚠️ Other Activities
                         </h3>
                         <div className="space-y-3">
-                          {activities
-                            .filter(a => ["password_reset_requested", "profile_updated"].includes(a.action))
+                          {getPaginatedActivities(["password_reset_requested", "profile_updated"])
                             .map((activity) => {
                               let activityIcon = "⚠";
                               let bgColor = "bg-yellow-100 text-yellow-600";
@@ -876,33 +1276,87 @@ export default function AdminDashboard() {
                               }
 
                               return (
-                                <div
-                                  key={activity._id}
-                                  className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                                >
-                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${bgColor}`}>
-                                    {activityIcon}
-                                  </div>
-                                  <div className="flex-1">
-                                    <p className="font-medium text-gray-800">
-                                      {activity.actionTitle}
-                                    </p>
-                                    <p className="text-sm text-gray-600">
-                                      {activity.userName || activity.userEmail}
-                                    </p>
-                                    {activity.description && (
-                                      <p className="text-xs text-gray-500 mt-1">
-                                        {activity.description}
-                                      </p>
-                                    )}
-                                    <p className="text-xs text-gray-400 mt-1">
-                                      {new Date(activity.createdAt).toLocaleString()}
-                                    </p>
-                                  </div>
+                                <div key={activity._id}>
+                                  {deleteActivityConfirm === activity._id ? (
+                                    <div className="flex items-start space-x-4 p-4 rounded-xl border-2 border-red-300 bg-red-50">
+                                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 text-red-600">
+                                        ⚠️
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="font-medium text-gray-800">
+                                          Delete this activity?
+                                        </p>
+                                        <div className="flex gap-2 mt-3">
+                                          <button
+                                            onClick={() => handleDeleteActivity(activity._id)}
+                                            disabled={deletingActivityId === activity._id}
+                                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+                                          >
+                                            {deletingActivityId === activity._id ? "Deleting..." : "Delete"}
+                                          </button>
+                                          <button
+                                            onClick={() => setDeleteActivityConfirm(null)}
+                                            className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
+                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${bgColor}`}>
+                                        {activityIcon}
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="font-medium text-gray-800">
+                                          {activity.actionTitle}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                          {activity.userName || activity.userEmail}
+                                        </p>
+                                        {activity.description && (
+                                          <p className="text-xs text-gray-500 mt-1">
+                                            {activity.description}
+                                          </p>
+                                        )}
+                                        <p className="text-xs text-gray-400 mt-1">
+                                          {new Date(activity.createdAt).toLocaleString()}
+                                        </p>
+                                      </div>
+                                      <button
+                                        onClick={() => setDeleteActivityConfirm(activity._id)}
+                                        className="px-2 py-1 text-red-500 hover:bg-red-50 rounded text-sm font-medium"
+                                      >
+                                        🗑️ Delete
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
                         </div>
+                        {getTotalPages(["password_reset_requested", "profile_updated"]) > 1 && (
+                          <div className="flex justify-center items-center gap-2 mt-4">
+                            <button
+                              onClick={() => changeActivityPage("password_reset_requested", Math.max(1, (activityPagination.password_reset_requested || 1) - 1))}
+                              disabled={(activityPagination.password_reset_requested || 1) === 1}
+                              className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                            >
+                              Prev
+                            </button>
+                            <span className="text-sm text-gray-600">
+                              Page {activityPagination.password_reset_requested || 1} of {getTotalPages(["password_reset_requested", "profile_updated"])}
+                            </span>
+                            <button
+                              onClick={() => changeActivityPage("password_reset_requested", Math.min(getTotalPages(["password_reset_requested", "profile_updated"]), (activityPagination.password_reset_requested || 1) + 1))}
+                              disabled={(activityPagination.password_reset_requested || 1) === getTotalPages(["password_reset_requested", "profile_updated"])}
+                              className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -916,40 +1370,93 @@ export default function AdminDashboard() {
                               📅 Appointment Scheduled
                             </h3>
                             <div className="space-y-3">
-                              {activities
-                                .filter(a => a.action === "appointment_scheduled")
+                              {getPaginatedActivities("appointment_scheduled")
                                 .map((activity) => (
-                                  <div
-                                    key={activity._id}
-                                    className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                                  >
-                                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100 text-blue-600">
-                                      📅
-                                    </div>
-                                    <div className="flex-1">
-                                      <p className="font-medium text-gray-800">
-                                        {activity.actionTitle}
-                                      </p>
-                                      <p className="text-sm text-gray-600">
-                                        By: {activity.userName || activity.userEmail}
-                                      </p>
-                                      {activity.metadata?.patientName && (
-                                        <p className="text-sm text-gray-600">
-                                          Patient: {activity.metadata.patientName} ({activity.metadata.patientId})
-                                        </p>
-                                      )}
-                                      {activity.description && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                          {activity.description}
-                                        </p>
-                                      )}
-                                      <p className="text-xs text-gray-400 mt-1">
-                                        {new Date(activity.createdAt).toLocaleString()}
-                                      </p>
-                                    </div>
+                                  <div key={activity._id}>
+                                    {deleteActivityConfirm === activity._id ? (
+                                      <div className="flex items-start space-x-4 p-4 rounded-xl border-2 border-red-300 bg-red-50">
+                                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 text-red-600">
+                                          ⚠️
+                                        </div>
+                                        <div className="flex-1">
+                                          <p className="font-medium text-gray-800">
+                                            Delete this activity?
+                                          </p>
+                                          <div className="flex gap-2 mt-3">
+                                            <button
+                                              onClick={() => handleDeleteActivity(activity._id)}
+                                              disabled={deletingActivityId === activity._id}
+                                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+                                            >
+                                              {deletingActivityId === activity._id ? "Deleting..." : "Delete"}
+                                            </button>
+                                            <button
+                                              onClick={() => setDeleteActivityConfirm(null)}
+                                              className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
+                                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100 text-blue-600">
+                                          📅
+                                        </div>
+                                        <div className="flex-1">
+                                          <p className="font-medium text-gray-800">
+                                            {activity.actionTitle}
+                                          </p>
+                                          <p className="text-sm text-gray-600">
+                                            By: {activity.userName || activity.userEmail}
+                                          </p>
+                                          {activity.metadata?.patientName && (
+                                            <p className="text-sm text-gray-600">
+                                              Patient: {activity.metadata.patientName} ({activity.metadata.patientId})
+                                            </p>
+                                          )}
+                                          {activity.description && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                              {activity.description}
+                                            </p>
+                                          )}
+                                          <p className="text-xs text-gray-400 mt-1">
+                                            {new Date(activity.createdAt).toLocaleString()}
+                                          </p>
+                                        </div>
+                                        <button
+                                          onClick={() => setDeleteActivityConfirm(activity._id)}
+                                          className="px-2 py-1 text-red-500 hover:bg-red-50 rounded text-sm font-medium"
+                                        >
+                                          🗑️ Delete
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                             </div>
+                            {getTotalPages("appointment_scheduled") > 1 && (
+                              <div className="flex justify-center items-center gap-2 mt-4">
+                                <button
+                                  onClick={() => changeActivityPage("appointment_scheduled", Math.max(1, (activityPagination.appointment_scheduled || 1) - 1))}
+                                  disabled={(activityPagination.appointment_scheduled || 1) === 1}
+                                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                                >
+                                  Prev
+                                </button>
+                                <span className="text-sm text-gray-600">
+                                  Page {activityPagination.appointment_scheduled || 1} of {getTotalPages("appointment_scheduled")}
+                                </span>
+                                <button
+                                  onClick={() => changeActivityPage("appointment_scheduled", Math.min(getTotalPages("appointment_scheduled"), (activityPagination.appointment_scheduled || 1) + 1))}
+                                  disabled={(activityPagination.appointment_scheduled || 1) === getTotalPages("appointment_scheduled")}
+                                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -960,40 +1467,93 @@ export default function AdminDashboard() {
                               ✅ Appointment Approved
                             </h3>
                             <div className="space-y-3">
-                              {activities
-                                .filter(a => a.action === "appointment_approved")
+                              {getPaginatedActivities("appointment_approved")
                                 .map((activity) => (
-                                  <div
-                                    key={activity._id}
-                                    className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                                  >
-                                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-green-100 text-green-600">
-                                      ✅
-                                    </div>
-                                    <div className="flex-1">
-                                      <p className="font-medium text-gray-800">
-                                        {activity.actionTitle}
-                                      </p>
-                                      <p className="text-sm text-gray-600">
-                                        By: {activity.userName || activity.userEmail}
-                                      </p>
-                                      {activity.metadata?.patientName && (
-                                        <p className="text-sm text-gray-600">
-                                          Patient: {activity.metadata.patientName} ({activity.metadata.patientId})
-                                        </p>
-                                      )}
-                                      {activity.description && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                          {activity.description}
-                                        </p>
-                                      )}
-                                      <p className="text-xs text-gray-400 mt-1">
-                                        {new Date(activity.createdAt).toLocaleString()}
-                                      </p>
-                                    </div>
+                                  <div key={activity._id}>
+                                    {deleteActivityConfirm === activity._id ? (
+                                      <div className="flex items-start space-x-4 p-4 rounded-xl border-2 border-red-300 bg-red-50">
+                                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 text-red-600">
+                                          ⚠️
+                                        </div>
+                                        <div className="flex-1">
+                                          <p className="font-medium text-gray-800">
+                                            Delete this activity?
+                                          </p>
+                                          <div className="flex gap-2 mt-3">
+                                            <button
+                                              onClick={() => handleDeleteActivity(activity._id)}
+                                              disabled={deletingActivityId === activity._id}
+                                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+                                            >
+                                              {deletingActivityId === activity._id ? "Deleting..." : "Delete"}
+                                            </button>
+                                            <button
+                                              onClick={() => setDeleteActivityConfirm(null)}
+                                              className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
+                                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-green-100 text-green-600">
+                                          ✅
+                                        </div>
+                                        <div className="flex-1">
+                                          <p className="font-medium text-gray-800">
+                                            {activity.actionTitle}
+                                          </p>
+                                          <p className="text-sm text-gray-600">
+                                            By: {activity.userName || activity.userEmail}
+                                          </p>
+                                          {activity.metadata?.patientName && (
+                                            <p className="text-sm text-gray-600">
+                                              Patient: {activity.metadata.patientName} ({activity.metadata.patientId})
+                                            </p>
+                                          )}
+                                          {activity.description && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                              {activity.description}
+                                            </p>
+                                          )}
+                                          <p className="text-xs text-gray-400 mt-1">
+                                            {new Date(activity.createdAt).toLocaleString()}
+                                          </p>
+                                        </div>
+                                        <button
+                                          onClick={() => setDeleteActivityConfirm(activity._id)}
+                                          className="px-2 py-1 text-red-500 hover:bg-red-50 rounded text-sm font-medium"
+                                        >
+                                          🗑️ Delete
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                             </div>
+                            {getTotalPages("appointment_approved") > 1 && (
+                              <div className="flex justify-center items-center gap-2 mt-4">
+                                <button
+                                  onClick={() => changeActivityPage("appointment_approved", Math.max(1, (activityPagination.appointment_approved || 1) - 1))}
+                                  disabled={(activityPagination.appointment_approved || 1) === 1}
+                                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                                >
+                                  Prev
+                                </button>
+                                <span className="text-sm text-gray-600">
+                                  Page {activityPagination.appointment_approved || 1} of {getTotalPages("appointment_approved")}
+                                </span>
+                                <button
+                                  onClick={() => changeActivityPage("appointment_approved", Math.min(getTotalPages("appointment_approved"), (activityPagination.appointment_approved || 1) + 1))}
+                                  disabled={(activityPagination.appointment_approved || 1) === getTotalPages("appointment_approved")}
+                                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1004,40 +1564,93 @@ export default function AdminDashboard() {
                               ❌ Appointment Rejected
                             </h3>
                             <div className="space-y-3">
-                              {activities
-                                .filter(a => a.action === "appointment_rejected")
+                              {getPaginatedActivities("appointment_rejected")
                                 .map((activity) => (
-                                  <div
-                                    key={activity._id}
-                                    className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                                  >
-                                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 text-red-600">
-                                      ❌
-                                    </div>
-                                    <div className="flex-1">
-                                      <p className="font-medium text-gray-800">
-                                        {activity.actionTitle}
-                                      </p>
-                                      <p className="text-sm text-gray-600">
-                                        By: {activity.userName || activity.userEmail}
-                                      </p>
-                                      {activity.metadata?.patientName && (
-                                        <p className="text-sm text-gray-600">
-                                          Patient: {activity.metadata.patientName} ({activity.metadata.patientId})
-                                        </p>
-                                      )}
-                                      {activity.description && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                          {activity.description}
-                                        </p>
-                                      )}
-                                      <p className="text-xs text-gray-400 mt-1">
-                                        {new Date(activity.createdAt).toLocaleString()}
-                                      </p>
-                                    </div>
+                                  <div key={activity._id}>
+                                    {deleteActivityConfirm === activity._id ? (
+                                      <div className="flex items-start space-x-4 p-4 rounded-xl border-2 border-red-300 bg-red-50">
+                                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 text-red-600">
+                                          ⚠️
+                                        </div>
+                                        <div className="flex-1">
+                                          <p className="font-medium text-gray-800">
+                                            Delete this activity?
+                                          </p>
+                                          <div className="flex gap-2 mt-3">
+                                            <button
+                                              onClick={() => handleDeleteActivity(activity._id)}
+                                              disabled={deletingActivityId === activity._id}
+                                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+                                            >
+                                              {deletingActivityId === activity._id ? "Deleting..." : "Delete"}
+                                            </button>
+                                            <button
+                                              onClick={() => setDeleteActivityConfirm(null)}
+                                              className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
+                                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 text-red-600">
+                                          ❌
+                                        </div>
+                                        <div className="flex-1">
+                                          <p className="font-medium text-gray-800">
+                                            {activity.actionTitle}
+                                          </p>
+                                          <p className="text-sm text-gray-600">
+                                            By: {activity.userName || activity.userEmail}
+                                          </p>
+                                          {activity.metadata?.patientName && (
+                                            <p className="text-sm text-gray-600">
+                                              Patient: {activity.metadata.patientName} ({activity.metadata.patientId})
+                                            </p>
+                                          )}
+                                          {activity.description && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                              {activity.description}
+                                            </p>
+                                          )}
+                                          <p className="text-xs text-gray-400 mt-1">
+                                            {new Date(activity.createdAt).toLocaleString()}
+                                          </p>
+                                        </div>
+                                        <button
+                                          onClick={() => setDeleteActivityConfirm(activity._id)}
+                                          className="px-2 py-1 text-red-500 hover:bg-red-50 rounded text-sm font-medium"
+                                        >
+                                          🗑️ Delete
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                             </div>
+                            {getTotalPages("appointment_rejected") > 1 && (
+                              <div className="flex justify-center items-center gap-2 mt-4">
+                                <button
+                                  onClick={() => changeActivityPage("appointment_rejected", Math.max(1, (activityPagination.appointment_rejected || 1) - 1))}
+                                  disabled={(activityPagination.appointment_rejected || 1) === 1}
+                                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                                >
+                                  Prev
+                                </button>
+                                <span className="text-sm text-gray-600">
+                                  Page {activityPagination.appointment_rejected || 1} of {getTotalPages("appointment_rejected")}
+                                </span>
+                                <button
+                                  onClick={() => changeActivityPage("appointment_rejected", Math.min(getTotalPages("appointment_rejected"), (activityPagination.appointment_rejected || 1) + 1))}
+                                  disabled={(activityPagination.appointment_rejected || 1) === getTotalPages("appointment_rejected")}
+                                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1094,21 +1707,23 @@ export default function AdminDashboard() {
               </h3>
               <div className="space-y-3">
                 {[
-                  { title: "New appointment", time: "5m ago", icon: "🔔" },
                   {
                     title: "System backup completed",
                     time: "1h ago",
                     icon: "💾",
+                    action: () => alert("Backup details coming soon!"),
                   },
                   {
                     title: "User report submitted",
                     time: "2h ago",
                     icon: "📝",
+                    action: () => alert("Report details coming soon!"),
                   },
                 ].map((notif, index) => (
-                  <div
+                  <button
                     key={index}
-                    className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+                    onClick={notif.action}
+                    className="w-full flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100 text-left"
                   >
                     <span className="text-2xl">{notif.icon}</span>
                     <div className="flex-1">
@@ -1117,7 +1732,7 @@ export default function AdminDashboard() {
                       </p>
                       <p className="text-xs text-gray-400">{notif.time}</p>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1312,16 +1927,45 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Appointment Date & Time
+                  Appointment Date
                 </label>
-                <input
-                  type="datetime-local"
+                <select
                   value={scheduleFormData.requestedDate}
                   onChange={(e) =>
                     setScheduleFormData({ ...scheduleFormData, requestedDate: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
+                >
+                  <option value="">-- Select Available Date --</option>
+                  {generateAvailableDates().map((dateStr) => {
+                    const date = new Date(dateStr + 'T00:00:00');
+                    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const dayName = days[date.getDay()];
+                    const monthName = date.toLocaleString('default', { month: 'short' });
+                    const fullDateStr = `${dayName}, ${monthName} ${date.getDate()}, ${date.getFullYear()}`;
+                    return (
+                      <option key={dateStr} value={dateStr}>
+                        {fullDateStr}
+                      </option>
+                    );
+                  })}
+                </select>
+                {generateAvailableDates().length === 0 && (
+                  <p className="text-xs text-red-500 mt-1">
+                    No available dates for this doctor
+                  </p>
+                )}
+                {doctorAvailability.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Doctor available on: {doctorAvailability.map(d => {
+                      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                      return `${days[d.dayOfWeek]} ${d.startTime}-${d.endTime}`;
+                    }).join(', ')}
+                  </p>
+                )}
+                <p className="text-xs text-blue-600 mt-2 font-medium">
+                  ✓ Time will be automatically assigned (30 min slots)
+                </p>
               </div>
 
               <div>
@@ -1351,6 +1995,180 @@ export default function AdminDashboard() {
                 className="px-4 py-2 bg-gradient-to-r from-orange-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-medium"
               >
                 Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddUserModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600">
+              <h2 className="text-xl font-bold text-white">Add New User</h2>
+            </div>
+            <form onSubmit={handleAddUser} className="px-6 py-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={addUserFormData.name}
+                  onChange={(e) =>
+                    setAddUserFormData({ ...addUserFormData, name: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="John Doe"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={addUserFormData.email}
+                  onChange={(e) =>
+                    setAddUserFormData({ ...addUserFormData, email: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="john@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={addUserFormData.password}
+                  onChange={(e) =>
+                    setAddUserFormData({ ...addUserFormData, password: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  User Role
+                </label>
+                <select
+                  value={addUserFormData.role}
+                  onChange={(e) =>
+                    setAddUserFormData({ 
+                      ...addUserFormData, 
+                      role: e.target.value as "patient" | "doctor" 
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                  <option value="patient">Patient</option>
+                  <option value="doctor">Doctor</option>
+                </select>
+              </div>
+            </form>
+
+            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end space-x-2">
+              <button
+                onClick={() => {
+                  setShowAddUserModal(false);
+                  setAddUserFormData({ name: "", email: "", password: "", role: "patient" });
+                }}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddUser}
+                disabled={addUserLoading}
+                className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all font-medium disabled:opacity-50"
+              >
+                {addUserLoading ? "Creating..." : "Create User"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showNewAppointmentPage && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-2xl max-w-5xl w-full my-8">
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-white">Available Doctors</h2>
+              <button
+                onClick={() => setShowNewAppointmentPage(false)}
+                className="text-white text-2xl hover:opacity-70"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="px-6 py-6">
+              {allUsers.filter((u) => u.role?.toLowerCase() === "doctor").length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">No doctors available at the moment</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="border-b-2 border-gray-200 bg-gray-50">
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                        <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allUsers
+                        .filter((u) => u.role?.toLowerCase() === "doctor")
+                        .map((doctor) => (
+                          <tr key={doctor._id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="font-medium text-gray-800">{doctor.name}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-gray-600">{doctor.email}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                                ✓ Verified
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <button
+                                onClick={() => {
+                                  setSelectedDoctorId(doctor._id);
+                                  setShowNewAppointmentPage(false);
+                                  setShowScheduleModal(true);
+                                }}
+                                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm"
+                              >
+                                Schedule
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-end">
+              <button
+                onClick={() => setShowNewAppointmentPage(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+              >
+                Close
               </button>
             </div>
           </div>

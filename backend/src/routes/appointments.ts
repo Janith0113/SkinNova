@@ -100,6 +100,44 @@ router.post('/appointments', requireAuth, async (req: any, res: any) => {
   }
 })
 
+// Get count of appointments for a doctor on a specific date
+router.get('/count', requireAuth, async (req: any, res: any) => {
+  try {
+    const { doctorId, date } = req.query
+    
+    if (!doctorId || !date) {
+      return res.status(400).json({ error: 'doctorId and date parameters required' })
+    }
+    
+    // Parse the date (format: YYYY-MM-DD)
+    const parts = (date as string).split('-')
+    const year = parseInt(parts[0])
+    const month = parseInt(parts[1])
+    const day = parseInt(parts[2])
+    
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0)
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59)
+    
+    console.log(`Counting appointments for doctor ${doctorId} on ${date}`)
+    console.log(`Date range: ${startOfDay} to ${endOfDay}`)
+    
+    // Count appointments for this doctor on this date (pending or approved only)
+    const count = await Appointment.countDocuments({
+      doctorId: doctorId as string,
+      requestedDate: { $gte: startOfDay, $lte: endOfDay },
+      status: { $in: ['pending', 'approved'] }
+    })
+    
+    console.log(`Found ${count} appointments`)
+    
+    res.json({ success: true, count })
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to count appointments'
+    console.error('Count appointments error:', errorMsg)
+    res.status(500).json({ error: errorMsg })
+  }
+})
+
 // Get appointments for current user (patient views own, doctor views their appointments)
 router.get('/appointments', requireAuth, async (req: any, res: any) => {
   try {
@@ -111,7 +149,15 @@ router.get('/appointments', requireAuth, async (req: any, res: any) => {
     }
 
     let appointments
-    if (user.role === 'doctor') {
+    if (user.role === 'admin') {
+      // Admins can filter by doctorId query parameter or get all appointments
+      const doctorId = req.query.doctorId
+      if (doctorId) {
+        appointments = await Appointment.find({ doctorId }).sort({ requestedDate: -1 })
+      } else {
+        appointments = await Appointment.find({}).sort({ requestedDate: -1 })
+      }
+    } else if (user.role === 'doctor') {
       // Doctors see appointments assigned to them
       appointments = await Appointment.find({ doctorId: userId }).sort({ requestedDate: -1 })
     } else {
@@ -130,7 +176,7 @@ router.get('/appointments', requireAuth, async (req: any, res: any) => {
 router.put('/appointments/:appointmentId/approve', requireAuth, async (req: any, res: any) => {
   try {
     const { appointmentId } = req.params
-    const { approvedDate, notes } = req.body
+    const { notes } = req.body
     const doctorId = req.userId
 
     const appointment = await Appointment.findById(appointmentId)
@@ -144,7 +190,7 @@ router.put('/appointments/:appointmentId/approve', requireAuth, async (req: any,
     }
 
     appointment.status = 'approved'
-    appointment.approvedDate = new Date(approvedDate)
+    appointment.approvedDate = appointment.requestedDate
     appointment.notes = notes || ''
     await appointment.save()
 
@@ -153,7 +199,7 @@ router.put('/appointments/:appointmentId/approve', requireAuth, async (req: any,
       appointment.patientEmail,
       appointment.patientName,
       'Appointment Approved',
-      `Your appointment with Dr. ${appointment.doctorName} has been approved!\nApproved Time: ${new Date(approvedDate).toLocaleString()}\nNotes: ${notes || 'N/A'}`
+      `Your appointment with Dr. ${appointment.doctorName} has been approved!\nApproved Time: ${new Date(appointment.requestedDate).toLocaleString()}\nNotes: ${notes || 'N/A'}`
     )
 
     // Log activity
@@ -163,7 +209,7 @@ router.put('/appointments/:appointmentId/approve', requireAuth, async (req: any,
       appointment.doctorEmail,
       'appointment_approved',
       'Appointment Approved',
-      `Approved appointment with ${appointment.patientName} for ${new Date(approvedDate).toLocaleString()}`,
+      `Approved appointment with ${appointment.patientName} for ${new Date(appointment.requestedDate).toLocaleString()}`,
       { 
         appointmentId: String(appointment._id),
         patientId: String(appointment.patientId), 

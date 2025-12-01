@@ -53,6 +53,18 @@ export const logActivity = async (
   metadata?: any
 ) => {
   try {
+    const now = new Date()
+    let expiresAt: Date | null = null
+
+    // Set expiration times only for appointment activities
+    if (action === 'appointment_scheduled') {
+      // Appointment scheduled activities expire 7 days after creation
+      expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    } else if (action === 'appointment_approved') {
+      // Appointment approved activities expire 30 days after creation
+      expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+    }
+
     const activity = new Activity({
       userId,
       userName,
@@ -61,7 +73,8 @@ export const logActivity = async (
       actionTitle,
       description,
       metadata,
-      createdAt: new Date()
+      createdAt: now,
+      expiresAt
     })
     await activity.save()
   } catch (err) {
@@ -112,6 +125,29 @@ router.get('/activities/:userId', requireAuth, async (req: any, res: any) => {
     res.status(200).json({ success: true, activities })
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Failed to fetch activities'
+    res.status(500).json({ error: errorMsg })
+  }
+})
+
+// Delete an activity (admin only)
+router.delete('/activities/:activityId', requireAuth, async (req: any, res: any) => {
+  try {
+    const { activityId } = req.params
+    const user = await User.findById(req.userId)
+
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can delete activities' })
+    }
+
+    const activity = await Activity.findByIdAndDelete(activityId)
+
+    if (!activity) {
+      return res.status(404).json({ error: 'Activity not found' })
+    }
+
+    res.status(200).json({ success: true, message: 'Activity deleted successfully' })
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to delete activity'
     res.status(500).json({ error: errorMsg })
   }
 })
