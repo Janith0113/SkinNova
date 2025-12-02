@@ -1,6 +1,9 @@
+"use client";
 import "../styles/globals.css";
 import { ReactNode } from "react";
-import ClientWrapper from "../components/LayoutClientWrapper";
+import { usePathname } from "next/navigation";
+import Navbar from "../components/Navbar";
+import Footer from "../components/footer";
 
 export const metadata = {
   title: "SkinNova",
@@ -8,10 +11,16 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+
+  const hideNavbar = pathname === "/login" || pathname === "/signup";
+
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col">
-        <ClientWrapper>{children}</ClientWrapper>
+        {!hideNavbar && <Navbar />}
+        <main className="flex-1">{children}</main>
+        {!hideNavbar && <Footer />}
       </body>
     </html>
   );

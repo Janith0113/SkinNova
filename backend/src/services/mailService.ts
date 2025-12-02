@@ -89,5 +89,41 @@ export async function testEmailConnection() {
   }
 }
 
+// Send appointment notification email
+export async function sendAppointmentEmail(email: string, name: string, subject: string, details: string) {
+  try {
+    console.log(`Sending appointment email to: ${email}`)
+
+    const mailOptions = {
+      from: process.env.MAIL_FROM || process.env.GMAIL_USER || 'noreply@skinnova.com',
+      to: email,
+      subject: `SkinNova - ${subject}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333;">Appointment Notification</h1>
+          <p style="color: #666; font-size: 16px;">Hi ${name},</p>
+          <p style="color: #666; font-size: 16px;">${subject}</p>
+          
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4F46E5;">
+            <pre style="color: #333; font-family: Arial; white-space: pre-wrap; word-wrap: break-word; font-size: 14px;">${details}</pre>
+          </div>
+          
+          <p style="color: #666; font-size: 16px;">Please log in to your SkinNova account to view more details.</p>
+          
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #999; font-size: 12px; text-align: center;">© 2025 SkinNova. All rights reserved.</p>
+        </div>
+      `
+    }
+    
+    const info = await transporter.sendMail(mailOptions)
+    console.log(`Appointment email sent: ${info.messageId}`)
+    return true
+  } catch (err: any) {
+    console.error('Error sending appointment email:', err.message)
+    return false
+  }
+}
+
 export default transporter
 

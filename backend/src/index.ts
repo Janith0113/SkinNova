@@ -5,6 +5,11 @@ import express from 'express'
 import cors from 'cors'
 import { connectDb } from './db'
 import authRoutes from './routes/auth'
+import adminRoutes from './routes/admin'
+import activityRoutes from './routes/activity'
+import appointmentRoutes from './routes/appointments'
+import doctorRoutes from './routes/doctors'
+import availabilityRoutes from './routes/availability'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
@@ -18,6 +23,11 @@ app.get('/api/health', (req, res) => {
 })
 
 app.use('/api/auth', authRoutes)
+app.use('/api/admin', adminRoutes)
+app.use('/api/doctors', doctorRoutes)
+app.use('/api/availability', availabilityRoutes)
+app.use('/api', activityRoutes)
+app.use('/api', appointmentRoutes)
 
 async function start() {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://Skin123:Skin123%23@cluster0.ycpp8kz.mongodb.net/?appName=Cluster0'
