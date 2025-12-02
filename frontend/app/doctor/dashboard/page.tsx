@@ -24,6 +24,11 @@ export default function DoctorDashboard() {
   const [approvalData, setApprovalData] = useState({ approvedDate: "", notes: "" });
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [followRequests, setFollowRequests] = useState<any[]>([]);
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [selectedChatPatient, setSelectedChatPatient] = useState<any>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -45,6 +50,7 @@ export default function DoctorDashboard() {
   useEffect(() => {
     if (user?.role === "doctor") {
       fetchAppointments();
+      fetchFollowRequests();
       const interval = setInterval(fetchAppointments, 5000);
       return () => clearInterval(interval);
     }
@@ -137,6 +143,180 @@ export default function DoctorDashboard() {
       await fetchAppointments();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to reject appointment");
+    }
+  };
+
+  const fetchFollowRequests = async () => {
+    try {
+      const doctorId = user?._id || user?.id || user?.userId;
+      
+      if (!doctorId) {
+        console.warn("Doctor ID not available yet");
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:4000/api/follow-requests/doctor/${doctorId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch follow requests");
+      }
+
+      const data = await response.json();
+      setFollowRequests(data.requests || []);
+    } catch (err) {
+      console.error("Error fetching follow requests:", err);
+    }
+  };
+
+  const handleAcceptFollowRequest = async (followRequestId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:4000/api/follow-requests/accept/${followRequestId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to accept follow request");
+      }
+
+      alert("Follow request accepted!");
+      await fetchFollowRequests();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to accept follow request");
+    }
+  };
+
+  const handleRejectFollowRequest = async (followRequestId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:4000/api/follow-requests/reject/${followRequestId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reject follow request");
+      }
+
+      alert("Follow request rejected!");
+      await fetchFollowRequests();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to reject follow request");
+    }
+  };
+
+  const handleUnfollowPatient = async (patientId: string) => {
+    try {
+      const doctorId = user?._id || user?.id || user?.userId;
+
+      if (!doctorId || !patientId) {
+        alert("Error: Doctor or Patient ID missing");
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:4000/api/follow-requests/reject/${patientId}/${doctorId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to unfollow patient");
+      }
+
+      alert("Unfollowed successfully!");
+      await fetchFollowRequests();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to unfollow patient");
+    }
+  };
+
+  const handleOpenChat = async (patient: any) => {
+    setSelectedChatPatient(patient);
+    try {
+      const doctorId = user?._id || user?.id || user?.userId;
+      
+      if (!doctorId || !patient?.patientId) {
+        alert("Patient or doctor info not loaded");
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:4000/api/chat/${patient.patientId}/${doctorId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to load chat");
+      }
+
+      const data = await response.json();
+      setChatMessages(data.chat?.messages || []);
+      setShowChatModal(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to load chat");
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim()) return;
+
+    try {
+      const doctorId = user?._id || user?.id || user?.userId;
+      
+      if (!doctorId || !selectedChatPatient?.patientId) {
+        alert("Chat info not loaded");
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:4000/api/chat/${selectedChatPatient.patientId}/${doctorId}/message`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          senderId: doctorId,
+          senderName: user.name,
+          senderRole: "doctor",
+          content: chatInput,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+
+      const data = await response.json();
+      setChatMessages(data.chat?.messages || []);
+      setChatInput("");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to send message");
     }
   };
 
@@ -300,6 +480,70 @@ export default function DoctorDashboard() {
           </div>
         </div>
 
+        {/* Follow Requests Section */}
+        {followRequests.length > 0 && (
+          <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              ⭐ Patient Follow Requests ({followRequests.filter(f => f.status === 'pending').length})
+            </h2>
+            <div className="space-y-4">
+              {followRequests.map((request) => (
+                <div key={request._id} className={`bg-white/40 rounded-2xl p-5 border border-white/50 hover:shadow-lg transition-all ${request.status === 'accepted' ? 'border-emerald-300' : ''}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-lg font-semibold text-gray-900">
+                        {request.patientName} <span className="text-xs text-gray-600">({request.patientEmail})</span>
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Status: <strong className={request.status === 'pending' ? 'text-yellow-700' : request.status === 'accepted' ? 'text-emerald-700' : 'text-red-700'}>
+                          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                        </strong>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Requested: {new Date(request.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      {request.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleAcceptFollowRequest(request._id)}
+                            className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all text-sm"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => handleRejectFollowRequest(request._id)}
+                            className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-all text-sm"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {request.status === 'accepted' && (
+                        <div className="flex gap-2 flex-col sm:flex-row">
+                          <button
+                            onClick={() => handleOpenChat({ patientId: request.patientId, patientName: request.patientName })}
+                            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all text-sm"
+                          >
+                            💬 Message
+                          </button>
+                          <button
+                            onClick={() => handleUnfollowPatient(request.patientId)}
+                            className="px-4 py-2 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all text-sm"
+                          >
+                            🚫 Unfollow
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Appointments Section */}
         <div className="space-y-8">
           {/* Pending Appointments */}
@@ -346,65 +590,10 @@ export default function DoctorDashboard() {
             </div>
           )}
 
-          {/* Approved Appointments */}
-          {approvedAppointments.length > 0 && (
-            <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                ✅ Approved Appointments ({approvedAppointments.length})
-              </h2>
-              <div className="space-y-4">
-                {approvedAppointments.map((apt) => (
-                  <div key={apt._id} className="bg-white/40 rounded-2xl p-5 border border-green-200 hover:shadow-lg transition-all">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="text-lg font-semibold text-gray-900">
-                          {apt.patientName} <span className="text-xs text-gray-600">({apt.patientId})</span>
-                        </p>
-                        <p className="text-sm text-gray-700 mt-1">📅 Approved: {apt.approvedDate ? new Date(apt.approvedDate).toLocaleString() : "N/A"}</p>
-                        <p className="text-sm text-gray-700">📝 {apt.reason}</p>
-                        {apt.notes && <p className="text-sm text-gray-700 mt-2"><strong>Notes:</strong> {apt.notes}</p>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {appointments.length === 0 && (
             <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-12 text-center">
               <p className="text-gray-700 text-lg">No appointments yet</p>
               <p className="text-gray-600 text-sm mt-2">Appointments will appear here when patients request them</p>
-            </div>
-          )}
-
-          {/* Past/Completed Appointments */}
-          {pastAppointments.length > 0 && (
-            <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                📋 Past Appointments ({pastAppointments.length})
-              </h2>
-              <div className="space-y-4">
-                {pastAppointments.map((apt) => (
-                  <div key={apt._id} className="bg-white/40 rounded-2xl p-5 border border-gray-300 hover:shadow-lg transition-all opacity-75">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="text-lg font-semibold text-gray-700">
-                          {apt.patientName} <span className="text-xs text-gray-600">({apt.patientId})</span>
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1">📅 {new Date(apt.approvedDate || apt.requestedDate).toLocaleString()}</p>
-                        <p className="text-sm text-gray-600">📝 {apt.reason}</p>
-                        {apt.notes && <p className="text-sm text-gray-600 mt-2"><strong>Notes:</strong> {apt.notes}</p>}
-                      </div>
-                      <div className="flex items-center">
-                        <span className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold text-gray-700">
-                          Completed
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>
@@ -486,6 +675,65 @@ export default function DoctorDashboard() {
                 className="flex-1 px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all font-medium"
               >
                 Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Modal */}
+      {showChatModal && selectedChatPatient && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-96 flex flex-col">
+            <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white">Chat with {selectedChatPatient.patientName}</h2>
+              <button
+                onClick={() => setShowChatModal(false)}
+                className="text-white text-xl font-bold hover:opacity-80"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+              {chatMessages.length === 0 ? (
+                <p className="text-center text-gray-500 text-sm mt-4">No messages yet. Start a conversation!</p>
+              ) : (
+                chatMessages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex ${msg.senderId === user._id ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-xs px-4 py-2 rounded-lg ${
+                        msg.senderId === user._id
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-200 text-gray-900'
+                      }`}
+                    >
+                      <p className="text-xs font-semibold mb-1 opacity-80">{msg.senderName}</p>
+                      <p className="text-sm">{msg.content}</p>
+                      <p className="text-xs mt-1 opacity-70">
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Type a message..."
+              />
+              <button
+                onClick={handleSendMessage}
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-medium"
+              >
+                Send
               </button>
             </div>
           </div>

@@ -60,6 +60,9 @@ export default function Navbar() {
               >
                 Dashboard
               </button>
+              <Link href="/appointments" className="font-medium text-gray-900 hover:text-gray-700 drop-shadow-sm">
+                📅 Appointments
+              </Link>
               <button
                 onClick={handleLogout}
                 className="font-medium text-gray-900 hover:text-gray-700 drop-shadow-sm"

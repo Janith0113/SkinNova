@@ -10,6 +10,8 @@ import activityRoutes from './routes/activity'
 import appointmentRoutes from './routes/appointments'
 import doctorRoutes from './routes/doctors'
 import availabilityRoutes from './routes/availability'
+import followRequestRoutes from './routes/followRequests'
+import chatRoutes from './routes/chat'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
@@ -26,6 +28,8 @@ app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/doctors', doctorRoutes)
 app.use('/api/availability', availabilityRoutes)
+app.use('/api/follow-requests', followRequestRoutes)
+app.use('/api/chat', chatRoutes)
 app.use('/api', activityRoutes)
 app.use('/api', appointmentRoutes)
 
