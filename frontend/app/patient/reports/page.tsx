@@ -28,6 +28,8 @@ export default function PatientReports() {
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [accessStates, setAccessStates] = useState<Record<string, boolean>>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -43,8 +45,65 @@ export default function PatientReports() {
   useEffect(() => {
     if (user?.role === "patient") {
       fetchReports();
+      fetchAppointments();
     }
   }, [user]);
+
+  const fetchAppointments = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:4000/api/appointments", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch appointments");
+      }
+
+      const data = await response.json();
+      const approvedAppointments = (data.appointments || []).filter(
+        (apt: any) => apt.status === "approved"
+      );
+      setAppointments(approvedAppointments);
+
+      // Fetch access status for each appointment
+      approvedAppointments.forEach((apt: any) => {
+        fetchAccessStatus(apt._id);
+      });
+    } catch (err) {
+      console.error("Error fetching appointments:", err);
+    }
+  };
+
+  const fetchAccessStatus = async (appointmentId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:4000/api/report-access/${appointmentId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setAccessStates((prev) => ({
+          ...prev,
+          [appointmentId]: data.hasAccess,
+        }));
+      }
+    } catch (err) {
+      console.error("Error fetching access status:", err);
+    }
+  };
 
   const fetchReports = async () => {
     try {
@@ -209,7 +268,7 @@ export default function PatientReports() {
 
       const reportData = {
         ...formData,
-        fileUrl: fileUrl || undefined,
+        fileUrl: fileUrl || "",
       };
 
       if (editingReport) {
@@ -287,6 +346,59 @@ export default function PatientReports() {
     }
   };
 
+  const handleGrantAccess = async (doctorId: string, appointmentId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:4000/api/report-access/grant", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ doctorId, appointmentId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to grant access");
+      }
+
+      alert("Access granted successfully!");
+      setAccessStates((prev) => ({ ...prev, [appointmentId]: true }));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to grant access");
+    }
+  };
+
+  const handleRevokeAccess = async (
+    doctorId: string,
+    appointmentId: string
+  ) => {
+    if (!confirm("Are you sure you want to revoke access?")) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:4000/api/report-access/revoke", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ doctorId, appointmentId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to revoke access");
+      }
+
+      alert("Access revoked successfully!");
+      setAccessStates((prev) => ({ ...prev, [appointmentId]: false }));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to revoke access");
+    }
+  };
+
   function handleLogout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -340,6 +452,82 @@ export default function PatientReports() {
         >
           ← Back to Dashboard
         </button>
+
+        {/* Doctor Access Control Section */}
+        {appointments.length > 0 && (
+          <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              👨‍⚕️ Share Reports with Your Doctor
+            </h2>
+            <div className="space-y-4">
+              {appointments.map((apt) => (
+                <div
+                  key={apt._id}
+                  className="bg-white/40 rounded-2xl p-5 border border-white/50 hover:shadow-lg transition-all"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Dr. {apt.doctorName}
+                      </h3>
+                      <p className="text-sm text-gray-700 mt-1">
+                        📅 Appointment:{" "}
+                        {new Date(apt.approvedDate).toLocaleDateString(
+                          "en-US",
+                          {
+                            weekday: "short",
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )}
+                      </p>
+                      {apt.reason && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          📝 Reason: {apt.reason}
+                        </p>
+                      )}
+                      <div className="mt-3">
+                        {accessStates[apt._id] ? (
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                            ✓ Access Granted
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                            ✗ No Access
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {!accessStates[apt._id] ? (
+                        <button
+                          onClick={() =>
+                            handleGrantAccess(apt.doctorId, apt._id)
+                          }
+                          className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold"
+                        >
+                          ✓ Grant Access
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            handleRevokeAccess(apt.doctorId, apt._id)
+                          }
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all text-sm font-semibold"
+                        >
+                          ✕ Revoke Access
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Upload Section */}
         <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">

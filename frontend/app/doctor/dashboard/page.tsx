@@ -355,7 +355,7 @@ export default function DoctorDashboard() {
               <div className="space-y-4">
                 {approvedAppointments.map((apt) => (
                   <div key={apt._id} className="bg-white/40 rounded-2xl p-5 border border-green-200 hover:shadow-lg transition-all">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <div className="flex-1">
                         <p className="text-lg font-semibold text-gray-900">
                           {apt.patientName} <span className="text-xs text-gray-600">({apt.patientId})</span>
@@ -363,6 +363,18 @@ export default function DoctorDashboard() {
                         <p className="text-sm text-gray-700 mt-1">📅 Approved: {apt.approvedDate ? new Date(apt.approvedDate).toLocaleString() : "N/A"}</p>
                         <p className="text-sm text-gray-700">📝 {apt.reason}</p>
                         {apt.notes && <p className="text-sm text-gray-700 mt-2"><strong>Notes:</strong> {apt.notes}</p>}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/doctor/view-patient-reports?patientId=${apt.patientId}&appointmentId=${apt._id}`
+                            )
+                          }
+                          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold whitespace-nowrap"
+                        >
+                          📄 View Reports
+                        </button>
                       </div>
                     </div>
                   </div>
