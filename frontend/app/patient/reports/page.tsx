@@ -179,7 +179,7 @@ export default function PatientReports() {
     }));
   };
 
-  const uploadFileToServer = async (file: File): Promise<string | null> => {
+  const uploadFileToServer = async (file: File): Promise<string> => {
     const formDataFile = new FormData();
     formDataFile.append("file", file);
 
@@ -199,7 +199,7 @@ export default function PatientReports() {
 
       const data = await response.json();
       // Construct full URL for file
-      return data.fileUrl ? `http://localhost:4000${data.fileUrl}` : null;
+      return data.fileUrl ? `http://localhost:4000${data.fileUrl}` : "";
     } catch (err) {
       console.error("Error uploading file:", err);
       throw new Error("Failed to upload file to server");
