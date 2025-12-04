@@ -33,7 +33,7 @@ export default function TinePage() {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      router.push('/dashboard');
+      router.push('/dosha-quiz');
     }, 1000);
   };
 
