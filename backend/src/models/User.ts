@@ -6,6 +6,7 @@ export interface IUser extends Document {
   password: string
   role: 'admin' | 'doctor' | 'patient'
   profile?: any
+  profilePhoto?: string
   verified?: boolean
   verificationDocuments?: string
   resetToken?: string
@@ -19,6 +20,7 @@ const UserSchema = new Schema<IUser>({
   password: { type: String, required: true },
   role: { type: String, enum: ['admin', 'doctor', 'patient'], default: 'patient' },
   profile: { type: Schema.Types.Mixed },
+  profilePhoto: { type: String },
   verified: { type: Boolean, default: false },
   verificationDocuments: { type: String },
   resetToken: { type: String },
