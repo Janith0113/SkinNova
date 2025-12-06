@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Props = {
@@ -16,6 +16,31 @@ export default function AuthForm({ mode, compact = false }: Props) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [remember, setRemember] = useState(false)
+  const [userCount, setUserCount] = useState(0)
+
+  useEffect(() => {
+    // Fetch user stats for signup page
+    if (mode === 'signup') {
+      fetchUserStats()
+    }
+  }, [mode])
+
+  const fetchUserStats = async () => {
+    try {
+      const response = await fetch('http://localhost:4000/api/admin/users', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setUserCount(data.users?.length || 0)
+      }
+    } catch (err) {
+      console.error('Failed to fetch user count:', err)
+    }
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -290,6 +315,16 @@ export default function AuthForm({ mode, compact = false }: Props) {
                   <div>
                     <h4 className="font-semibold text-base mb-1">Expert Consultations</h4>
                     <p className="text-sm opacity-80">Connect with licensed dermatologists anytime</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-4 bg-white/10 rounded-lg backdrop-blur-sm hover:bg-white/15 transition-all border-2 border-white/30">
+                  <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v-1h8v1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path></svg>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-base mb-1">Join {userCount}+ Users</h4>
+                    <p className="text-sm opacity-80">Be part of our growing healthcare community</p>
                   </div>
                 </div>
               </>

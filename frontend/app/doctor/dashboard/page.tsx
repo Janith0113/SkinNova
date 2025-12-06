@@ -1,25 +1,168 @@
-"use client";
+"use client"
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+interface Appointment {
+  _id: string;
+  patientId: string;
+  patientName: string;
+  patientEmail: string;
+  doctorName: string;
+  requestedDate: string;
+  approvedDate?: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected" | "completed";
+  notes?: string;
+}
+
 export default function DoctorDashboard() {
   const [user, setUser] = useState<any>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [approvalData, setApprovalData] = useState({ approvedDate: "", notes: "" });
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectModal, setShowRejectModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const raw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
     if (raw) {
-      setUser(JSON.parse(raw));
+      const userData = JSON.parse(raw);
+      setUser(userData);
+      if (userData.role !== "doctor") {
+        router.push("/");
+      } else if (userData.verified === false) {
+        // Redirect unverified doctors to upload documents page
+        router.push("/doctor/upload-documents");
+      }
     } else {
       router.push("/login");
     }
   }, [router]);
+
+  useEffect(() => {
+    if (user?.role === "doctor") {
+      fetchAppointments();
+      const interval = setInterval(fetchAppointments, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:4000/api/appointments", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch appointments");
+      }
+
+      const data = await response.json();
+      setAppointments(data.appointments || []);
+    } catch (err) {
+      console.error("Error fetching appointments:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!selectedAppointment) {
+      alert("No appointment selected");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:4000/api/appointments/${selectedAppointment._id}/approve`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            notes: approvalData.notes,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to approve appointment");
+      }
+
+      alert("Appointment approved! Email sent to patient.");
+      setShowApproveModal(false);
+      setApprovalData({ approvedDate: "", notes: "" });
+      await fetchAppointments();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to approve appointment");
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedAppointment) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:4000/api/appointments/${selectedAppointment._id}/reject`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ reason: rejectReason }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to reject appointment");
+      }
+
+      alert("Appointment rejected! Email sent to patient.");
+      setShowRejectModal(false);
+      setRejectReason("");
+      await fetchAppointments();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to reject appointment");
+    }
+  };
 
   function handleLogout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     router.push("/");
   }
+
+  const pendingAppointments = appointments.filter((apt) => {
+    const appointmentDate = new Date(apt.requestedDate);
+    const now = new Date();
+    return apt.status === "pending" && appointmentDate > now;
+  });
+
+  const approvedAppointments = appointments.filter((apt) => {
+    const appointmentDate = new Date(apt.approvedDate || apt.requestedDate);
+    const now = new Date();
+    return apt.status === "approved" && appointmentDate > now;
+  });
+
+  const pastAppointments = appointments.filter((apt) => {
+    const appointmentDate = new Date(apt.approvedDate || apt.requestedDate);
+    const now = new Date();
+    return (apt.status === "approved" || apt.status === "pending") && appointmentDate <= now;
+  });
 
   if (!user) {
     return (
@@ -48,12 +191,20 @@ export default function DoctorDashboard() {
             <span className="inline-flex items-center rounded-full bg-emerald-600/90 px-3 py-1 text-xs font-semibold text-white shadow-md">
               Role • {user.role?.toUpperCase()}
             </span>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-red-600 transition-all"
-            >
-              <span>Logout</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push("/doctor/availability")}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-blue-600 transition-all"
+              >
+                <span>📅 Availability</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-red-600 transition-all"
+              >
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -61,29 +212,29 @@ export default function DoctorDashboard() {
         <div className="grid gap-6 sm:grid-cols-3">
           <div className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-lg p-5 flex flex-col gap-2">
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-              Today&apos;s Appointments
+              Pending Appointments
             </span>
-            <span className="text-3xl font-extrabold text-gray-900">12</span>
+            <span className="text-3xl font-extrabold text-gray-900">{pendingAppointments.length}</span>
+            <span className="text-xs text-yellow-700 font-medium">
+              Awaiting your approval
+            </span>
+          </div>
+          <div className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-lg p-5 flex flex-col gap-2">
+            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              Approved Appointments
+            </span>
+            <span className="text-3xl font-extrabold text-gray-900">{approvedAppointments.length}</span>
             <span className="text-xs text-emerald-700 font-medium">
-              +3 new compared to yesterday
+              Confirmed with patients
             </span>
           </div>
           <div className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-lg p-5 flex flex-col gap-2">
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-              Pending AI Reviews
+              Total Appointments
             </span>
-            <span className="text-3xl font-extrabold text-gray-900">7</span>
-            <span className="text-xs text-purple-700 font-medium">
-              Psoriasis, Tinea & Skin Cancer cases
-            </span>
-          </div>
-          <div className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-lg p-5 flex flex-col gap-2">
-            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-              Follow‑up Patients
-            </span>
-            <span className="text-3xl font-extrabold text-gray-900">5</span>
+            <span className="text-3xl font-extrabold text-gray-900">{appointments.length}</span>
             <span className="text-xs text-blue-700 font-medium">
-              Recommended review this week
+              Overall management
             </span>
           </div>
         </div>
@@ -148,7 +299,210 @@ export default function DoctorDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Appointments Section */}
+        <div className="space-y-8">
+          {/* Pending Appointments */}
+          {pendingAppointments.length > 0 && (
+            <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                ⏳ Pending Appointments ({pendingAppointments.length})
+              </h2>
+              <div className="space-y-4">
+                {pendingAppointments.map((apt) => (
+                  <div key={apt._id} className="bg-white/40 rounded-2xl p-5 border border-white/50 hover:shadow-lg transition-all">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-lg font-semibold text-gray-900">
+                          {apt.patientName} <span className="text-xs text-gray-600">({apt.patientId})</span>
+                        </p>
+                        <p className="text-sm text-gray-700 mt-1">📅 {new Date(apt.requestedDate).toLocaleString()}</p>
+                        <p className="text-sm text-gray-700">📝 {apt.reason}</p>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedAppointment(apt);
+                            setShowApproveModal(true);
+                          }}
+                          className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedAppointment(apt);
+                            setShowRejectModal(true);
+                          }}
+                          className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-all"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Approved Appointments */}
+          {approvedAppointments.length > 0 && (
+            <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                ✅ Approved Appointments ({approvedAppointments.length})
+              </h2>
+              <div className="space-y-4">
+                {approvedAppointments.map((apt) => (
+                  <div key={apt._id} className="bg-white/40 rounded-2xl p-5 border border-green-200 hover:shadow-lg transition-all">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-lg font-semibold text-gray-900">
+                          {apt.patientName} <span className="text-xs text-gray-600">({apt.patientId})</span>
+                        </p>
+                        <p className="text-sm text-gray-700 mt-1">📅 Approved: {apt.approvedDate ? new Date(apt.approvedDate).toLocaleString() : "N/A"}</p>
+                        <p className="text-sm text-gray-700">📝 {apt.reason}</p>
+                        {apt.notes && <p className="text-sm text-gray-700 mt-2"><strong>Notes:</strong> {apt.notes}</p>}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/doctor/view-patient-reports?patientId=${apt.patientId}&appointmentId=${apt._id}`
+                            )
+                          }
+                          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold whitespace-nowrap"
+                        >
+                          📄 View Reports
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {appointments.length === 0 && (
+            <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-12 text-center">
+              <p className="text-gray-700 text-lg">No appointments yet</p>
+              <p className="text-gray-600 text-sm mt-2">Appointments will appear here when patients request them</p>
+            </div>
+          )}
+
+          {/* Past/Completed Appointments */}
+          {pastAppointments.length > 0 && (
+            <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                📋 Past Appointments ({pastAppointments.length})
+              </h2>
+              <div className="space-y-4">
+                {pastAppointments.map((apt) => (
+                  <div key={apt._id} className="bg-white/40 rounded-2xl p-5 border border-gray-300 hover:shadow-lg transition-all opacity-75">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-lg font-semibold text-gray-700">
+                          {apt.patientName} <span className="text-xs text-gray-600">({apt.patientId})</span>
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">📅 {new Date(apt.approvedDate || apt.requestedDate).toLocaleString()}</p>
+                        <p className="text-sm text-gray-600">📝 {apt.reason}</p>
+                        {apt.notes && <p className="text-sm text-gray-600 mt-2"><strong>Notes:</strong> {apt.notes}</p>}
+                      </div>
+                      <div className="flex items-center">
+                        <span className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold text-gray-700">
+                          Completed
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Approve Modal */}
+      {showApproveModal && selectedAppointment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Approve Appointment</h2>
+            <p className="text-gray-600 mb-4">Patient: <strong>{selectedAppointment.patientName}</strong></p>
+
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm font-semibold text-gray-700 mb-2">Scheduled Date & Time</p>
+              <p className="text-gray-600">{new Date(selectedAppointment.requestedDate).toLocaleString()}</p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Additional Notes
+              </label>
+              <textarea
+                value={approvalData.notes}
+                onChange={(e) =>
+                  setApprovalData({ ...approvalData, notes: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                rows={3}
+                placeholder="Add any notes for the patient"
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowApproveModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApprove}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:shadow-lg transition-all font-medium"
+              >
+                Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRejectModal && selectedAppointment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Reject Appointment</h2>
+            <p className="text-gray-600 mb-4">Patient: <strong>{selectedAppointment.patientName}</strong></p>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Reason for Rejection
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                rows={3}
+                placeholder="Please explain why you are rejecting this appointment"
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowRejectModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all font-medium"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
