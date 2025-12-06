@@ -152,6 +152,9 @@ const DISEASE_CONFIG: Record<
 
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
+  const [profilePhoto, setProfilePhoto] = useState<string>("");
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedDisease, setSelectedDisease] = useState<DiseaseKey>("psoriasis");
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loadingAppointments, setLoadingAppointments] = useState(false);
@@ -169,7 +172,14 @@ export default function PatientDashboard() {
     const raw =
       typeof window !== "undefined" ? localStorage.getItem("user") : null;
     if (raw) {
-      setUser(JSON.parse(raw));
+      const userData = JSON.parse(raw);
+      setUser(userData);
+      
+      // Load profile photo if it exists
+      if (userData._id || userData.id || userData.userId) {
+        const userId = userData._id || userData.id || userData.userId;
+        setProfilePhoto(`http://localhost:4000/api/profile/photo/${userId}?t=${Date.now()}`);
+      }
     } else {
       router.push("/login");
     }
@@ -409,6 +419,40 @@ export default function PatientDashboard() {
     router.push("/");
   }
 
+  const handleProfilePhotoUpload = async (file: File) => {
+    try {
+      setUploadingPhoto(true);
+      const formData = new FormData();
+      formData.append("profilePhoto", file);
+
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:4000/api/profile/upload-photo", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload profile photo");
+      }
+
+      const data = await response.json();
+      // Update profile photo URL with cache busting timestamp
+      if (user && (user._id || user.id || user.userId)) {
+        const userId = user._id || user.id || user.userId;
+        setProfilePhoto(`http://localhost:4000/api/profile/photo/${userId}?t=${Date.now()}`);
+      }
+      alert("Profile photo uploaded successfully!");
+      setShowPhotoModal(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to upload profile photo");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100">
@@ -426,14 +470,37 @@ export default function PatientDashboard() {
       <div className="max-w-6xl mx-auto space-y-10">
         {/* Top section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-              Hi, <span className="text-emerald-700">{user.name}</span>
-            </h1>
-            <p className="mt-3 text-sm sm:text-base text-gray-700 max-w-xl">
-              Welcome to your SkinNova space. Track your skin health, review AI insights,
-              and stay ahead of potential issues with simple, clear guidance.
-            </p>
+          <div className="flex items-center gap-6">
+            {/* Profile Photo */}
+            <div
+              onClick={() => setShowPhotoModal(true)}
+              className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-emerald-400 to-sky-600 flex items-center justify-center cursor-pointer hover:shadow-lg transition-all overflow-hidden group"
+            >
+              {profilePhoto ? (
+                <img
+                  src={profilePhoto}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-4xl sm:text-5xl">👤</span>
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-all font-semibold">
+                  Upload Photo
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+                Hi, <span className="text-emerald-700">{user.name}</span>
+              </h1>
+              <p className="mt-3 text-sm sm:text-base text-gray-700 max-w-xl">
+                Welcome to your SkinNova space. Track your skin health, review AI insights,
+                and stay ahead of potential issues with simple, clear guidance.
+              </p>
+            </div>
           </div>
           <div className="flex flex-col items-end gap-3">
             <span className="inline-flex items-center rounded-full bg-sky-600/90 px-3 py-1 text-xs font-semibold text-white shadow-md">
@@ -719,6 +786,70 @@ export default function PatientDashboard() {
             </div>
           )}
         </div>
+
+        {/* Profile Photo Upload Modal */}
+        {showPhotoModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+              <div className="px-6 py-4 bg-gradient-to-r from-emerald-600 to-sky-600">
+                <h2 className="text-xl font-bold text-white">Upload Profile Photo</h2>
+              </div>
+              <div className="px-6 py-6 space-y-4">
+                <div className="flex justify-center">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-sky-600 flex items-center justify-center">
+                    {profilePhoto ? (
+                      <img
+                        src={profilePhoto}
+                        alt="Profile"
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : (
+                      <span className="text-4xl">👤</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Choose Photo (JPG, PNG, GIF, WEBP - Max 5MB)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert("File size must be less than 5MB");
+                          return;
+                        }
+                        handleProfilePhotoUpload(file);
+                      }
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent cursor-pointer"
+                    disabled={uploadingPhoto}
+                  />
+                </div>
+
+                {uploadingPhoto && (
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-600"></div>
+                    <span className="text-sm text-gray-600">Uploading...</span>
+                  </div>
+                )}
+              </div>
+              <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end">
+                <button
+                  onClick={() => setShowPhotoModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+                  disabled={uploadingPhoto}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Schedule Appointment Modal */}
         {showScheduleModal && (
