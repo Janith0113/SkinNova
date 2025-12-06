@@ -181,7 +181,7 @@ export default function DoctorDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-              Welcome back, <span className="text-emerald-700">{user.name}</span>
+              Welcome back, <span className="text-emerald-700">Dr {user.name}</span>
             </h1>
             <p className="mt-3 text-sm sm:text-base text-gray-700 max-w-xl">
               Manage your patients, review AI-generated skin assessments, and track clinical insights from a single, smart dashboard.

@@ -172,7 +172,7 @@ export default function UploadDocumentsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-2">Full Name</label>
-              <p className="text-lg text-gray-900 bg-gray-50 p-3 rounded-lg">{user.name || "N/A"}</p>
+              <p className="text-lg text-gray-900 bg-gray-50 p-3 rounded-lg">Dr {user.name || "N/A"}</p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-2">Email Address</label>

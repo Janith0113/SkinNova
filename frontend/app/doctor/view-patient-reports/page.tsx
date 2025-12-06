@@ -109,7 +109,7 @@ export default function DoctorViewPatientReports() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-              Patient <span className="text-emerald-700">Medical Reports</span>
+              Dr {user.name}'s <span className="text-emerald-700">Patient Reports</span>
             </h1>
             <p className="mt-3 text-sm sm:text-base text-gray-700 max-w-xl">
               View and download medical reports shared by your patient.
