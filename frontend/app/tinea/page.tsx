@@ -38,8 +38,20 @@ export default function TinePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        {/* Animated gradient orbs */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-amber-300 to-orange-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-300 to-red-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-gradient-to-br from-red-300 to-amber-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+        
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-200 to-transparent animate-gradient-shift opacity-10"></div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-4xl mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Tinea (Ringworm)</h1>
@@ -78,122 +90,122 @@ export default function TinePage() {
           </ul>
         </div>
 
-        {/* Smartwatch Data Card */}
-        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg shadow-lg p-8 mb-8 border-2 border-indigo-200">
+        {/* Smartwatch Data Card - Apple Glass Skin */}
+        <div className="bg-white/10 backdrop-blur-2xl rounded-3xl shadow-2xl p-8 mb-8 border border-white/20 hover:bg-white/15 transition-all duration-300">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-800">📱 Smartwatch Live Data</h2>
+              <h2 className="text-2xl font-bold text-gray-900">📱 Smartwatch Live Data</h2>
               <p className="text-sm text-gray-600 mt-1">Real-time health metrics preview</p>
             </div>
-            <div className="text-4xl">⌚</div>
+            <div className="text-5xl">⌚</div>
           </div>
 
           {/* Data Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Heart Rate */}
-            <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-red-500">
+            <div className="group bg-gradient-to-br from-white/40 to-white/20 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/30 hover:border-white/50 transition-all duration-300 hover:shadow-2xl hover:from-white/50 hover:to-white/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 font-medium">Heart Rate</p>
-                  <p className="text-3xl font-bold text-red-600 mt-2">{smartwatchData.heartRate}</p>
-                  <p className="text-xs text-gray-500 mt-1">BPM</p>
+                  <p className="text-sm font-semibold text-gray-700">Heart Rate</p>
+                  <p className="text-4xl font-bold bg-gradient-to-br from-red-500 to-red-600 bg-clip-text text-transparent mt-2">{smartwatchData.heartRate}</p>
+                  <p className="text-xs text-gray-600 mt-1 font-medium">BPM</p>
                 </div>
-                <div className="text-4xl">❤️</div>
+                <div className="text-5xl group-hover:scale-110 transition-transform duration-300">❤️</div>
               </div>
-              <div className="mt-3 w-full bg-gray-200 rounded-full h-1">
+              <div className="mt-4 w-full bg-white/20 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-red-500 h-1 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-red-400 to-red-600 h-2 rounded-full transition-all duration-500 shadow-lg shadow-red-500/50"
                   style={{ width: `${(smartwatchData.heartRate / 150) * 100}%` }}
                 ></div>
               </div>
             </div>
 
             {/* Steps */}
-            <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-green-500">
+            <div className="group bg-gradient-to-br from-white/40 to-white/20 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/30 hover:border-white/50 transition-all duration-300 hover:shadow-2xl hover:from-white/50 hover:to-white/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 font-medium">Steps</p>
-                  <p className="text-3xl font-bold text-green-600 mt-2">{smartwatchData.steps.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500 mt-1">steps today</p>
+                  <p className="text-sm font-semibold text-gray-700">Steps</p>
+                  <p className="text-4xl font-bold bg-gradient-to-br from-green-500 to-green-600 bg-clip-text text-transparent mt-2">{smartwatchData.steps.toLocaleString()}</p>
+                  <p className="text-xs text-gray-600 mt-1 font-medium">steps today</p>
                 </div>
-                <div className="text-4xl">👟</div>
+                <div className="text-5xl group-hover:scale-110 transition-transform duration-300">👟</div>
               </div>
-              <div className="mt-3 w-full bg-gray-200 rounded-full h-1">
+              <div className="mt-4 w-full bg-white/20 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-green-500 h-1 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all duration-500 shadow-lg shadow-green-500/50"
                   style={{ width: `${(smartwatchData.steps / 10000) * 100}%` }}
                 ></div>
               </div>
             </div>
 
             {/* Calories */}
-            <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-orange-500">
+            <div className="group bg-gradient-to-br from-white/40 to-white/20 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/30 hover:border-white/50 transition-all duration-300 hover:shadow-2xl hover:from-white/50 hover:to-white/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 font-medium">Calories</p>
-                  <p className="text-3xl font-bold text-orange-600 mt-2">{smartwatchData.calories}</p>
-                  <p className="text-xs text-gray-500 mt-1">kcal burned</p>
+                  <p className="text-sm font-semibold text-gray-700">Calories</p>
+                  <p className="text-4xl font-bold bg-gradient-to-br from-orange-500 to-orange-600 bg-clip-text text-transparent mt-2">{smartwatchData.calories}</p>
+                  <p className="text-xs text-gray-600 mt-1 font-medium">kcal burned</p>
                 </div>
-                <div className="text-4xl">🔥</div>
+                <div className="text-5xl group-hover:scale-110 transition-transform duration-300">🔥</div>
               </div>
-              <div className="mt-3 w-full bg-gray-200 rounded-full h-1">
+              <div className="mt-4 w-full bg-white/20 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-orange-500 h-1 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-orange-400 to-orange-600 h-2 rounded-full transition-all duration-500 shadow-lg shadow-orange-500/50"
                   style={{ width: `${(smartwatchData.calories / 500) * 100}%` }}
                 ></div>
               </div>
             </div>
 
             {/* Temperature */}
-            <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-yellow-500">
+            <div className="group bg-gradient-to-br from-white/40 to-white/20 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/30 hover:border-white/50 transition-all duration-300 hover:shadow-2xl hover:from-white/50 hover:to-white/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 font-medium">Temperature</p>
-                  <p className="text-3xl font-bold text-yellow-600 mt-2">{smartwatchData.temperature.toFixed(1)}°C</p>
-                  <p className="text-xs text-gray-500 mt-1">body temp</p>
+                  <p className="text-sm font-semibold text-gray-700">Temperature</p>
+                  <p className="text-4xl font-bold bg-gradient-to-br from-yellow-500 to-yellow-600 bg-clip-text text-transparent mt-2">{smartwatchData.temperature.toFixed(1)}°C</p>
+                  <p className="text-xs text-gray-600 mt-1 font-medium">body temp</p>
                 </div>
-                <div className="text-4xl">🌡️</div>
+                <div className="text-5xl group-hover:scale-110 transition-transform duration-300">🌡️</div>
               </div>
-              <div className="mt-3 w-full bg-gray-200 rounded-full h-1">
+              <div className="mt-4 w-full bg-white/20 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-yellow-500 h-1 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-yellow-400 to-yellow-600 h-2 rounded-full transition-all duration-500 shadow-lg shadow-yellow-500/50"
                   style={{ width: `${(smartwatchData.temperature / 40) * 100}%` }}
                 ></div>
               </div>
             </div>
 
             {/* Oxygen Level */}
-            <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-blue-500">
+            <div className="group bg-gradient-to-br from-white/40 to-white/20 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/30 hover:border-white/50 transition-all duration-300 hover:shadow-2xl hover:from-white/50 hover:to-white/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 font-medium">Oxygen Level</p>
-                  <p className="text-3xl font-bold text-blue-600 mt-2">{smartwatchData.oxygenLevel}%</p>
-                  <p className="text-xs text-gray-500 mt-1">SpO₂</p>
+                  <p className="text-sm font-semibold text-gray-700">Oxygen Level</p>
+                  <p className="text-4xl font-bold bg-gradient-to-br from-blue-500 to-blue-600 bg-clip-text text-transparent mt-2">{smartwatchData.oxygenLevel}%</p>
+                  <p className="text-xs text-gray-600 mt-1 font-medium">SpO₂</p>
                 </div>
-                <div className="text-4xl">💨</div>
+                <div className="text-5xl group-hover:scale-110 transition-transform duration-300">💨</div>
               </div>
-              <div className="mt-3 w-full bg-gray-200 rounded-full h-1">
+              <div className="mt-4 w-full bg-white/20 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-blue-500 h-1 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-blue-400 to-blue-600 h-2 rounded-full transition-all duration-500 shadow-lg shadow-blue-500/50"
                   style={{ width: `${smartwatchData.oxygenLevel}%` }}
                 ></div>
               </div>
             </div>
 
-            {/* Last Updated */}
-            <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-purple-500">
+            {/* Status */}
+            <div className="group bg-gradient-to-br from-white/40 to-white/20 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/30 hover:border-white/50 transition-all duration-300 hover:shadow-2xl hover:from-white/50 hover:to-white/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 font-medium">Status</p>
-                  <p className="text-2xl font-bold text-purple-600 mt-2">Live</p>
-                  <p className="text-xs text-green-500 mt-1">✓ Connected</p>
+                  <p className="text-sm font-semibold text-gray-700">Status</p>
+                  <p className="text-4xl font-bold bg-gradient-to-br from-purple-500 to-purple-600 bg-clip-text text-transparent mt-2">Live</p>
+                  <p className="text-xs text-green-600 font-semibold mt-1">✓ Connected</p>
                 </div>
-                <div className="text-4xl animate-pulse">📡</div>
+                <div className="text-5xl group-hover:scale-110 transition-transform duration-300 animate-pulse">📡</div>
               </div>
             </div>
           </div>
 
-          <p className="text-xs text-gray-600 text-center mt-4">Data updates every 2 seconds • This is a live preview simulation</p>
+          <p className="text-xs text-gray-600 text-center mt-6 font-medium">Data updates every 2 seconds • This is a live preview simulation</p>
         </div>
 
         {/* CTA Section with Check Dosha Button */}
