@@ -13,6 +13,12 @@ interface Appointment {
   reason: string;
   status: "pending" | "approved" | "rejected" | "completed";
   notes?: string;
+  availabilitySlotId?: string;
+  location?: {
+    address: string;
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export default function DoctorDashboard() {
@@ -318,6 +324,11 @@ export default function DoctorDashboard() {
                         </p>
                         <p className="text-sm text-gray-700 mt-1">📅 {new Date(apt.requestedDate).toLocaleString()}</p>
                         <p className="text-sm text-gray-700">📝 {apt.reason}</p>
+                        {apt.location?.address && (
+                          <p className="text-sm text-blue-700 mt-1 flex items-center gap-1">
+                            📍 {apt.location.address}
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col sm:flex-row gap-2">
                         <button
@@ -362,6 +373,11 @@ export default function DoctorDashboard() {
                         </p>
                         <p className="text-sm text-gray-700 mt-1">📅 Approved: {apt.approvedDate ? new Date(apt.approvedDate).toLocaleString() : "N/A"}</p>
                         <p className="text-sm text-gray-700">📝 {apt.reason}</p>
+                        {apt.location?.address && (
+                          <p className="text-sm text-blue-700 mt-1 flex items-center gap-1">
+                            📍 {apt.location.address}
+                          </p>
+                        )}
                         {apt.notes && <p className="text-sm text-gray-700 mt-2"><strong>Notes:</strong> {apt.notes}</p>}
                       </div>
                       <div className="flex flex-col gap-2">

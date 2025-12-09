@@ -46,6 +46,20 @@ async function start() {
   // Test email connection
   await testEmailConnection()
   
+  // Fix existing availability slots - set isActive to true
+  try {
+    const DoctorAvailability = (await import('./models/DoctorAvailability')).default
+    const result = await DoctorAvailability.updateMany(
+      { isActive: false },
+      { isActive: true }
+    )
+    if (result.modifiedCount > 0) {
+      console.log(`Fixed ${result.modifiedCount} availability slots - set isActive to true`)
+    }
+  } catch (err) {
+    console.error('Error fixing availability slots:', err)
+  }
+  
   // Ensure admin account exists (admin cannot sign up)
   try {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@skinnova.local'
