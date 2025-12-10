@@ -1965,12 +1965,24 @@ export default function AdminDashboard() {
                   </p>
                 )}
                 {doctorAvailability.length > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Doctor available on: {doctorAvailability.map(d => {
-                      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                      return `${days[d.dayOfWeek]} ${d.startTime}-${d.endTime}`;
-                    }).join(', ')}
-                  </p>
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-gray-600 font-semibold">Doctor Availability:</p>
+                    {doctorAvailability.map((d, idx) => {
+                      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                      return (
+                        <div key={idx} className="text-xs bg-blue-50 p-2 rounded border border-blue-200">
+                          <p className="text-gray-700">
+                            <span className="font-semibold">{days[d.dayOfWeek]}</span>: {d.startTime} - {d.endTime}
+                          </p>
+                          {d.location && d.location.address && (
+                            <p className="text-blue-600 mt-1">
+                              📍 {d.location.address}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
                 <p className="text-xs text-blue-600 mt-2 font-medium">
                   ✓ Time will be automatically assigned (30 min slots)
