@@ -1,24 +1,47 @@
 "use client"
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 
 interface AvailabilitySlot {
   _id: string;
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  location?: {
+    address: string;
+    latitude: number;
+    longitude: number;
+  };
   isActive: boolean;
 }
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// Dynamically import map component to avoid SSR issues with Leaflet
+const LocationMapPicker = dynamic(() => import("@/components/LocationMapPicker"), {
+  ssr: false,
+  loading: () => <div className="w-full h-full flex items-center justify-center">Loading map...</div>
+});
 
 export default function DoctorAvailability() {
   const [user, setUser] = useState<any>(null);
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingSlot, setEditingSlot] = useState<AvailabilitySlot | null>(null);
-  const [formData, setFormData] = useState({ dayOfWeek: 0, startTime: "09:00", endTime: "17:00" });
+  const [formData, setFormData] = useState({ 
+    dayOfWeek: 0, 
+    startTime: "09:00", 
+    endTime: "17:00",
+    location: {
+      address: "",
+      latitude: 0,
+      longitude: 0
+    }
+  });
   const [showForm, setShowForm] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [predictions, setPredictions] = useState<any[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -44,6 +67,14 @@ export default function DoctorAvailability() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
+      
+      if (!token) {
+        console.error("No token found - user not authenticated");
+        alert("Please log in first");
+        router.push("/login");
+        return;
+      }
+
       const response = await fetch("http://localhost:4000/api/availability/my-availability", {
         method: "GET",
         headers: {
@@ -53,14 +84,16 @@ export default function DoctorAvailability() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch availability");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch availability`);
       }
 
       const data = await response.json();
+      console.log("Fetched availability slots:", data.availabilitySlots);
       setAvailabilitySlots(data.availabilitySlots || []);
     } catch (err) {
       console.error("Error fetching availability:", err);
-      alert("Failed to load availability slots");
+      alert(`Failed to load availability slots: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setLoading(false);
     }
@@ -76,10 +109,26 @@ export default function DoctorAvailability() {
 
     try {
       const token = localStorage.getItem("token");
+      
+      if (!token) {
+        alert("Please log in first");
+        router.push("/login");
+        return;
+      }
+
       const method = editingSlot ? "PUT" : "POST";
       const url = editingSlot
         ? `http://localhost:4000/api/availability/${editingSlot._id}`
         : "http://localhost:4000/api/availability";
+
+      const bodyData = {
+        dayOfWeek: parseInt(formData.dayOfWeek as any),
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        location: formData.location.address ? formData.location : undefined,
+      };
+
+      console.log("Sending request:", { method, url, bodyData });
 
       const response = await fetch(url, {
         method,
@@ -87,24 +136,33 @@ export default function DoctorAvailability() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          dayOfWeek: parseInt(formData.dayOfWeek as any),
-          startTime: formData.startTime,
-          endTime: formData.endTime,
-        }),
+        body: JSON.stringify(bodyData),
       });
 
+      console.log("POST/PUT response status:", response.status);
+
       if (!response.ok) {
-        throw new Error("Failed to save availability");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to save availability`);
       }
+
+      const responseData = await response.json();
+      console.log("Response data:", responseData);
 
       alert(editingSlot ? "Availability updated!" : "Availability slot added!");
       setShowForm(false);
       setEditingSlot(null);
-      setFormData({ dayOfWeek: 0, startTime: "09:00", endTime: "17:00" });
-      fetchAvailability();
+      setFormData({ dayOfWeek: 0, startTime: "09:00", endTime: "17:00", location: { address: "", latitude: 0, longitude: 0 } });
+      
+      // Give the server a moment to process, then refresh
+      setTimeout(() => {
+        fetchAvailability();
+      }, 500);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to save availability");
+      console.error("Error saving availability:", err);
+      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      console.error("Full error:", err);
+      alert(`Failed to save availability: ${errMsg}`);
     }
   };
 
@@ -114,6 +172,7 @@ export default function DoctorAvailability() {
       dayOfWeek: slot.dayOfWeek,
       startTime: slot.startTime,
       endTime: slot.endTime,
+      location: slot.location || { address: "", latitude: 0, longitude: 0 },
     });
     setShowForm(true);
   };
@@ -146,8 +205,52 @@ export default function DoctorAvailability() {
 
   const handleCancel = () => {
     setShowForm(false);
+    setShowLocationModal(false);
     setEditingSlot(null);
-    setFormData({ dayOfWeek: 0, startTime: "09:00", endTime: "17:00" });
+    setFormData({ dayOfWeek: 0, startTime: "09:00", endTime: "17:00", location: { address: "", latitude: 0, longitude: 0 } });
+  };
+
+  const handleLocationSearch = async (value: string) => {
+    // Update the address in formData
+    setFormData({...formData, location: {...formData.location, address: value}});
+    
+    // Only search if user is actively typing (length > 2)
+    if (!value || value.length < 3) {
+      setPredictions([]);
+      return;
+    }
+
+    // Don't search if this is the exact address from saved location (avoid re-searching)
+    if (editingSlot && editingSlot.location?.address === value) {
+      setPredictions([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}`
+      );
+      const data = await response.json();
+      setPredictions(data.slice(0, 5));
+    } catch (error) {
+      console.error("Error searching locations:", error);
+      setPredictions([]);
+    }
+  };
+
+  const handlePlaceSelect = (prediction: any) => {
+    const newLocation = {
+      address: prediction.display_name || `${prediction.lat}, ${prediction.lon}`,
+      latitude: parseFloat(prediction.lat),
+      longitude: parseFloat(prediction.lon)
+    };
+    setFormData({...formData, location: newLocation});
+    setPredictions([]);
+  };
+
+  const handleLocationSelect = (location: any) => {
+    setFormData({...formData, location});
+    setShowLocationModal(false);
   };
 
   const slotsByDay = DAYS_OF_WEEK.map((day, index) => {
@@ -229,6 +332,44 @@ export default function DoctorAvailability() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Clinic Location (Optional)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Search location or enter address..."
+                    value={formData.location.address}
+                    onChange={(e) => handleLocationSearch(e.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationModal(true)}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                  >
+                    🗺️ Map
+                  </button>
+                </div>
+
+                {/* Location Predictions */}
+                {predictions.length > 0 && (
+                  <div className="mt-2 border border-gray-300 rounded-lg bg-white max-h-48 overflow-y-auto">
+                    {predictions.map((prediction, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handlePlaceSelect(prediction)}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 border-b last:border-b-0 text-sm"
+                      >
+                        {prediction.display_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex space-x-3 justify-end pt-4">
                 <button
                   type="button"
@@ -270,9 +411,14 @@ export default function DoctorAvailability() {
                   <h3 className="font-bold text-gray-800 mb-3">{day}</h3>
                   {slot ? (
                     <div>
-                      <p className="text-sm text-gray-600 mb-3">
+                      <p className="text-sm text-gray-600 mb-2">
                         {slot.startTime} - {slot.endTime}
                       </p>
+                      {slot.location?.address && (
+                        <p className="text-xs text-blue-600 mb-3 flex items-center gap-1">
+                          📍 {slot.location.address}
+                        </p>
+                      )}
                       <div className="flex space-x-2">
                         <button
                           onClick={() => handleEdit(slot)}
@@ -307,6 +453,38 @@ export default function DoctorAvailability() {
           </button>
         </div>
       </div>
+
+      {/* Location Map Modal */}
+      {showLocationModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full h-[600px] flex flex-col">
+            <div className="px-6 py-4 border-b flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Select Clinic Location</h2>
+              <button
+                onClick={() => setShowLocationModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <LocationMapPicker 
+                onLocationSelect={handleLocationSelect}
+                initialLat={formData.location?.latitude || 40}
+                initialLng={formData.location?.longitude || -95}
+              />
+            </div>
+            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-2">
+              <button
+                onClick={() => setShowLocationModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

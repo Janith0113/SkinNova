@@ -10,7 +10,7 @@ const router = express.Router()
 // Schedule appointment (admin or patient can schedule)
 router.post('/appointments', requireAuth, async (req: any, res: any) => {
   try {
-    const { doctorId, requestedDate, reason, patientId } = req.body
+    const { doctorId, requestedDate, reason, patientId, availabilitySlotId, location } = req.body
     const userId = req.userId
     const user = await User.findById(userId)
 
@@ -44,16 +44,23 @@ router.post('/appointments', requireAuth, async (req: any, res: any) => {
       requestedDate: new Date(requestedDate),
       reason,
       status: 'pending',
+      availabilitySlotId: availabilitySlotId || undefined,
+      location: location ? {
+        address: location.address,
+        latitude: location.latitude,
+        longitude: location.longitude
+      } : undefined,
     })
 
     await appointment.save()
 
     // Send email to doctor about pending appointment
+    const locationInfo = location ? `\nLocation: ${location.address}` : ''
     await sendAppointmentEmail(
       doctor.email,
       doctor.name || 'Doctor',
       `New appointment request from ${patient.name || patient.email}`,
-      `Requested Date: ${new Date(requestedDate).toLocaleString()}\nReason: ${reason}`
+      `Requested Date: ${new Date(requestedDate).toLocaleString()}\nReason: ${reason}${locationInfo}`
     )
 
     // Log appointment activity

@@ -340,11 +340,14 @@ export default function PatientDashboard() {
 
       // Auto-assign time based on doctor availability and existing appointments
       let appointmentTime = "";
+      let slotLocation = undefined;
+      let dayAvailability: any = null;
+      
       if (doctorAvailability && doctorAvailability.length > 0) {
         const [year, month, day] = scheduleFormData.requestedDate.split('-').map(Number);
         const selectedDateObj = new Date(year, month - 1, day);
         const dayOfWeek = selectedDateObj.getDay();
-        const dayAvailability = doctorAvailability.find((a: any) => a.dayOfWeek === dayOfWeek);
+        dayAvailability = doctorAvailability.find((a: any) => a.dayOfWeek === dayOfWeek);
 
         if (dayAvailability) {
           const [startHour, startMin] = dayAvailability.startTime.split(':').map(Number);
@@ -376,6 +379,11 @@ export default function PatientDashboard() {
                          String(appointmentDateTime.getMonth() + 1).padStart(2, '0') + '-' +
                          String(appointmentDateTime.getDate()).padStart(2, '0');
           appointmentTime = `${dateStrFormatted}T${hours}:${minutes}`;
+          
+          // Capture location from availability slot
+          if (dayAvailability.location?.address) {
+            slotLocation = dayAvailability.location;
+          }
         } else {
           alert("Doctor is not available on this day");
           return;
@@ -385,7 +393,7 @@ export default function PatientDashboard() {
         return;
       }
 
-      // Schedule the appointment with auto-assigned time
+      // Schedule the appointment with auto-assigned time and location
       const scheduleResponse = await fetch("http://localhost:4000/api/appointments", {
         method: "POST",
         headers: {
@@ -397,6 +405,8 @@ export default function PatientDashboard() {
           patientId: user._id,
           requestedDate: appointmentTime,
           reason: scheduleFormData.reason,
+          availabilitySlotId: dayAvailability?._id,
+          location: slotLocation,
         }),
       });
 
@@ -700,10 +710,18 @@ export default function PatientDashboard() {
                             </p>
                             <p className="text-xs text-gray-700 mt-1">
                               📅 Requested: {new Date(apt.requestedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                              {apt.requestedDate && new Date(apt.requestedDate).getHours() !== 0 && (
+                                <span className="ml-2">at {new Date(apt.requestedDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                              )}
                             </p>
                             <p className="text-xs text-gray-700 mt-1">
                               📝 Reason: {apt.reason}
                             </p>
+                            {apt.location?.address && (
+                              <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
+                                📍 {apt.location.address}
+                              </p>
+                            )}
                             <p className="text-xs text-yellow-700 mt-2 font-medium">
                               ⏳ Doctor will confirm a specific time for this appointment
                             </p>
@@ -740,6 +758,11 @@ export default function PatientDashboard() {
                             <p className="text-xs text-gray-700 mt-1">
                               📝 {apt.reason}
                             </p>
+                            {apt.location?.address && (
+                              <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
+                                📍 {apt.location.address}
+                              </p>
+                            )}
                             {apt.notes && (
                               <p className="text-xs text-gray-700 mt-2">
                                 <strong>Notes:</strong> {apt.notes}
@@ -771,6 +794,11 @@ export default function PatientDashboard() {
                             <p className="text-xs text-gray-700 mt-1">
                               📝 Reason: {apt.reason}
                             </p>
+                            {apt.location?.address && (
+                              <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
+                                📍 {apt.location.address}
+                              </p>
+                            )}
                             {apt.notes && (
                               <p className="text-xs text-red-700 mt-2">
                                 <strong>Doctor's Message:</strong> {apt.notes}
@@ -890,12 +918,24 @@ export default function PatientDashboard() {
                     </p>
                   )}
                   {doctorAvailability.length > 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Doctor available on: {doctorAvailability.map(d => {
-                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                        return `${days[d.dayOfWeek]} ${d.startTime}-${d.endTime}`;
-                      }).join(', ')}
-                    </p>
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs text-gray-600 font-semibold">Doctor Availability:</p>
+                      {doctorAvailability.map((d, idx) => {
+                        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        return (
+                          <div key={idx} className="text-xs bg-blue-50 p-2 rounded border border-blue-200">
+                            <p className="text-gray-700">
+                              <span className="font-semibold">{days[d.dayOfWeek]}</span>: {d.startTime} - {d.endTime}
+                            </p>
+                            {d.location && d.location.address && (
+                              <p className="text-blue-600 mt-1">
+                                📍 {d.location.address}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                   <p className="text-xs text-blue-600 mt-2 font-medium">
                     ✓ Time will be automatically assigned (30 min slots)

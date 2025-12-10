@@ -12,6 +12,12 @@ export interface IAppointment extends Document {
   reason: string
   status: 'pending' | 'approved' | 'rejected' | 'completed'
   notes?: string
+  availabilitySlotId?: string
+  location?: {
+    address: string
+    latitude: number
+    longitude: number
+  }
   createdAt: Date
   updatedAt: Date
 }
@@ -33,6 +39,12 @@ const AppointmentSchema = new Schema<IAppointment>(
       default: 'pending'
     },
     notes: { type: String },
+    availabilitySlotId: { type: String },
+    location: {
+      address: { type: String },
+      latitude: { type: Number },
+      longitude: { type: Number }
+    }
   },
   { timestamps: true }
 )
