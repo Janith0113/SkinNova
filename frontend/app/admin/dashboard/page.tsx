@@ -836,6 +836,12 @@ export default function AdminDashboard() {
                         action: () => setShowAddUserModal(true),
                       },
                       {
+                        label: "Manage Banners",
+                        icon: "🎨",
+                        color: "from-indigo-500 to-blue-500",
+                        action: () => router.push("/admin/banner"),
+                      },
+                      {
                         label: "View Reports",
                         icon: "📄",
                         color: "from-blue-500 to-cyan-500",
@@ -1831,6 +1837,7 @@ export default function AdminDashboard() {
               <div>
                 <label className="text-sm text-gray-600 font-medium mb-1 block">Role</label>
                 <select
+                  aria-label="User Role"
                   value={editFormData.role}
                   onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -1908,6 +1915,7 @@ export default function AdminDashboard() {
                   Select Patient
                 </label>
                 <select
+                  aria-label="Select Patient"
                   value={scheduleFormData.patientId}
                   onChange={(e) =>
                     setScheduleFormData({ ...scheduleFormData, patientId: e.target.value })
@@ -1930,6 +1938,7 @@ export default function AdminDashboard() {
                   Appointment Date
                 </label>
                 <select
+                  aria-label="Appointment Date"
                   value={scheduleFormData.requestedDate}
                   onChange={(e) =>
                     setScheduleFormData({ ...scheduleFormData, requestedDate: e.target.value })
@@ -2061,6 +2070,7 @@ export default function AdminDashboard() {
                   User Role
                 </label>
                 <select
+                  aria-label="User Role"
                   value={addUserFormData.role}
                   onChange={(e) =>
                     setAddUserFormData({ 
