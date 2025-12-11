@@ -2,12 +2,19 @@
 
 import Sidebar from "../components/Sidebar";
 
+import Banner from './components/banner/Banner';
+
 export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 flex">
       <Sidebar />
 
       <main className="flex-1 pt-20 px-4 sm:px-6 lg:px-10 pb-10">
+        {/* Banner Section */}
+        <section className="max-w-6xl mx-auto mb-8">
+          <Banner />
+        </section>
+
         {/* Top header strip */}
         <section className="max-w-6xl mx-auto mb-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

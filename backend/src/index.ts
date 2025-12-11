@@ -13,7 +13,7 @@ import doctorRoutes from './routes/doctors'
 import availabilityRoutes from './routes/availability'
 import reportRoutes from './routes/reports'
 import reportAccessRoutes from './routes/reportAccess'
-import profileRoutes from './routes/profile'
+import bannerRoutes from './routes/banner'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
@@ -33,11 +33,11 @@ app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/doctors', doctorRoutes)
 app.use('/api/availability', availabilityRoutes)
-app.use('/api/profile', profileRoutes)
 app.use('/api', activityRoutes)
 app.use('/api', appointmentRoutes)
 app.use('/api', reportRoutes)
 app.use('/api', reportAccessRoutes)
+app.use('/api/banners', bannerRoutes)
 
 async function start() {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://Skin123:Skin123%23@cluster0.ycpp8kz.mongodb.net/?appName=Cluster0'
