@@ -9,16 +9,16 @@ export interface AuthRequest extends Request {
   };
 }
 
-const verifyToken = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  const authHeader = (req.headers.authorization || '') as string;
+  const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader;
+
+  if (!token) {
+    res.status(401).json({ error: 'No token provided' });
+    return;
+  }
+
   try {
-    const authHeader = (req.headers.authorization || '') as string;
-    const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader;
-
-    if (!token) {
-      res.status(401).json({ error: 'No token provided' });
-      return;
-    }
-
     const secret = process.env.JWT_SECRET || 'your-secret-key';
     const decoded = jwt.verify(token, secret) as any;
 
@@ -33,6 +33,3 @@ const verifyToken = (req: AuthRequest, res: Response, next: NextFunction): void 
     res.status(401).json({ error: 'Invalid token' });
   }
 };
-
-export const authenticate = verifyToken;
-export const requireAuth = verifyToken;
