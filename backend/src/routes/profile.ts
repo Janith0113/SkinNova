@@ -113,4 +113,36 @@ router.get('/photo/:userId', async (req: Request, res: Response) => {
   }
 })
 
+// Remove profile photo
+router.post('/remove-photo', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId
+
+    const user = await User.findById(userId)
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    // Delete the profile photo file if it exists
+    if (user.profilePhoto) {
+      const filePath = path.join(uploadDir, user.profilePhoto)
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath)
+      }
+
+      // Update user to remove profilePhoto reference
+      user.profilePhoto = undefined
+      await user.save()
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile photo removed successfully',
+    })
+  } catch (error) {
+    console.error('Error removing profile photo:', error)
+    res.status(500).json({ error: 'Failed to remove profile photo' })
+  }
+})
+
 export default router
