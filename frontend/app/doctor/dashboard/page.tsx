@@ -33,6 +33,7 @@ export default function DoctorDashboard() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [patientPage, setPatientPage] = useState(1);
   const router = useRouter();
 
   useEffect(() => {
@@ -377,33 +378,89 @@ export default function DoctorDashboard() {
           <div className="lg:col-span-2 rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-7 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-                Recent AI‑Flagged Cases
+                Your Patients
               </h2>
-              <span className="text-xs text-gray-600 cursor-pointer hover:text-gray-800">
+              <span 
+                className="text-xs text-gray-600 cursor-pointer hover:text-gray-800"
+                onClick={() => router.push("/doctor/view-patient-reports")}
+              >
                 View all
               </span>
             </div>
             <div className="space-y-4">
-              {[
-                { name: "Patient A", type: "Psoriasis", risk: "High", color: "text-red-600 bg-red-100" },
-                { name: "Patient B", type: "Tinea", risk: "Medium", color: "text-amber-600 bg-amber-100" },
-                { name: "Patient C", type: "Skin Cancer", risk: "Critical", color: "text-red-700 bg-red-200" },
-              ].map((p, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between rounded-2xl bg-white/40 px-4 py-3 shadow-sm hover:shadow-md transition-all"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{p.name}</p>
-                    <p className="text-xs text-gray-600">{p.type}</p>
+              {approvedAppointments.length > 0 ? (
+                <>
+                  {approvedAppointments.slice((patientPage - 1) * 3, patientPage * 3).map((apt) => {
+                    return (
+                      <div
+                        key={apt._id}
+                        className="flex items-center justify-between rounded-2xl bg-white/40 px-4 py-3 shadow-sm hover:shadow-md transition-all"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">{apt.patientName}</p>
+                          <p className="text-xs text-gray-600">{apt.reason || "General Consultation"}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => {
+                              const pId = apt.patientId || apt.patient?._id;
+                              if (pId) {
+                                router.push(`/doctor/view-patient-reports?patientId=${pId}`);
+                              } else {
+                                alert("Patient ID not found");
+                                console.error("Appointment object:", apt);
+                              }
+                            }}
+                            className="px-3 py-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:shadow-md transition-all text-xs font-semibold"
+                          >
+                            View Report
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {/* Modern Pagination Controls */}
+                  <div className="flex items-center justify-center gap-2 mt-8 pt-6">
+                    <button
+                      onClick={() => setPatientPage(Math.max(1, patientPage - 1))}
+                      disabled={patientPage === 1}
+                      className="flex items-center justify-center w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      <span className="text-lg">‹</span>
+                    </button>
+
+                    <div className="flex items-center gap-1.5 px-3">
+                      {Array.from({ length: Math.ceil(approvedAppointments.length / 3) }).map((_, i) => (
+                        <button
+                          key={i + 1}
+                          onClick={() => setPatientPage(i + 1)}
+                          className={`transition-all duration-300 ${
+                            patientPage === i + 1
+                              ? 'w-8 h-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full'
+                              : 'w-2 h-2 bg-white/30 rounded-full hover:bg-white/50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setPatientPage(Math.min(Math.ceil(approvedAppointments.length / 3), patientPage + 1))}
+                      disabled={patientPage === Math.ceil(approvedAppointments.length / 3)}
+                      className="flex items-center justify-center w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      <span className="text-lg">›</span>
+                    </button>
+
+                    <span className="text-xs font-semibold text-gray-600 ml-3">
+                      {patientPage} / {Math.ceil(approvedAppointments.length / 3)}
+                    </span>
                   </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${p.color}`}
-                  >
-                    {p.risk} risk
-                  </span>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-600">No approved appointments yet</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -415,9 +472,6 @@ export default function DoctorDashboard() {
             <div className="space-y-3">
               <button className="w-full rounded-2xl bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-emerald-700 transition-all">
                 Review AI assessments
-              </button>
-              <button className="w-full rounded-2xl bg-sky-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-sky-700 transition-all">
-                Schedule new appointment
               </button>
               <button className="w-full rounded-2xl bg-purple-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-purple-700 transition-all">
                 View patient history
@@ -505,18 +559,6 @@ export default function DoctorDashboard() {
                           </p>
                         )}
                         {apt.notes && <p className="text-sm text-gray-700 mt-2"><strong>Notes:</strong> {apt.notes}</p>}
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() =>
-                            router.push(
-                              `/doctor/view-patient-reports?patientId=${apt.patientId}&appointmentId=${apt._id}`
-                            )
-                          }
-                          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold whitespace-nowrap"
-                        >
-                          📄 View Reports
-                        </button>
                       </div>
                     </div>
                   </div>

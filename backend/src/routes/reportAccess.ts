@@ -114,6 +114,44 @@ router.get('/report-access/check/:patientId/:appointmentId', requireAuth, async 
 })
 
 // Doctor: Get patient's reports (with access check)
+router.get('/patient-reports/:patientId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const doctorId = (req as any).userId
+    const { patientId } = req.params
+
+    // Check if doctor has any access to this patient's reports
+    const access = await ReportAccess.findOne({
+      patientId,
+      doctorId,
+      accessGranted: true,
+    })
+
+    if (!access) {
+      return res.status(403).json({ success: false, message: 'Access denied to patient reports' })
+    }
+
+    // Get patient info
+    const patient = await User.findById(patientId).select('name email')
+
+    // Get patient's reports
+    const reports = await Report.find({ patientId }).sort({ uploadedAt: -1 })
+
+    res.json({
+      success: true,
+      patient: {
+        _id: patientId,
+        name: patient?.name || 'Unknown Patient',
+        email: patient?.email || 'unknown@example.com',
+      },
+      reports,
+    })
+  } catch (err) {
+    console.error('Error fetching patient reports:', err)
+    res.status(500).json({ success: false, message: 'Failed to fetch patient reports' })
+  }
+})
+
+// Doctor: Get patient's reports by appointment (with access check)
 router.get('/patient-reports/:patientId/:appointmentId', requireAuth, async (req: Request, res: Response) => {
   try {
     const doctorId = (req as any).userId
