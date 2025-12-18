@@ -517,6 +517,12 @@ export default function DoctorDashboard() {
                         >
                           📄 View Reports
                         </button>
+                        <button
+                          onClick={() => router.push(`/direct-chat?patientId=${apt.patientId}&doctorId=${user._id || user.id}`)}
+                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold whitespace-nowrap"
+                        >
+                          💬 Chat
+                        </button>
                       </div>
                     </div>
                   </div>
