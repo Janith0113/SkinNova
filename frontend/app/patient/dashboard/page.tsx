@@ -787,7 +787,7 @@ export default function PatientDashboard() {
                   <div className="space-y-3">
                     {appointments.filter(apt => apt.status === "approved").map((apt) => (
                       <div key={apt._id} className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200">
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-gray-900">
                               Dr. {apt.doctorName}
@@ -816,6 +816,12 @@ export default function PatientDashboard() {
                               </p>
                             )}
                           </div>
+                          <button
+                            onClick={() => router.push(`/direct-chat?patientId=${user._id || user.id}&doctorId=${apt.doctorId}`)}
+                            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all text-sm whitespace-nowrap h-fit"
+                          >
+                            💬 Chat
+                          </button>
                         </div>
                       </div>
                     ))}
