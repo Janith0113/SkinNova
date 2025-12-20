@@ -253,4 +253,88 @@ router.get('/chat/patient/:patientId/appointments-with-chat', requireAuth, async
   }
 })
 
+// Edit a message in a chat
+router.put('/chat/:patientId/:doctorId/message/:messageId', requireAuth, async (req: any, res: any) => {
+  try {
+    const { patientId, doctorId, messageId } = req.params
+    const { content } = req.body
+    const requestingUserId = req.userId
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Message content cannot be empty' })
+    }
+
+    // Find the chat
+    const chat = await Chat.findOne({ patientId, doctorId })
+
+    if (!chat) {
+      return res.status(404).json({ error: 'Chat not found' })
+    }
+
+    // Find the message
+    const message = chat.messages.find(msg => msg._id?.toString() === messageId)
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' })
+    }
+
+    // Verify the requesting user is the sender
+    if (message.senderId !== requestingUserId) {
+      return res.status(403).json({ error: 'Unauthorized: Can only edit your own messages' })
+    }
+
+    // Update the message
+    message.content = content.trim()
+    message.isEdited = true
+    message.editedAt = new Date()
+
+    chat.updatedAt = new Date()
+    await chat.save()
+
+    res.json({ success: true, chat })
+  } catch (error) {
+    console.error('Error editing message:', error)
+    res.status(500).json({ error: 'Failed to edit message' })
+  }
+})
+
+// Delete a message in a chat
+router.delete('/chat/:patientId/:doctorId/message/:messageId', requireAuth, async (req: any, res: any) => {
+  try {
+    const { patientId, doctorId, messageId } = req.params
+    const requestingUserId = req.userId
+
+    // Find the chat
+    const chat = await Chat.findOne({ patientId, doctorId })
+
+    if (!chat) {
+      return res.status(404).json({ error: 'Chat not found' })
+    }
+
+    // Find the message
+    const message = chat.messages.find(msg => msg._id?.toString() === messageId)
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' })
+    }
+
+    // Verify the requesting user is the sender
+    if (message.senderId !== requestingUserId) {
+      return res.status(403).json({ error: 'Unauthorized: Can only delete your own messages' })
+    }
+
+    // Mark message as deleted
+    message.isDeleted = true
+    message.content = '[Message deleted]'
+
+    chat.updatedAt = new Date()
+    await chat.save()
+
+    res.json({ success: true, chat })
+  } catch (error) {
+    console.error('Error deleting message:', error)
+    res.status(500).json({ error: 'Failed to delete message' })
+  }
+})
+
 export default router

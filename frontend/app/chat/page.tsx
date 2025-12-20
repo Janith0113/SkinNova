@@ -13,6 +13,8 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [directChatMode, setDirectChatMode] = useState(false);
   const [otherUserName, setOtherUserName] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState("");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,6 +41,11 @@ export default function ChatPage() {
       if (patientIdParam && doctorIdParam) {
         setDirectChatMode(true);
         loadDirectChat(patientIdParam, doctorIdParam);
+        // Optional: set up polling for new messages (every 5 seconds)
+        const interval = setInterval(() => {
+          loadDirectChat(patientIdParam, doctorIdParam);
+        }, 5000);
+        return () => clearInterval(interval);
       } else {
         // Otherwise, load all chats
         fetchAllChats();
@@ -208,6 +215,75 @@ export default function ChatPage() {
     }
   };
 
+  const handleEditMessage = async (messageId: string) => {
+    if (!editingContent.trim() || !selectedChat) return;
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `http://localhost:4000/api/chat/${selectedChat.patientId}/${selectedChat.doctorId}/message/${messageId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: editingContent,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to edit message");
+      }
+
+      const data = await response.json();
+      setMessages(data.chat?.messages || []);
+      setEditingMessageId(null);
+      setEditingContent("");
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Failed to edit message"
+      );
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm("Are you sure you want to delete this message?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `http://localhost:4000/api/chat/${selectedChat.patientId}/${selectedChat.doctorId}/message/${messageId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete message");
+      }
+
+      const data = await response.json();
+      setMessages(data.chat?.messages || []);
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete message"
+      );
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100">
@@ -272,8 +348,8 @@ export default function ChatPage() {
               return (
                 <div
                   key={idx}
-                  className={`flex ${
-                    isOwn ? "justify-end" : "justify-start"
+                  className={`flex flex-col ${
+                    isOwn ? "items-end" : "items-start"
                   }`}
                 >
                   <div
@@ -283,18 +359,87 @@ export default function ChatPage() {
                         : "bg-white text-gray-900 border border-gray-200 rounded-bl-none"
                     }`}
                   >
-                    <p className="text-sm break-words">{msg.content}</p>
-                    <p
-                      className={`text-xs mt-1 ${
-                        isOwn ? "text-blue-100" : "text-gray-500"
-                      }`}
-                    >
-                      {new Date(msg.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
+                    {editingMessageId === msg._id?.toString() ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={editingContent}
+                          onChange={(e) =>
+                            setEditingContent(e.target.value)
+                          }
+                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() =>
+                            handleEditMessage(msg._id?.toString() || "")
+                          }
+                          className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingMessageId(null);
+                            setEditingContent("");
+                          }}
+                          className="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm break-words">
+                          {msg.content}
+                        </p>
+                        {msg.isEdited && !msg.isDeleted && (
+                          <p className={`text-xs mt-1 ${
+                            isOwn ? "text-blue-200" : "text-gray-400"
+                          }`}>
+                            (edited)
+                          </p>
+                        )}
+                        <p
+                          className={`text-xs mt-1 ${
+                            isOwn ? "text-blue-100" : "text-gray-500"
+                          }`}
+                        >
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </>
+                    )}
                   </div>
+                  {isOwn && !msg.isDeleted && (
+                    <div className="flex gap-2 mt-1">
+                      {editingMessageId !== msg._id?.toString() && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingMessageId(msg._id?.toString() || null);
+                              setEditingContent(msg.content);
+                            }}
+                            className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap shadow-sm font-semibold"
+                            title="Edit message"
+                          >
+                            ✎ Edit
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDeleteMessage(msg._id?.toString() || "")
+                            }
+                            className="px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 transition-colors whitespace-nowrap shadow-sm font-semibold"
+                            title="Delete message"
+                          >
+                            🗑 Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -469,10 +614,10 @@ export default function ChatPage() {
                   return (
                     <div
                       key={idx}
-                      className={`flex ${
+                      className={`flex flex-col ${
                         isOwn
-                          ? "justify-end"
-                          : "justify-start"
+                          ? "items-end"
+                          : "items-start"
                       }`}
                     >
                       <div
@@ -482,28 +627,95 @@ export default function ChatPage() {
                             : "bg-white text-gray-900 border border-gray-200 rounded-bl-none"
                         }`}
                       >
-                        <p className="text-sm break-words">
-                          {msg.content}
-                        </p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            isOwn
-                              ? "text-blue-100"
-                              : "text-gray-500"
-                          }`}
-                        >
-                          {new Date(
-                            msg.timestamp
-                          ).toLocaleTimeString(
-                            [],
-                            {
-                              hour: "2-digit",
-                              minute:
-                                "2-digit",
-                            }
-                          )}
-                        </p>
+                        {editingMessageId === msg._id?.toString() ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={editingContent}
+                              onChange={(e) =>
+                                setEditingContent(e.target.value)
+                              }
+                              className="flex-1 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() =>
+                                handleEditMessage(msg._id?.toString() || "")
+                              }
+                              className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingMessageId(null);
+                                setEditingContent("");
+                              }}
+                              className="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-sm break-words">
+                              {msg.content}
+                            </p>
+                            {msg.isEdited && !msg.isDeleted && (
+                              <p className={`text-xs mt-1 ${
+                                isOwn ? "text-blue-200" : "text-gray-400"
+                              }`}>
+                                (edited)
+                              </p>
+                            )}
+                            <p
+                              className={`text-xs mt-1 ${
+                                isOwn
+                                  ? "text-blue-100"
+                                  : "text-gray-500"
+                              }`}
+                            >
+                              {new Date(
+                                msg.timestamp
+                              ).toLocaleTimeString(
+                                [],
+                                {
+                                  hour: "2-digit",
+                                  minute:
+                                    "2-digit",
+                                }
+                              )}
+                            </p>
+                          </>
+                        )}
                       </div>
+                      {isOwn && !msg.isDeleted && (
+                        <div className="flex gap-2 mt-1">
+                          {editingMessageId !== msg._id?.toString() && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditingMessageId(msg._id?.toString() || null);
+                                  setEditingContent(msg.content);
+                                }}
+                                className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap shadow-sm font-semibold"
+                                title="Edit message"
+                              >
+                                ✎ Edit
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteMessage(msg._id?.toString() || "")
+                                }
+                                className="px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 transition-colors whitespace-nowrap shadow-sm font-semibold"
+                                title="Delete message"
+                              >
+                                🗑 Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })
