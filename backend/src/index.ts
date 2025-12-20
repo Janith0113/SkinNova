@@ -13,6 +13,8 @@ import doctorRoutes from './routes/doctors'
 import availabilityRoutes from './routes/availability'
 import reportRoutes from './routes/reports'
 import reportAccessRoutes from './routes/reportAccess'
+import bannerRoutes from './routes/banner'
+import chatRoutes from './routes/chat'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
@@ -36,6 +38,8 @@ app.use('/api', activityRoutes)
 app.use('/api', appointmentRoutes)
 app.use('/api', reportRoutes)
 app.use('/api', reportAccessRoutes)
+app.use('/api/banners', bannerRoutes)
+app.use('/api', chatRoutes)
 
 async function start() {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://Skin123:Skin123%23@cluster0.ycpp8kz.mongodb.net/?appName=Cluster0'
@@ -43,6 +47,20 @@ async function start() {
   
   // Test email connection
   await testEmailConnection()
+  
+  // Fix existing availability slots - set isActive to true
+  try {
+    const DoctorAvailability = (await import('./models/DoctorAvailability')).default
+    const result = await DoctorAvailability.updateMany(
+      { isActive: false },
+      { isActive: true }
+    )
+    if (result.modifiedCount > 0) {
+      console.log(`Fixed ${result.modifiedCount} availability slots - set isActive to true`)
+    }
+  } catch (err) {
+    console.error('Error fixing availability slots:', err)
+  }
   
   // Ensure admin account exists (admin cannot sign up)
   try {

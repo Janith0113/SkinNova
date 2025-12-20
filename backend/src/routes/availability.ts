@@ -15,9 +15,15 @@ router.get('/my-availability', requireAuth, async (req: any, res: any) => {
       return res.status(403).json({ error: 'Only doctors can access this' })
     }
     
+    // First, get all slots for this doctor
+    const allSlots = await DoctorAvailability.find({ doctorId })
+    console.log(`All slots for doctor ${doctorId}:`, allSlots);
+    
+    // Then get only active ones
     const availabilitySlots = await DoctorAvailability.find({ doctorId, isActive: true })
       .sort({ dayOfWeek: 1 })
     
+    console.log(`Active slots for doctor ${doctorId}:`, availabilitySlots);
     res.json({ success: true, availabilitySlots })
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Failed to fetch availability'
@@ -50,7 +56,9 @@ router.post('/', requireAuth, async (req: any, res: any) => {
       return res.status(403).json({ error: 'Only doctors can set availability' })
     }
     
-    const { dayOfWeek, startTime, endTime } = req.body
+    const { dayOfWeek, startTime, endTime, location } = req.body
+    
+    console.log(`Creating availability for doctor ${doctorId}:`, { dayOfWeek, startTime, endTime, location });
     
     if (dayOfWeek === undefined || !startTime || !endTime) {
       return res.status(400).json({ error: 'Day, start time, and end time required' })
@@ -67,6 +75,10 @@ router.post('/', requireAuth, async (req: any, res: any) => {
       // Update existing slot
       existingSlot.startTime = startTime
       existingSlot.endTime = endTime
+      existingSlot.isActive = true
+      if (location) {
+        existingSlot.location = location
+      }
       existingSlot.updatedAt = new Date()
       await existingSlot.save()
       
@@ -83,10 +95,16 @@ router.post('/', requireAuth, async (req: any, res: any) => {
       dayOfWeek,
       startTime,
       endTime,
+      location: location || undefined,
       isActive: true
     })
     
     await availabilitySlot.save()
+    console.log(`Created availability slot:`, availabilitySlot);
+    
+    // Verify it was saved
+    const verifySlot = await DoctorAvailability.findOne({ doctorId, dayOfWeek })
+    console.log(`Verified saved slot:`, verifySlot);
     
     res.status(201).json({
       success: true,
@@ -103,7 +121,7 @@ router.post('/', requireAuth, async (req: any, res: any) => {
 router.put('/:slotId', requireAuth, async (req: any, res: any) => {
   try {
     const { slotId } = req.params
-    const { startTime, endTime } = req.body
+    const { startTime, endTime, location } = req.body
     const doctorId = req.userId
     
     const slot = await DoctorAvailability.findById(slotId)
@@ -118,6 +136,9 @@ router.put('/:slotId', requireAuth, async (req: any, res: any) => {
     
     slot.startTime = startTime || slot.startTime
     slot.endTime = endTime || slot.endTime
+    if (location !== undefined) {
+      slot.location = location
+    }
     slot.updatedAt = new Date()
     
     await slot.save()
