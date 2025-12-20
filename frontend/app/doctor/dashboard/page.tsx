@@ -33,6 +33,7 @@ export default function DoctorDashboard() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
 
   useEffect(() => {
@@ -377,33 +378,95 @@ export default function DoctorDashboard() {
           <div className="lg:col-span-2 rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-7 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-                Recent AI‑Flagged Cases
+                Your Patients
               </h2>
-              <span className="text-xs text-gray-600 cursor-pointer hover:text-gray-800">
+              <span 
+                onClick={() => router.push("/doctor/view-patient-reports")}
+                className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-semibold">
                 View all
               </span>
             </div>
             <div className="space-y-4">
-              {[
-                { name: "Patient A", type: "Psoriasis", risk: "High", color: "text-red-600 bg-red-100" },
-                { name: "Patient B", type: "Tinea", risk: "Medium", color: "text-amber-600 bg-amber-100" },
-                { name: "Patient C", type: "Skin Cancer", risk: "Critical", color: "text-red-700 bg-red-200" },
-              ].map((p, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between rounded-2xl bg-white/40 px-4 py-3 shadow-sm hover:shadow-md transition-all"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{p.name}</p>
-                    <p className="text-xs text-gray-600">{p.type}</p>
+              {approvedAppointments.length > 0 ? (
+                <>
+                  {approvedAppointments
+                    .slice((currentPage - 1) * 3, currentPage * 3)
+                    .map((apt) => (
+                      <div
+                        key={apt._id}
+                        className="flex items-center justify-between rounded-2xl bg-white/40 px-4 py-3 shadow-sm hover:shadow-md transition-all"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">{apt.patientName}</p>
+                          <p className="text-xs text-gray-600">{apt.reason}</p>
+                        </div>
+                        <div className="flex items-center gap-2 ml-3">
+                          <button
+                            onClick={() => router.push(`/doctor/view-patient-reports?patientId=${apt.patientId}&appointmentId=${apt._id}`)}
+                            className="w-9 h-9 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow hover:shadow-md transition-all flex items-center justify-center text-lg"
+                            title="View Reports"
+                          >
+                            📄
+                          </button>
+                          <button
+                            onClick={() => router.push("/chat")}
+                            className="w-9 h-9 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow hover:shadow-md transition-all flex items-center justify-center text-lg"
+                            title="Chat"
+                          >
+                            💬
+                          </button>
+                          <span
+                            className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold text-emerald-600 bg-emerald-100"
+                          >
+                            ✓ Approved
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  {/* Modern Pagination Controls */}
+                  <div className="flex items-center justify-center gap-3 mt-6 pt-6 border-t border-white/20">
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-xl bg-gradient-to-br from-white/40 to-white/20 text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed hover:from-white/60 hover:to-white/40 transition-all duration-300 shadow-sm hover:shadow-md border border-white/30"
+                    >
+                      <span className="text-lg">←</span>
+                    </button>
+                    
+                    <div className="flex gap-2">
+                      {Array.from({ length: Math.ceil(approvedAppointments.length / 3) }).map((_, idx) => (
+                        <button
+                          key={idx + 1}
+                          onClick={() => setCurrentPage(idx + 1)}
+                          className={`h-9 w-9 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                            currentPage === idx + 1
+                              ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 scale-105"
+                              : "bg-white/30 text-gray-900 hover:bg-white/50 shadow-sm hover:shadow-md border border-white/30"
+                          }`}
+                        >
+                          {idx + 1}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(approvedAppointments.length / 3)))}
+                      disabled={currentPage === Math.ceil(approvedAppointments.length / 3)}
+                      className="p-2 rounded-xl bg-gradient-to-br from-white/40 to-white/20 text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed hover:from-white/60 hover:to-white/40 transition-all duration-300 shadow-sm hover:shadow-md border border-white/30"
+                    >
+                      <span className="text-lg">→</span>
+                    </button>
+                    
+                    <span className="ml-2 text-xs text-gray-700 font-medium bg-white/30 px-3 py-1.5 rounded-lg border border-white/30">
+                      {currentPage} / {Math.ceil(approvedAppointments.length / 3)}
+                    </span>
                   </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${p.color}`}
-                  >
-                    {p.risk} risk
-                  </span>
+                </>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-600">No approved patients yet</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -415,9 +478,6 @@ export default function DoctorDashboard() {
             <div className="space-y-3">
               <button className="w-full rounded-2xl bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-emerald-700 transition-all">
                 Review AI assessments
-              </button>
-              <button className="w-full rounded-2xl bg-sky-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-sky-700 transition-all">
-                Schedule new appointment
               </button>
               <button className="w-full rounded-2xl bg-purple-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-purple-700 transition-all">
                 View patient history
