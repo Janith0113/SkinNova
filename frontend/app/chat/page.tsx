@@ -15,6 +15,7 @@ export default function ChatPage() {
   const [otherUserName, setOtherUserName] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  const [isPerformingAction, setIsPerformingAction] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -41,9 +42,11 @@ export default function ChatPage() {
       if (patientIdParam && doctorIdParam) {
         setDirectChatMode(true);
         loadDirectChat(patientIdParam, doctorIdParam);
-        // Optional: set up polling for new messages (every 5 seconds)
+        // Set up polling for new messages (every 5 seconds) - but ONLY if no action is being performed
         const interval = setInterval(() => {
-          loadDirectChat(patientIdParam, doctorIdParam);
+          if (!isPerformingAction) {
+            loadDirectChat(patientIdParam, doctorIdParam);
+          }
         }, 5000);
         return () => clearInterval(interval);
       } else {
@@ -53,7 +56,7 @@ export default function ChatPage() {
         return () => clearInterval(interval);
       }
     }
-  }, [user, patientIdParam, doctorIdParam]);
+  }, [user, patientIdParam, doctorIdParam, isPerformingAction]);
 
   const loadDirectChat = async (patientId: string, doctorId: string) => {
     try {
@@ -218,6 +221,7 @@ export default function ChatPage() {
   const handleEditMessage = async (messageId: string) => {
     if (!editingContent.trim() || !selectedChat) return;
 
+    setIsPerformingAction(true);
     try {
       const token = localStorage.getItem("token");
 
@@ -249,12 +253,15 @@ export default function ChatPage() {
           ? err.message
           : "Failed to edit message"
       );
+    } finally {
+      setIsPerformingAction(false);
     }
   };
 
   const handleDeleteMessage = async (messageId: string) => {
     if (!confirm("Are you sure you want to delete this message?")) return;
 
+    setIsPerformingAction(true);
     try {
       const token = localStorage.getItem("token");
 
@@ -281,6 +288,8 @@ export default function ChatPage() {
           ? err.message
           : "Failed to delete message"
       );
+    } finally {
+      setIsPerformingAction(false);
     }
   };
 

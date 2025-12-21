@@ -30,6 +30,17 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend is running' })
 })
 
+// Temporary endpoint to clear all chats (for testing only)
+app.post('/api/admin/clear-chats', async (req, res) => {
+  try {
+    const Chat = require('./models/Chat').default
+    const result = await Chat.deleteMany({})
+    res.json({ success: true, deletedCount: result.deletedCount, message: `Deleted ${result.deletedCount} chats` })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear chats' })
+  }
+})
+
 app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/doctors', doctorRoutes)
