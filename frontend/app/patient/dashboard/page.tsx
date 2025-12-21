@@ -573,30 +573,41 @@ export default function PatientDashboard() {
         </div>
 
         {/* Disease selector tabs */}
-        <div className="flex flex-wrap gap-3">
-          {(
-            [
-              { key: "psoriasis", label: "Psoriasis" },
-              { key: "tinea", label: "Tinea" },
-              { key: "leprosy", label: "Leprosy" },
-              { key: "skinCancer", label: "Skin Cancer" },
-            ] as { key: DiseaseKey; label: string }[]
-          ).map((d) => {
-            const active = selectedDisease === d.key;
-            return (
-              <button
-                key={d.key}
-                onClick={() => setSelectedDisease(d.key)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold shadow-sm transition-all border ${
-                  active
-                    ? "bg-white/80 border-transparent text-emerald-800"
-                    : "bg-white/10 border-white/50 text-gray-700 hover:bg-white/40"
-                }`}
-              >
-                {d.label}
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap gap-3 items-center justify-between">
+          <div className="flex flex-wrap gap-3">
+            {(
+              [
+                { key: "psoriasis", label: "Psoriasis" },
+                { key: "tinea", label: "Tinea" },
+                { key: "leprosy", label: "Leprosy" },
+                { key: "skinCancer", label: "Skin Cancer" },
+              ] as { key: DiseaseKey; label: string }[]
+            ).map((d) => {
+              const active = selectedDisease === d.key;
+              return (
+                <button
+                  key={d.key}
+                  onClick={() => setSelectedDisease(d.key)}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold shadow-sm transition-all border ${
+                    active
+                      ? "bg-white/80 border-transparent text-emerald-800"
+                      : "bg-white/10 border-white/50 text-gray-700 hover:bg-white/40"
+                  }`}
+                >
+                  {d.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedDisease === "skinCancer" && (
+            <button
+              onClick={() => router.push("/skin-cancer")}
+              className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-green-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-blue-400"
+            >
+              📚 Learn More
+            </button>
+          )}
         </div>
 
         {/* Status cards – content depends on selectedDisease */}
