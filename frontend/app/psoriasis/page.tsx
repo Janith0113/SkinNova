@@ -1,7 +1,10 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function PsoriasisPage() {
+  const router = useRouter();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
@@ -27,6 +30,17 @@ export default function PsoriasisPage() {
             </div>
             <div className="text-6xl">💊</div>
           </div>
+        </div>
+
+        {/* Detection Section */}
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-8 sm:p-12 mb-12 shadow-lg border-2 border-emerald-200">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">What would you like to do?</h2>
+          <button
+            onClick={() => router.push("/psoriasis/detect")}
+            className="w-full sm:w-auto bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+          >
+            🔍 Start a new psoriasis scan
+          </button>
         </div>
 
         {/* Information Content */}
