@@ -563,12 +563,6 @@ export default function PatientDashboard() {
             <span className="inline-flex items-center rounded-full bg-sky-600/90 px-3 py-1 text-xs font-semibold text-white shadow-md">
               Role • {user.role?.toUpperCase()}
             </span>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-red-600 transition-all"
-            >
-              Logout
-            </button>
           </div>
         </div>
 
@@ -676,8 +670,19 @@ export default function PatientDashboard() {
               What would you like to do?
             </h2>
             <div className="space-y-3">
-              <button className="w-full rounded-2xl bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-emerald-700 transition-all">
-                Start a new {cfg.label.toLowerCase()} scan
+              <button 
+                onClick={() => {
+                  const diseaseRoutes: Record<DiseaseKey, string> = {
+                    psoriasis: "/psoriasis/detect",
+                    tinea: "/tinea/detect",
+                    leprosy: "/leprosy/detect",
+                    skinCancer: "/melanoma/detect"
+                  };
+                  router.push(diseaseRoutes[selectedDisease]);
+                }}
+                className="w-full rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:shadow-lg hover:scale-105 transition-all"
+              >
+                🔍 Start a new {cfg.label.toLowerCase()} scan
               </button>
               <button onClick={() => router.push('/patient/reports')} className="w-full rounded-2xl bg-sky-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-sky-700 transition-all">
                 View my previous reports
