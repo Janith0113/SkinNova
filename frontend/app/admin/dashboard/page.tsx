@@ -673,12 +673,6 @@ export default function AdminDashboard() {
               >
                 <span>🔄</span> Refresh
               </button>
-              <button
-                onClick={handleLogout}
-                className="px-6 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105 font-medium"
-              >
-                Logout
-              </button>
             </div>
           </div>
         </div>

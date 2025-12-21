@@ -331,12 +331,6 @@ export default function DoctorDashboard() {
               >
                 <span>📅 Availability</span>
               </button>
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-red-600 transition-all"
-              >
-                <span>Logout</span>
-              </button>
             </div>
           </div>
         </div>
