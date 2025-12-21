@@ -253,18 +253,18 @@ export default function DirectChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 flex flex-col">
+    <div className="min-h-screen pt-16 bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 sm:p-6 shadow-lg flex items-center justify-between">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 sm:p-3 shadow-lg flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Chat with {otherUserName}</h1>
-          <p className="text-sm text-blue-100 mt-1">{user.name}</p>
+          <h1 className="text-lg sm:text-xl font-bold">Chat with {otherUserName}</h1>
+          <p className="text-xs text-blue-100 mt-0.5">{user.name}</p>
         </div>
         <Link
           href={
             user.role === "patient" ? "/patient/dashboard" : "/doctor/dashboard"
           }
-          className="text-white hover:opacity-80 transition-opacity text-2xl"
+          className="text-white hover:opacity-80 transition-opacity text-xl"
           title="Go back"
         >
           ✕
