@@ -271,74 +271,76 @@ export default function DoctorDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 pt-40 pb-24 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 pt-20 pb-24 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-10">
-        {/* Top section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <div className="flex items-center gap-6">
-            {/* Profile Photo - Creative Design */}
+        {/* Modern Header Section - Clean Layout */}
+        <div className="relative p-8 sm:p-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
+          {/* Left side - Profile and text */}
+          <div className="flex items-center gap-6 flex-1">
+            {/* Profile Photo */}
             <div className="relative group">
-              {/* Animated background gradient circles */}
-              <div className="absolute -inset-1 bg-gradient-to-br from-emerald-400 via-sky-500 to-cyan-400 rounded-full blur-xl opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+              <div className="absolute -inset-1 bg-white/30 rounded-full blur-lg group-hover:blur-xl transition-all duration-300"></div>
               
-              {/* Main profile container */}
               <div
                 onClick={() => setShowPhotoModal(true)}
-                className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-emerald-500 to-sky-600 flex items-center justify-center cursor-pointer overflow-hidden group/photo shadow-2xl hover:shadow-3xl transition-all duration-300 border-4 border-white"
+                className="relative w-48 h-48 sm:w-56 sm:h-56 lg:w-64 lg:h-64 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center cursor-pointer overflow-hidden group/photo shadow-2xl hover:shadow-3xl transition-all duration-300 border-4 border-white/40 group-hover:border-white/60"
               >
-                {/* Animated border effect */}
-                <div className="absolute inset-0 rounded-full border-2 border-transparent bg-gradient-to-r from-white/50 via-transparent to-white/50 opacity-0 group-hover/photo:opacity-100 transition-opacity duration-300 animate-spin" style={{ animationDuration: '3s' }}></div>
-                
                 {profilePhoto ? (
                   <img
                     src={profilePhoto}
                     alt="Profile"
-                    className="w-full h-full object-cover relative z-10 group-hover/photo:scale-110 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover/photo:scale-110 transition-transform duration-300"
                   />
                 ) : (
-                  <span className="text-5xl sm:text-6xl relative z-10 group-hover/photo:scale-125 transition-transform duration-300">👨‍⚕️</span>
+                  <span className="text-6xl sm:text-7xl group-hover/photo:scale-125 transition-transform duration-300">👨‍⚕️</span>
                 )}
                 
-                {/* Hover overlay with gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-0 group-hover/photo:opacity-100 transition-all duration-300 flex items-end justify-center pb-4 z-20 rounded-full">
-                  <span className="text-white text-xs font-bold uppercase tracking-wider">Upload</span>
-                </div>
-
-                {/* Status indicator badge */}
-                <div className="absolute -bottom-2 -right-2 w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full border-3 border-white shadow-lg z-30 flex items-center justify-center">
-                  <span className="text-xs">✓</span>
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/photo:opacity-100 transition-opacity duration-300 flex items-center justify-center rounded-full">
+                  <span className="text-white text-sm font-bold">Edit Photo</span>
                 </div>
               </div>
             </div>
 
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-                Welcome back, <span className="bg-gradient-to-r from-emerald-600 to-sky-600 bg-clip-text text-transparent">Dr {user.name}</span>
+            {/* Text Content */}
+            <div className="text-gray-900">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-3 leading-tight text-gray-900">
+                Welcome back,<br />
+                <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Dr {user.name}</span>
               </h1>
-              <p className="mt-3 text-sm sm:text-base text-gray-700 max-w-xl leading-relaxed">
+              <p className="text-sm sm:text-base text-gray-700 max-w-lg leading-relaxed">
                 Manage your patients, review AI-generated skin assessments, and track clinical insights from a single, smart dashboard.
               </p>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-3">
-            <span className="inline-flex items-center rounded-full bg-emerald-600/90 px-3 py-1 text-xs font-semibold text-white shadow-md">
-              Role • {user.role?.toUpperCase()}
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => router.push("/doctor/availability")}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-blue-600 transition-all"
-              >
-                <span>📅 Availability</span>
-              </button>
+
+          {/* Right side - Status and action */}
+          <div className="flex flex-col items-end gap-4">
+            <div className="flex items-center gap-3 px-4 py-3 bg-blue-400/30 backdrop-blur-md rounded-2xl border border-blue-400/60 hover:border-blue-400/80 transition-all">
+              <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
+              <div>
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">System Status</p>
+                <p className="text-sm font-bold text-blue-900">Active</p>
+              </div>
             </div>
+            
+            <button
+              onClick={() => router.push("/doctor/availability")}
+              className="px-6 py-3 bg-sky-400/30 backdrop-blur-md text-sky-700 rounded-2xl font-semibold hover:bg-sky-400/50 transition-all duration-300 border border-sky-400/60 hover:border-sky-400/80 flex items-center gap-2 shadow-lg hover:shadow-xl"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              📅 Manage Availability
+            </button>
           </div>
         </div>
 
-        {/* Stats cards - Professional Modern Design */}
+
+        {/* Stats cards - Professional Modern Design with Transparency */}
         <div className="grid gap-6 sm:grid-cols-3">
           {/* Pending Appointments Card */}
-          <div className="group relative rounded-2xl overflow-hidden bg-white shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100">
+          <div className="group relative rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/20 hover:border-white/40">
             {/* Top gradient accent */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-orange-500"></div>
             
@@ -346,17 +348,17 @@ export default function DoctorDashboard() {
               {/* Header with icon */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center border border-amber-200 group-hover:border-amber-300 transition-colors">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 group-hover:border-white/50 transition-colors">
                     <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Pending</p>
+                    <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Pending</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200">
+                  <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-amber-500/20 backdrop-blur-sm border border-amber-500/40">
                     <span className="text-xs font-semibold text-amber-700">Action Required</span>
                   </div>
                 </div>
@@ -365,16 +367,16 @@ export default function DoctorDashboard() {
               {/* Number display */}
               <div className="mb-4">
                 <div className="text-4xl sm:text-5xl font-bold text-gray-900">{pendingAppointments.length}</div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center gap-2">
+                <p className="text-sm text-gray-700 mt-2 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                   Awaiting your approval
                 </p>
               </div>
               
               {/* Footer progress */}
-              <div className="pt-4 border-t border-gray-100">
+              <div className="pt-4 border-t border-white/20">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-500">Response needed</span>
+                  <span className="text-gray-600">Response needed</span>
                   <span className="font-semibold text-amber-600">Priority</span>
                 </div>
               </div>
@@ -382,7 +384,7 @@ export default function DoctorDashboard() {
           </div>
 
           {/* Approved Appointments Card */}
-          <div className="group relative rounded-2xl overflow-hidden bg-white shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100">
+          <div className="group relative rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/20 hover:border-white/40">
             {/* Top gradient accent */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
             
@@ -390,17 +392,17 @@ export default function DoctorDashboard() {
               {/* Header with icon */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center border border-emerald-200 group-hover:border-emerald-300 transition-colors">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 group-hover:border-white/50 transition-colors">
                     <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Approved</p>
+                    <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Approved</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200">
+                  <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-500/20 backdrop-blur-sm border border-emerald-500/40">
                     <span className="text-xs font-semibold text-emerald-700">Confirmed</span>
                   </div>
                 </div>
@@ -409,16 +411,16 @@ export default function DoctorDashboard() {
               {/* Number display */}
               <div className="mb-4">
                 <div className="text-4xl sm:text-5xl font-bold text-gray-900">{approvedAppointments.length}</div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center gap-2">
+                <p className="text-sm text-gray-700 mt-2 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                   Confirmed with patients
                 </p>
               </div>
               
               {/* Footer progress */}
-              <div className="pt-4 border-t border-gray-100">
+              <div className="pt-4 border-t border-white/20">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-500">Active appointments</span>
+                  <span className="text-gray-600">Active appointments</span>
                   <span className="font-semibold text-emerald-600">On Track</span>
                 </div>
               </div>
@@ -426,7 +428,7 @@ export default function DoctorDashboard() {
           </div>
 
           {/* Total Appointments Card */}
-          <div className="group relative rounded-2xl overflow-hidden bg-white shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100">
+          <div className="group relative rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/20 hover:border-white/40">
             {/* Top gradient accent */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
             
@@ -434,17 +436,17 @@ export default function DoctorDashboard() {
               {/* Header with icon */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center border border-blue-200 group-hover:border-blue-300 transition-colors">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 group-hover:border-white/50 transition-colors">
                     <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total</p>
+                    <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Total</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200">
+                  <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-500/20 backdrop-blur-sm border border-blue-500/40">
                     <span className="text-xs font-semibold text-blue-700">Overview</span>
                   </div>
                 </div>
@@ -453,16 +455,16 @@ export default function DoctorDashboard() {
               {/* Number display */}
               <div className="mb-4">
                 <div className="text-4xl sm:text-5xl font-bold text-gray-900">{appointments.length}</div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center gap-2">
+                <p className="text-sm text-gray-700 mt-2 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                   Overall management
                 </p>
               </div>
               
               {/* Footer progress */}
-              <div className="pt-4 border-t border-gray-100">
+              <div className="pt-4 border-t border-white/20">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-500">Managed patients</span>
+                  <span className="text-gray-600">Managed patients</span>
                   <span className="font-semibold text-blue-600">Complete</span>
                 </div>
               </div>
@@ -580,7 +582,7 @@ export default function DoctorDashboard() {
               <button 
                 onClick={() => router.push("/doctor/appointments")}
                 className="w-full rounded-2xl bg-blue-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-blue-700 transition-all">
-                View All Patients
+                View All Appointments
               </button>
               <button className="w-full rounded-2xl bg-purple-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-purple-700 transition-all">
                 View patient history
