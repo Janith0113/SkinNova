@@ -14,6 +14,9 @@ import availabilityRoutes from './routes/availability'
 import reportRoutes from './routes/reports'
 import reportAccessRoutes from './routes/reportAccess'
 import bannerRoutes from './routes/banner'
+import chatRoutes from './routes/chat'
+import detectionRoutes from './routes/detection'
+import profileRoutes from './routes/profile'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
@@ -29,6 +32,17 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend is running' })
 })
 
+// Temporary endpoint to clear all chats (for testing only)
+app.post('/api/admin/clear-chats', async (req, res) => {
+  try {
+    const Chat = require('./models/Chat').default
+    const result = await Chat.deleteMany({})
+    res.json({ success: true, deletedCount: result.deletedCount, message: `Deleted ${result.deletedCount} chats` })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear chats' })
+  }
+})
+
 app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/doctors', doctorRoutes)
@@ -38,6 +52,9 @@ app.use('/api', appointmentRoutes)
 app.use('/api', reportRoutes)
 app.use('/api', reportAccessRoutes)
 app.use('/api/banners', bannerRoutes)
+app.use('/api', chatRoutes)
+app.use('/api/detect', detectionRoutes)
+app.use('/api/profile', profileRoutes)
 
 async function start() {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://Skin123:Skin123%23@cluster0.ycpp8kz.mongodb.net/?appName=Cluster0'
@@ -45,6 +62,20 @@ async function start() {
   
   // Test email connection
   await testEmailConnection()
+  
+  // Fix existing availability slots - set isActive to true
+  try {
+    const DoctorAvailability = (await import('./models/DoctorAvailability')).default
+    const result = await DoctorAvailability.updateMany(
+      { isActive: false },
+      { isActive: true }
+    )
+    if (result.modifiedCount > 0) {
+      console.log(`Fixed ${result.modifiedCount} availability slots - set isActive to true`)
+    }
+  } catch (err) {
+    console.error('Error fixing availability slots:', err)
+  }
   
   // Ensure admin account exists (admin cannot sign up)
   try {
