@@ -22,7 +22,10 @@ import { testEmailConnection } from './services/mailService'
 const app = express()
 const port = process.env.PORT || 4000
 
-app.use(cors())
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:4000', 'http://127.0.0.1:3000', 'http://192.168.1.24:3000'],
+  credentials: true
+}))
 app.use(express.json())
 
 // Serve uploaded files
