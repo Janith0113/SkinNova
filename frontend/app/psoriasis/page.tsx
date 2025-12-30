@@ -33,13 +33,14 @@ export default function PsoriasisPage() {
         </div>
 
         {/* Detection Section */}
-        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-8 sm:p-12 mb-12 shadow-lg border-2 border-emerald-200">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">What would you like to do?</h2>
+        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl p-8 sm:p-12 mb-12 shadow-lg border-2 border-purple-200">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">AI-Powered Detection</h2>
+          <p className="text-gray-700 mb-6">Use our advanced machine learning model to detect psoriasis from your skin images</p>
           <button
             onClick={() => router.push("/psoriasis/detect")}
-            className="w-full sm:w-auto bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+            className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
           >
-            🔍 Start a new psoriasis scan
+            🔍 Start AI Detection
           </button>
         </div>
 

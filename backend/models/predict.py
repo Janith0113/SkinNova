@@ -1,13 +1,17 @@
 
-    import tensorflow as tf
-    import numpy as np
-    from PIL import Image
-    import os
+import tensorflow as tf
+import numpy as np
+from PIL import Image
+import os
+import sys
+import json
 
-    # Define IMAGE_SIZE and the path to the model
-    # These should match what was used during training
-    IMAGE_SIZE = (224, 224) # Assuming this was the image size used for training
-    MODEL_PATH = 'best_psoriasis_model.keras'
+# Define IMAGE_SIZE and the path to the model
+# These should match what was used during training
+IMAGE_SIZE = (224, 224) # Assuming this was the image size used for training
+# Get the directory where this script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(SCRIPT_DIR, 'best_psoriasis_model (2).keras')
 
     def load_model():
         """Loads the trained TensorFlow model."""
@@ -55,20 +59,20 @@
 
     # Main execution block for the script
     if __name__ == "__main__":
+        # Check if an image path was provided as command line argument
+        if len(sys.argv) < 2:
+            result = {"error": "No image path provided. Usage: python predict.py <image_path>"}
+            print(json.dumps(result))
+            sys.exit(1)
+        
+        image_path = sys.argv[1]
+        
         model = load_model()
         if model is None:
-            exit()
+            result = {"error": "Failed to load model"}
+            print(json.dumps(result))
+            sys.exit(1)
 
-        print("
---- Test Prediction ---")
-        # Example usage (you can modify this to take command line arguments)
-        test_image_path = input("Enter the path to an image file for prediction (e.g., 'sample_image.jpg'): ")
-
-        if test_image_path:
-            result = predict_single_image(model, test_image_path)
-            if "error" in result:
-                print(result["error"])
-            else:
-                print(f"Prediction: {result['label']} (Confidence: {result['confidence']:.4f})")
-        else:
-            print("No image path provided. Exiting.")
+        result = predict_single_image(model, image_path)
+        # Output JSON result so backend can parse it
+        print(json.dumps(result))
