@@ -686,7 +686,7 @@ export default function PatientDashboard() {
               <button 
                 onClick={() => {
                   const diseaseRoutes: Record<DiseaseKey, string> = {
-                    psoriasis: "/psoriasis/detect",
+                    psoriasis: "/psoriasis/upload",
                     tinea: "/tinea/detect",
                     leprosy: "/leprosy/detect",
                     skinCancer: "/melanoma/detect"

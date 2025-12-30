@@ -37,7 +37,7 @@ export default function PsoriasisPage() {
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">AI-Powered Detection</h2>
           <p className="text-gray-700 mb-6">Use our advanced machine learning model to detect psoriasis from your skin images</p>
           <button
-            onClick={() => router.push("/psoriasis/detect")}
+            onClick={() => router.push("/psoriasis/upload")}
             className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
           >
             🔍 Start AI Detection
