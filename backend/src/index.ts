@@ -15,7 +15,6 @@ import reportRoutes from './routes/reports'
 import reportAccessRoutes from './routes/reportAccess'
 import bannerRoutes from './routes/banner'
 import chatRoutes from './routes/chat'
-import detectionRoutes from './routes/detection'
 import newDetectionRoutes from './routes/newDetection'
 import profileRoutes from './routes/profile'
 import { testEmailConnection } from './services/mailService'
@@ -60,7 +59,6 @@ app.use('/api', reportRoutes)
 app.use('/api', reportAccessRoutes)
 app.use('/api/banners', bannerRoutes)
 app.use('/api', chatRoutes)
-app.use('/api/detect', detectionRoutes)
 app.use('/api/analysis', newDetectionRoutes)
 app.use('/api/profile', profileRoutes)
 
