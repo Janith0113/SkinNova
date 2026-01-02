@@ -15,15 +15,21 @@ import reportRoutes from './routes/reports'
 import reportAccessRoutes from './routes/reportAccess'
 import bannerRoutes from './routes/banner'
 import chatRoutes from './routes/chat'
-import detectionRoutes from './routes/detection'
+import newDetectionRoutes from './routes/newDetection'
 import profileRoutes from './routes/profile'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
 const port = process.env.PORT || 4000
 
-app.use(cors())
-app.use(express.json())
+// Enhanced CORS configuration
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
+app.use(express.json({ limit: '50mb' }))
+app.use(express.urlencoded({ limit: '50mb', extended: true }))
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
@@ -53,7 +59,7 @@ app.use('/api', reportRoutes)
 app.use('/api', reportAccessRoutes)
 app.use('/api/banners', bannerRoutes)
 app.use('/api', chatRoutes)
-app.use('/api/detect', detectionRoutes)
+app.use('/api/analysis', newDetectionRoutes)
 app.use('/api/profile', profileRoutes)
 
 async function start() {
