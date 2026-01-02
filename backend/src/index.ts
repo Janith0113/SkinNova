@@ -66,8 +66,8 @@ async function start() {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://Skin123:Skin123%23@cluster0.ycpp8kz.mongodb.net/?appName=Cluster0'
   await connectDb(uri)
   
-  // Test email connection
-  await testEmailConnection()
+  // Skip email connection test - configure in .env if needed
+  console.log('Email service: Skipped (configure GMAIL_USER and GMAIL_APP_PASSWORD in .env to enable)')
   
   // Fix existing availability slots - set isActive to true
   try {

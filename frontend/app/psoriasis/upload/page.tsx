@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import * as tmImage from "@teachablemachine/image";
 import Spinner from "@/components/Spinner";
 import Results from "@/components/Results";
@@ -26,7 +27,9 @@ export default function PsoriasisDetection() {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [classifying, setClassifying] = useState(false);
     const [predictions, setPredictions] = useState<Prediction[] | null>(null);
+    const [savingResult, setSavingResult] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
+    const router = useRouter();
 
     // Load model on mount
     useEffect(() => {
@@ -92,6 +95,60 @@ export default function PsoriasisDetection() {
         setSelectedImage(null);
         setPreviewUrl(null);
         setPredictions(null);
+    };
+
+    const saveScanResult = async () => {
+        if (!predictions || predictions.length === 0) return;
+
+        try {
+            setSavingResult(true);
+            const token = localStorage.getItem("token");
+            const sortedPredictions = [...predictions].sort((a, b) => b.probability - a.probability);
+            const topPrediction = sortedPredictions[0];
+
+            // Determine scan status based on confidence
+            let scanStatus = "Monitor";
+            const confidence = topPrediction.probability;
+            
+            if (confidence > 0.8) {
+                scanStatus = topPrediction.className === "Psoriasis" ? "Stable" : "Improving";
+            } else if (confidence > 0.5) {
+                scanStatus = "Monitor";
+            }
+
+            const scanData = {
+                diseaseType: "psoriasis",
+                skinCondition: topPrediction.className,
+                confidence: topPrediction.probability,
+                scanArea: "General", // Could be enhanced with user selection
+                scanStatus: scanStatus,
+                reportName: `Psoriasis Scan - ${new Date().toLocaleDateString()}`
+            };
+
+            const response = await fetch("http://localhost:4000/api/analysis/save-scan", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(scanData)
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to save scan result");
+            }
+
+            // Show success and redirect
+            alert("✅ Scan result saved successfully! Redirecting to dashboard...");
+            setTimeout(() => {
+                router.push("/patient/dashboard");
+            }, 1000);
+        } catch (err) {
+            console.error("Error saving scan:", err);
+            alert("Failed to save scan result. You can still view your results.");
+        } finally {
+            setSavingResult(false);
+        }
     };
 
     return (
@@ -275,20 +332,37 @@ export default function PsoriasisDetection() {
                                 >
                                     ↻ Change Image
                                 </button>
-                                <button
-                                    onClick={handleClassify}
-                                    disabled={!model || classifying}
-                                    className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg hover:shadow-xl text-base active:scale-95"
-                                >
-                                    {classifying ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <span className="inline-block animate-spin">⚙️</span>
-                                            Analyzing...
-                                        </span>
-                                    ) : (
-                                        "✨ Analyze Now"
-                                    )}
-                                </button>
+                                {!predictions ? (
+                                    <button
+                                        onClick={handleClassify}
+                                        disabled={!model || classifying}
+                                        className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg hover:shadow-xl text-base active:scale-95"
+                                    >
+                                        {classifying ? (
+                                            <span className="flex items-center justify-center gap-2">
+                                                <span className="inline-block animate-spin">⚙️</span>
+                                                Analyzing...
+                                            </span>
+                                        ) : (
+                                            "✨ Analyze Now"
+                                        )}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={saveScanResult}
+                                        disabled={savingResult}
+                                        className="flex-1 px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg hover:shadow-xl text-base active:scale-95"
+                                    >
+                                        {savingResult ? (
+                                            <span className="flex items-center justify-center gap-2">
+                                                <span className="inline-block animate-spin">⚙️</span>
+                                                Saving...
+                                            </span>
+                                        ) : (
+                                            "💾 Save & Continue to Dashboard"
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
