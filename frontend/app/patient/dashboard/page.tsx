@@ -150,6 +150,121 @@ const DISEASE_CONFIG: Record<
   },
 };
 
+interface SymptomQuestion {
+  id: number;
+  question: string;
+  answers: { text: string; diseaseScores: Record<DiseaseKey, number> }[];
+}
+
+const SYMPTOM_QUESTIONS: SymptomQuestion[] = [
+  {
+    id: 1,
+    question: "Where do you see the skin issue on your body?",
+    answers: [
+      {
+        text: "Elbows, knees, scalp (extensor surfaces)",
+        diseaseScores: { psoriasis: 8, tinea: 2, leprosy: 1, skinCancer: 1 },
+      },
+      {
+        text: "Neck, chest, back, inner thighs (warm, moist areas)",
+        diseaseScores: { psoriasis: 2, tinea: 8, leprosy: 2, skinCancer: 1 },
+      },
+      {
+        text: "Face, hands, patches with numbness",
+        diseaseScores: { psoriasis: 2, tinea: 2, leprosy: 8, skinCancer: 4 },
+      },
+      {
+        text: "Anywhere, especially sun-exposed areas",
+        diseaseScores: { psoriasis: 1, tinea: 1, leprosy: 1, skinCancer: 9 },
+      },
+    ],
+  },
+  {
+    id: 2,
+    question: "What does the skin look like?",
+    answers: [
+      {
+        text: "Red, scaly, raised plaques with silvery scales",
+        diseaseScores: { psoriasis: 9, tinea: 3, leprosy: 1, skinCancer: 1 },
+      },
+      {
+        text: "Ring-shaped patches with clear center (circular)",
+        diseaseScores: { psoriasis: 1, tinea: 9, leprosy: 2, skinCancer: 1 },
+      },
+      {
+        text: "Light-colored flat patches or nodules",
+        diseaseScores: { psoriasis: 2, tinea: 1, leprosy: 9, skinCancer: 2 },
+      },
+      {
+        text: "Mole or spot with irregular shape or multiple colors",
+        diseaseScores: { psoriasis: 1, tinea: 1, leprosy: 1, skinCancer: 10 },
+      },
+    ],
+  },
+  {
+    id: 3,
+    question: "How long has this been present?",
+    answers: [
+      {
+        text: "Weeks to months (chronic condition)",
+        diseaseScores: { psoriasis: 8, tinea: 6, leprosy: 7, skinCancer: 4 },
+      },
+      {
+        text: "Recent development (days to weeks)",
+        diseaseScores: { psoriasis: 3, tinea: 8, leprosy: 2, skinCancer: 5 },
+      },
+      {
+        text: "Present for years with slow progression",
+        diseaseScores: { psoriasis: 6, tinea: 2, leprosy: 9, skinCancer: 8 },
+      },
+    ],
+  },
+  {
+    id: 4,
+    question: "Is there any of the following?",
+    answers: [
+      {
+        text: "Itching or burning sensation",
+        diseaseScores: { psoriasis: 8, tinea: 9, leprosy: 2, skinCancer: 3 },
+      },
+      {
+        text: "Numbness or reduced sensation",
+        diseaseScores: { psoriasis: 1, tinea: 1, leprosy: 9, skinCancer: 1 },
+      },
+      {
+        text: "Bleeding, oozing, or texture changes",
+        diseaseScores: { psoriasis: 5, tinea: 2, leprosy: 3, skinCancer: 8 },
+      },
+      {
+        text: "No specific sensation issues",
+        diseaseScores: { psoriasis: 4, tinea: 5, leprosy: 2, skinCancer: 4 },
+      },
+    ],
+  },
+  {
+    id: 5,
+    question: "How did it start?",
+    answers: [
+      {
+        text: "After exposure to heat, sweat, or moisture",
+        diseaseScores: { psoriasis: 2, tinea: 10, leprosy: 1, skinCancer: 1 },
+      },
+      {
+        text: "After stress, weather changes, or injury",
+        diseaseScores: { psoriasis: 9, tinea: 2, leprosy: 1, skinCancer: 1 },
+      },
+      {
+        text: "Gradually, with slow changes over time",
+        diseaseScores: { psoriasis: 5, tinea: 1, leprosy: 8, skinCancer: 7 },
+      },
+      {
+        text: "Unsure of the cause",
+        diseaseScores: { psoriasis: 3, tinea: 3, leprosy: 3, skinCancer: 5 },
+      },
+    ],
+  },
+];
+
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
   const [profilePhoto, setProfilePhoto] = useState<string>("");
@@ -169,6 +284,16 @@ export default function PatientDashboard() {
   // Scan data states
   const [scanData, setScanData] = useState<{ [key: string]: any }>({});
   const [loadingScans, setLoadingScans] = useState(false);
+  // Symptom checker states
+  const [showSymptomChecker, setShowSymptomChecker] = useState(false);
+  const [currentSymptomQuestion, setCurrentSymptomQuestion] = useState(0);
+  const [symptomScores, setSymptomScores] = useState<Record<DiseaseKey, number>>({
+    psoriasis: 0,
+    tinea: 0,
+    leprosy: 0,
+    skinCancer: 0,
+  });
+  const [recommendedDisease, setRecommendedDisease] = useState<DiseaseKey | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -581,6 +706,41 @@ export default function PatientDashboard() {
     return "High";
   }
 
+  const handleSymptomAnswer = (diseaseScores: Record<DiseaseKey, number>) => {
+    // Add the scores from this answer to the running total
+    const newScores = { ...symptomScores };
+    (Object.keys(diseaseScores) as DiseaseKey[]).forEach((key) => {
+      newScores[key] += diseaseScores[key];
+    });
+    setSymptomScores(newScores);
+
+    // Move to next question or finish quiz
+    if (currentSymptomQuestion < SYMPTOM_QUESTIONS.length - 1) {
+      setCurrentSymptomQuestion(currentSymptomQuestion + 1);
+    } else {
+      // Quiz finished - find the disease with highest score
+      const highestScore = Math.max(...Object.values(newScores));
+      const recommended = (Object.keys(newScores) as DiseaseKey[]).find(
+        (key) => newScores[key] === highestScore
+      ) || "psoriasis";
+      setRecommendedDisease(recommended);
+    }
+  };
+
+  const handleCloseSymptomChecker = () => {
+    setShowSymptomChecker(false);
+    setCurrentSymptomQuestion(0);
+    setRecommendedDisease(null);
+    setSymptomScores({ psoriasis: 0, tinea: 0, leprosy: 0, skinCancer: 0 });
+  };
+
+  const handleSelectRecommendedDisease = () => {
+    if (recommendedDisease) {
+      setSelectedDisease(recommendedDisease);
+      handleCloseSymptomChecker();
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100">
@@ -642,7 +802,7 @@ export default function PatientDashboard() {
                 Hi, <span className="bg-gradient-to-r from-emerald-600 to-sky-600 bg-clip-text text-transparent">{user.name}</span>
               </h1>
               <p className="mt-3 text-sm sm:text-base text-gray-700 max-w-xl leading-relaxed">
-                Welcome to your SkinNova space. Track your skin health, review AI insights,
+                Welcome to your skinova space. Track your skin health, review AI insights,
                 and stay ahead of potential issues with simple, clear guidance.
               </p>
             </div>
@@ -683,6 +843,12 @@ export default function PatientDashboard() {
           </div>
 
           <div className="flex gap-3">
+            <button
+              onClick={() => setShowSymptomChecker(true)}
+              className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-purple-400"
+            >
+              🔍 Symptom Checker
+            </button>
             {selectedDisease === "skinCancer" && (
               <button
                 onClick={() => router.push("/skin-cancer")}
@@ -1105,6 +1271,154 @@ export default function PatientDashboard() {
                 >
                   Done
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Symptom Checker Modal */}
+        {showSymptomChecker && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+              {/* Header */}
+              <div className="px-5 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+                <div className="relative z-10">
+                  <h2 className="text-2xl font-bold text-white">🩺 Symptom Checker</h2>
+                  <p className="text-white/90 text-sm mt-2">
+                    {recommendedDisease ? "Your Results" : "Let's help you identify what you might have. Answer these questions based on your symptoms."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Quiz Content */}
+              <div className="px-5 py-6">
+                {recommendedDisease ? (
+                  // RESULTS SCREEN
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="text-5xl mb-2">✓</div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-1">
+                        Based on your symptoms, we recommend:
+                      </h3>
+                      <p className="text-gray-600 text-xs">
+                        Please consult a doctor for accurate diagnosis.
+                      </p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border-2 border-purple-200">
+                      <div className="text-center space-y-2">
+                        <div className="text-4xl">
+                          {recommendedDisease === "psoriasis" && "🔴"}
+                          {recommendedDisease === "tinea" && "🟡"}
+                          {recommendedDisease === "leprosy" && "🔴"}
+                          {recommendedDisease === "skinCancer" && "⚫"}
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          {recommendedDisease === "psoriasis" && "Psoriasis"}
+                          {recommendedDisease === "tinea" && "Tinea"}
+                          {recommendedDisease === "leprosy" && "Leprosy"}
+                          {recommendedDisease === "skinCancer" && "Skin Cancer"}
+                        </h2>
+                        <p className="text-xs text-gray-700 font-medium">
+                          Confidence: {Math.round((symptomScores[recommendedDisease] / 45) * 100)}%
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                      <p className="text-xs text-blue-800 leading-relaxed">
+                        <strong>📋 Next Steps:</strong> Accept to view details, review symptoms, take a scan, or book a doctor.
+                      </p>
+                    </div>
+
+                    <p className="text-xs text-gray-500 text-center">
+                      ⚠️ Not a medical diagnosis. Consult a healthcare professional.
+                    </p>
+                  </div>
+                ) : (
+                  // QUIZ SCREEN
+                  <>
+                    {/* Progress Bar */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-gray-700">
+                          Q{currentSymptomQuestion + 1}/{SYMPTOM_QUESTIONS.length}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {Math.round(((currentSymptomQuestion + 1) / SYMPTOM_QUESTIONS.length) * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 h-1.5 rounded-full transition-all duration-300"
+                          style={{
+                            width: `${((currentSymptomQuestion + 1) / SYMPTOM_QUESTIONS.length) * 100}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Current Question */}
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-bold text-gray-900">
+                        {SYMPTOM_QUESTIONS[currentSymptomQuestion].question}
+                      </h3>
+
+                      <div className="space-y-2">
+                        {SYMPTOM_QUESTIONS[currentSymptomQuestion].answers.map((answer, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSymptomAnswer(answer.diseaseScores)}
+                            className="w-full text-left p-3 rounded-lg border border-gray-200 bg-white hover:border-purple-500 hover:bg-purple-50 transition-all duration-200 group"
+                          >
+                            <span className="text-xs font-medium text-gray-700 group-hover:text-purple-700">
+                              {answer.text}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Help Text */}
+                    <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-xs text-blue-800">
+                        💡 Not a medical diagnosis. Consult a doctor.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-3 bg-gray-50 rounded-b-2xl border-t border-gray-200 flex justify-between items-center gap-2">
+                <button
+                  onClick={handleCloseSymptomChecker}
+                  className="px-3 py-1.5 text-sm bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+                >
+                  {recommendedDisease ? "Close" : "Cancel"}
+                </button>
+                
+                {recommendedDisease && (
+                  <button
+                    onClick={handleSelectRecommendedDisease}
+                    className="px-4 py-1.5 text-sm bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+                  >
+                    ✅ Accept
+                  </button>
+                )}
+
+                {!recommendedDisease && currentSymptomQuestion > 0 && (
+                  <button
+                    onClick={() => {
+                      setCurrentSymptomQuestion(currentSymptomQuestion - 1);
+                    }}
+                    className="px-3 py-1.5 text-sm bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition-colors font-medium"
+                  >
+                    ← Back
+                  </button>
+                )}
               </div>
             </div>
           </div>
