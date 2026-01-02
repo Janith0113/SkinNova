@@ -41,7 +41,7 @@ export default function Footer() {
                 <span>System status: Online</span>
               </span>
               <span className="text-[10px] text-gray-300">
-                © {new Date().getFullYear()} SkinNova. For educational use only.
+                © {new Date().getFullYear()} skinova. For educational use only.
               </span>
             </div>
           </div>
