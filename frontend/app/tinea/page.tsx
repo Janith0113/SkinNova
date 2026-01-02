@@ -478,10 +478,10 @@ export default function TinePage() {
             {!doishaResult && detectionMode === 'tinea' && !result && (
               <div className="mb-8">
                 <p className="text-center text-gray-700 font-semibold mb-6">Choose what you want to detect:</p>
-                <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                <div className="mb-8">
                   <button
                     onClick={() => setDetectionMode('tinea')}
-                    className={`p-6 rounded-2xl font-semibold transition-all ${
+                    className={`w-full p-6 rounded-2xl font-semibold transition-all ${
                       detectionMode === 'tinea'
                         ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
                         : 'bg-white/60 border border-orange-300 text-gray-900 hover:border-orange-500'
@@ -489,17 +489,6 @@ export default function TinePage() {
                   >
                     🔍 Tinea Detection
                     <p className="text-sm mt-2 opacity-90">Image-based fungal infection analysis</p>
-                  </button>
-                  <button
-                    onClick={() => setDetectionMode('doisha')}
-                    className={`p-6 rounded-2xl font-semibold transition-all ${
-                      detectionMode === 'doisha'
-                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg'
-                        : 'bg-white/60 border border-purple-300 text-gray-900 hover:border-purple-500'
-                    }`}
-                  >
-                    🧘 Doisha Assessment
-                    <p className="text-sm mt-2 opacity-90">Quick ayurvedic overview</p>
                   </button>
                 </div>
                 <div className="text-center">
@@ -518,6 +507,36 @@ export default function TinePage() {
               <>
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">🔍 Tinea AI Detection</h1>
                 <p className="text-gray-700 text-lg mb-8">Upload or capture an image for instant AI-powered analysis</p>
+
+                {/* Smart Device Connector */}
+                <div className="mb-8 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-2xl p-6 border-2 border-blue-300">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    📱 Smart Device Connector
+                  </h3>
+                  <p className="text-gray-700 mb-4">Connect your devices to import images directly:</p>
+                  <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
+                    <button className="p-4 bg-white/70 hover:bg-white rounded-xl transition-all text-center hover:shadow-lg">
+                      <div className="text-4xl mb-2">📱</div>
+                      <p className="font-semibold text-sm text-gray-900">Smartphone</p>
+                      <p className="text-xs text-gray-600 mt-1">iOS/Android</p>
+                    </button>
+                    <button className="p-4 bg-white/70 hover:bg-white rounded-xl transition-all text-center hover:shadow-lg">
+                      <div className="text-4xl mb-2">⌚</div>
+                      <p className="font-semibold text-sm text-gray-900">Smartwatch</p>
+                      <p className="text-xs text-gray-600 mt-1">Health Data</p>
+                    </button>
+                    <button className="p-4 bg-white/70 hover:bg-white rounded-xl transition-all text-center hover:shadow-lg">
+                      <div className="text-4xl mb-2">☁️</div>
+                      <p className="font-semibold text-sm text-gray-900">Cloud Storage</p>
+                      <p className="text-xs text-gray-600 mt-1">Google/iCloud</p>
+                    </button>
+                    <button className="p-4 bg-white/70 hover:bg-white rounded-xl transition-all text-center hover:shadow-lg">
+                      <div className="text-4xl mb-2">🔌</div>
+                      <p className="font-semibold text-sm text-gray-900">USB Device</p>
+                      <p className="text-xs text-gray-600 mt-1">Camera</p>
+                    </button>
+                  </div>
+                </div>
 
             {!result ? (
               <div className="space-y-8">
@@ -836,6 +855,11 @@ export default function TinePage() {
                   >
                     🔍 Analyze Image
                   </button>
+                  <Link href="/dosha-quiz" className="flex-1">
+                    <button className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:shadow-lg transition-all transform hover:scale-105">
+                      📊 Full Dashboard
+                    </button>
+                  </Link>
                 </div>
               </div>
             )}
