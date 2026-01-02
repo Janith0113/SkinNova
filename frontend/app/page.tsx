@@ -53,7 +53,7 @@ export default function DashboardPage() {
                 Overview
               </p>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mt-1">
-                Skin Nova Conditions
+                SkiNova Conditions
               </h1>
               <p className="mt-2 text-sm sm:text-base text-gray-700 max-w-xl">
                 Choose a condition to explore focused explanations, risk cues, and guidance tailored to that specific disease.

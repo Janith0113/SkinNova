@@ -757,7 +757,7 @@ export default function PatientDashboard() {
   const riskLevel = getAverageRiskLevel(selectedDisease);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 py-24 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 pt-28 px-4 sm:px-6 lg:px-8 pb-24">
       <div className="max-w-6xl mx-auto space-y-10">
         {/* Top section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
