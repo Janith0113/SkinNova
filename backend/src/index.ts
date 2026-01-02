@@ -15,18 +15,21 @@ import reportRoutes from './routes/reports'
 import reportAccessRoutes from './routes/reportAccess'
 import bannerRoutes from './routes/banner'
 import chatRoutes from './routes/chat'
-import detectionRoutes from './routes/detection'
+import newDetectionRoutes from './routes/newDetection'
 import profileRoutes from './routes/profile'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
 const port = process.env.PORT || 4000
 
+// Enhanced CORS configuration
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:4000', 'http://127.0.0.1:3000', 'http://192.168.1.24:3000'],
-  credentials: true
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }))
-app.use(express.json())
+app.use(express.json({ limit: '50mb' }))
+app.use(express.urlencoded({ limit: '50mb', extended: true }))
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
@@ -56,15 +59,15 @@ app.use('/api', reportRoutes)
 app.use('/api', reportAccessRoutes)
 app.use('/api/banners', bannerRoutes)
 app.use('/api', chatRoutes)
-app.use('/api/detect', detectionRoutes)
+app.use('/api/analysis', newDetectionRoutes)
 app.use('/api/profile', profileRoutes)
 
 async function start() {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://Skin123:Skin123%23@cluster0.ycpp8kz.mongodb.net/?appName=Cluster0'
   await connectDb(uri)
   
-  // Test email connection
-  await testEmailConnection()
+  // Skip email connection test - configure in .env if needed
+  console.log('Email service: Skipped (configure GMAIL_USER and GMAIL_APP_PASSWORD in .env to enable)')
   
   // Fix existing availability slots - set isActive to true
   try {

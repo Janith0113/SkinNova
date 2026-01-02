@@ -7,23 +7,21 @@ import fs from 'fs'
 
 const router = Router()
 
-// PUBLIC: Get all doctors (for now showing all, will filter verified later)
+// PUBLIC: Get verified doctors only
 router.get('/verified', async (req: Request, res: Response) => {
   try {
-    // Get ALL doctors for testing (will show all doctors regardless of verification status)
-    const allDoctors = await User.find({ role: 'doctor' }).select('_id name email role verified')
+    // Get ONLY verified doctors
+    const verifiedDoctors = await User.find({ role: 'doctor', verified: true }).select('_id name email phone role verified specialization experience location profile')
     
-    console.log("Fetching doctors. Found total:", allDoctors.length);
-    console.log("Doctors:", allDoctors);
+    console.log("Fetching verified doctors. Found total:", verifiedDoctors.length);
     
-    // For now return all doctors, later change to filter by verified: true
     res.json({
       success: true,
-      doctors: allDoctors,
-      count: allDoctors.length,
+      doctors: verifiedDoctors,
+      count: verifiedDoctors.length,
     })
   } catch (error) {
-    console.error('Error fetching doctors:', error)
+    console.error('Error fetching verified doctors:', error)
     res.status(500).json({ error: 'Failed to fetch doctors' })
   }
 })

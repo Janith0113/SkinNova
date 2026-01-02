@@ -166,6 +166,9 @@ export default function PatientDashboard() {
     reason: "",
   });
   const [doctorAvailability, setDoctorAvailability] = useState<any[]>([]);
+  // Scan data states
+  const [scanData, setScanData] = useState<{ [key: string]: any }>({});
+  const [loadingScans, setLoadingScans] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -189,8 +192,18 @@ export default function PatientDashboard() {
     if (user?.role === "patient") {
       fetchAppointments();
       fetchVerifiedDoctors();
-      const interval = setInterval(fetchAppointments, 5000);
-      return () => clearInterval(interval);
+      fetchAllScans();
+      
+      // Refetch every 5 seconds for appointments
+      const appointmentInterval = setInterval(fetchAppointments, 5000);
+      
+      // Refetch scans every 10 seconds to catch newly saved scans
+      const scanInterval = setInterval(fetchAllScans, 10000);
+      
+      return () => {
+        clearInterval(appointmentInterval);
+        clearInterval(scanInterval);
+      };
     }
   }, [user]);
 
@@ -239,6 +252,35 @@ export default function PatientDashboard() {
     } catch (err) {
       console.error("Error fetching doctors:", err);
       setDoctors([]);
+    }
+  };
+
+  const fetchAllScans = async () => {
+    try {
+      setLoadingScans(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:4000/api/analysis/all-scans", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Error fetching scans:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success && data.scansByDisease) {
+        setScanData(data.scansByDisease);
+        console.log("Scans loaded:", data.scansByDisease);
+      }
+    } catch (err) {
+      console.error("Error fetching scans:", err);
+    } finally {
+      setLoadingScans(false);
     }
   };
 
@@ -496,6 +538,49 @@ export default function PatientDashboard() {
     }
   };
 
+  function getTimeSinceScan(date: string): string {
+    const scanDate = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - scanDate.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffDays === 0) {
+      if (diffHours === 0) return "Today";
+      return `${diffHours}h ago`;
+    } else if (diffDays === 1) {
+      return "1 day ago";
+    } else {
+      return `${diffDays} days ago`;
+    }
+  }
+
+  function getRecentScans(diseaseType: string): any[] {
+    const scans = scanData[diseaseType] || [];
+    return scans.slice(0, 3); // Get last 3 scans
+  }
+
+  function getLatestScanDate(diseaseType: string): string {
+    const scans = scanData[diseaseType] || [];
+    if (scans.length > 0) {
+      return getTimeSinceScan(scans[0].uploadedAt);
+    }
+    return "No scans yet";
+  }
+
+  function getAverageRiskLevel(diseaseType: string): string {
+    const scans = scanData[diseaseType] || [];
+    if (scans.length === 0) return "No data";
+    
+    const confidences = scans.map((s: any) => s.confidence || 0);
+    const avgConfidence = confidences.reduce((a: number, b: number) => a + b, 0) / confidences.length;
+    
+    if (avgConfidence < 0.3) return "Low";
+    if (avgConfidence < 0.6) return "Medium";
+    if (avgConfidence < 0.8) return "Medium-High";
+    return "High";
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100">
@@ -507,6 +592,9 @@ export default function PatientDashboard() {
   }
 
   const cfg = DISEASE_CONFIG[selectedDisease];
+  const recentScans = getRecentScans(selectedDisease);
+  const latestScanTime = getLatestScanDate(selectedDisease);
+  const riskLevel = getAverageRiskLevel(selectedDisease);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 py-24 px-4 sm:px-6 lg:px-8">
@@ -594,14 +682,16 @@ export default function PatientDashboard() {
             })}
           </div>
 
-          {selectedDisease === "skinCancer" && (
-            <button
-              onClick={() => router.push("/skin-cancer")}
-              className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-green-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-blue-400"
-            >
-              📚 Learn More
-            </button>
-          )}
+          <div className="flex gap-3">
+            {selectedDisease === "skinCancer" && (
+              <button
+                onClick={() => router.push("/skin-cancer")}
+                className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-green-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-blue-400"
+              >
+                📚 Learn More
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Status cards – content depends on selectedDisease */}
@@ -611,7 +701,7 @@ export default function PatientDashboard() {
               Last Scan ({cfg.label})
             </span>
             <span className="text-lg font-bold text-gray-900">
-              {cfg.lastScan}
+              {loadingScans ? "Loading..." : latestScanTime}
             </span>
             <span className={`text-xs font-medium ${cfg.accent}`}>
               {cfg.upcomingHint}
@@ -622,7 +712,7 @@ export default function PatientDashboard() {
               AI Risk Level
             </span>
             <span className={`text-lg font-bold ${cfg.riskColor}`}>
-              {cfg.risk}
+              {loadingScans ? "Loading..." : riskLevel}
             </span>
             <span className="text-xs text-amber-700 font-medium">
               {cfg.riskHint}
@@ -654,24 +744,58 @@ export default function PatientDashboard() {
             </div>
 
             <div className="space-y-4">
-              {cfg.checks.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between rounded-2xl bg-white/50 px-4 py-3 shadow-sm hover:shadow-md transition-all"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {item.area}
-                    </p>
-                    <p className="text-xs text-gray-600">{item.label}</p>
-                  </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${item.color}`}
+              {loadingScans ? (
+                <div className="text-center py-8 text-gray-600">Loading scan data...</div>
+              ) : recentScans.length > 0 ? (
+                recentScans.map((scan: any, i: number) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-2xl bg-white/50 px-4 py-3 shadow-sm hover:shadow-md transition-all"
                   >
-                    {item.status}
-                  </span>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {scan.scanArea || 'Area'}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {scan.skinCondition || 'Analysis'} ({(scan.confidence * 100).toFixed(0)}% confidence)
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
+                        scan.scanStatus === 'Stable' ? 'text-emerald-700 bg-emerald-100' :
+                        scan.scanStatus === 'Improving' ? 'text-sky-700 bg-sky-100' :
+                        scan.scanStatus === 'Monitor' ? 'text-amber-700 bg-amber-100' :
+                        scan.scanStatus === 'Needs review' ? 'text-red-700 bg-red-100' :
+                        scan.scanStatus === 'Healed' ? 'text-emerald-800 bg-emerald-200' :
+                        'text-red-700 bg-red-100'
+                      }`}
+                    >
+                      {scan.scanStatus || 'Monitor'}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="space-y-4">
+                  {cfg.checks.map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-2xl bg-white/50 px-4 py-3 shadow-sm hover:shadow-md transition-all"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {item.area}
+                        </p>
+                        <p className="text-xs text-gray-600">{item.label}</p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${item.color}`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -684,7 +808,7 @@ export default function PatientDashboard() {
               <button 
                 onClick={() => {
                   const diseaseRoutes: Record<DiseaseKey, string> = {
-                    psoriasis: "/psoriasis/detect",
+                    psoriasis: "/psoriasis/upload",
                     tinea: "/tinea/detect",
                     leprosy: "/leprosy/detect",
                     skinCancer: "/melanoma/detect"
@@ -724,20 +848,55 @@ export default function PatientDashboard() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {doctors.map((doctor) => (
-                <div key={doctor._id} className="bg-white/40 rounded-2xl p-5 border border-white/50 hover:shadow-lg transition-all">
-                  <div className="flex flex-col gap-3">
+                <div key={doctor._id} className="bg-white/40 rounded-2xl p-5 border border-white/50 hover:shadow-lg transition-all hover:scale-105 duration-300">
+                  <div className="flex flex-col gap-4 h-full">
+                    {/* Doctor Header */}
                     <div>
-                      <p className="text-lg font-semibold text-gray-900">Dr. {doctor.name}</p>
-                      <p className="text-xs text-gray-600 mt-1">{doctor.email}</p>
-                      <div className="mt-2 inline-flex items-center rounded-full bg-emerald-100 px-2 py-1">
-                        <span className="text-xs font-semibold text-emerald-700">✓ Verified</span>
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="text-lg font-bold text-gray-900">Dr. {doctor.name}</p>
+                          <p className="text-xs text-gray-600 mt-1">📧 {doctor.email}</p>
+                        </div>
+                        <div className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-1 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-emerald-700">✓ Verified</span>
+                        </div>
+                      </div>
+                      
+                      {/* Additional Doctor Info */}
+                      <div className="mt-3 space-y-2 text-xs">
+                        {doctor.specialization && (
+                          <p className="flex items-center gap-2 text-gray-700">
+                            <span>🩺</span>
+                            <span className="font-medium">{doctor.specialization}</span>
+                          </p>
+                        )}
+                        {doctor.phone && (
+                          <p className="flex items-center gap-2 text-gray-700">
+                            <span>📱</span>
+                            <span>{doctor.phone}</span>
+                          </p>
+                        )}
+                        {doctor.experience && (
+                          <p className="flex items-center gap-2 text-gray-700">
+                            <span>⏱️</span>
+                            <span>{doctor.experience} years experience</span>
+                          </p>
+                        )}
+                        {doctor.location && (
+                          <p className="flex items-center gap-2 text-gray-700">
+                            <span>📍</span>
+                            <span>{doctor.location}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
+                    
+                    {/* Action Button */}
                     <button
                       onClick={() => handleScheduleAppointment(doctor._id)}
-                      className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all text-sm"
+                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-bold shadow-md hover:shadow-lg transition-all text-sm mt-auto"
                     >
-                      Book Appointment
+                      📅 Book Appointment
                     </button>
                   </div>
                 </div>
@@ -755,47 +914,10 @@ export default function PatientDashboard() {
           {appointments.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-700 text-lg">No appointments scheduled yet</p>
-              <p className="text-gray-600 text-sm mt-2">Request an appointment through the admin to schedule with a doctor</p>
+              <p className="text-gray-600 text-sm mt-2">Book an appointment with a doctor from the available doctors section</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Pending Appointments */}
-              {appointments.filter(apt => apt.status === "pending").length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-yellow-700 mb-3">⏳ Pending (Waiting for Doctor Approval)</h3>
-                  <div className="space-y-3">
-                    {appointments.filter(apt => apt.status === "pending").map((apt) => (
-                      <div key={apt._id} className="bg-yellow-50 rounded-2xl p-4 border border-yellow-200">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900">
-                              Dr. {apt.doctorName}
-                            </p>
-                            <p className="text-xs text-gray-700 mt-1">
-                              📅 Requested: {new Date(apt.requestedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                              {apt.requestedDate && new Date(apt.requestedDate).getHours() !== 0 && (
-                                <span className="ml-2">at {new Date(apt.requestedDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                              )}
-                            </p>
-                            <p className="text-xs text-gray-700 mt-1">
-                              📝 Reason: {apt.reason}
-                            </p>
-                            {apt.location?.address && (
-                              <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
-                                📍 {apt.location.address}
-                              </p>
-                            )}
-                            <p className="text-xs text-yellow-700 mt-2 font-medium">
-                              ⏳ Doctor will confirm a specific time for this appointment
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Approved Appointments */}
               {appointments.filter(apt => apt.status === "approved").length > 0 && (
                 <div className="mb-6">
