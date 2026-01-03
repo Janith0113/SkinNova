@@ -39,7 +39,7 @@ export default function Banner() {
           setBanners([
             {
               _id: 'default-1',
-              title: 'Welcome to SkinNova',
+              title: 'Welcome to skinova',
               description: 'Your comprehensive skin health companion',
               imageUrl: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1200&h=400&fit=crop',
               link: '/',

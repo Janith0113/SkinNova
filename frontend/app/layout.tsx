@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 import LayoutClientWrapper from "../components/LayoutClientWrapper";
 
 export const metadata = {
-  title: "SkinNova",
+  title: "skinova",
   description: "Starter Next.js + TypeScript + Tailwind project",
 };
 

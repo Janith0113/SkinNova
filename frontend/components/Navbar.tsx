@@ -33,19 +33,18 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full backdrop-blur-xl border-b border-white/20 shadow-lg">
       <div className="bg-gradient-to-r from-white/40 to-white/30">
-        <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <nav className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-8 py-2">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link
               href="/"
               className="flex items-center gap-2 group"
             >
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all">
-                <span className="text-white font-bold text-lg">S</span>
-              </div>
-              <span className="font-bold text-xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                SkinNova
-              </span>
+              <img 
+                src="/images/SKÍNOVA_Logo_Variation_4-removebg-preview (1).png" 
+                alt="SkinNova Logo"
+                className="h-10 sm:h-12 md:h-14 w-auto object-contain"
+              />
             </Link>
 
             {/* Desktop Navigation */}

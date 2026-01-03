@@ -85,7 +85,7 @@ async function start() {
   
   // Ensure admin account exists (admin cannot sign up)
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@skinnova.local'
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@skinova.local'
     const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!'
     const User = (await import('./models/User')).default
     const existing = await User.findOne({ email: adminEmail })

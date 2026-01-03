@@ -1,15 +1,45 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-
+import AnimatedLogo from "../components/AnimatedLogo";
 import Banner from './components/banner/Banner';
 
 export default function DashboardPage() {
+  const [showContent, setShowContent] = useState(false);
+
+  useEffect(() => {
+    // Show content after logo animation (2.5 seconds)
+    const timer = setTimeout(() => {
+      setShowContent(true);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 flex">
+      <style>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .fade-in-up {
+          animation: fadeInUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+      `}</style>
+
+      <AnimatedLogo />
       <Sidebar />
 
-      <main className="flex-1 pt-20 px-4 sm:px-6 lg:px-10 pb-10">
+      <main className={`flex-1 pt-32 px-4 sm:px-6 lg:px-10 pb-10 ${showContent ? "fade-in-up" : "opacity-0"}`}>
         {/* Banner Section */}
         <section className="max-w-6xl mx-auto mb-8">
           <Banner />
@@ -23,7 +53,7 @@ export default function DashboardPage() {
                 Overview
               </p>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mt-1">
-                Skin Nova Conditions
+                SkiNova Conditions
               </h1>
               <p className="mt-2 text-sm sm:text-base text-gray-700 max-w-xl">
                 Choose a condition to explore focused explanations, risk cues, and guidance tailored to that specific disease.

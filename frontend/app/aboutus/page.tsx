@@ -2,12 +2,12 @@
 
 export default function AboutUsPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 py-20 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 pt-28 pb-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6">
-            About SkinNova
+            About skinova
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             Revolutionizing skin health through AI-powered diagnostics and personalized care.
@@ -19,7 +19,7 @@ export default function AboutUsPage() {
           <div>
             <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission</h2>
             <p className="text-lg text-gray-700 mb-6 leading-relaxed">
-              SkinNova is dedicated to making dermatological care accessible to everyone. We combine cutting-edge AI 
+              skinova is dedicated to making dermatological care accessible to everyone. We combine cutting-edge AI 
               technology with medical expertise to provide accurate skin disease detection and personalized treatment plans.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">

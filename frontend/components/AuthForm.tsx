@@ -100,7 +100,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
         {/* Left: Form Section */}
         <div className={`${compact ? 'p-6' : 'p-8 md:p-12'} flex flex-col justify-center order-2 md:order-1`}>
           <h2 className="text-3xl font-bold mb-2 text-gray-900">{mode === 'login' ? 'Welcome back' : 'Create account'}</h2>
-          <p className="text-gray-600 mb-6 text-sm">{mode === 'login' ? 'Sign in to access your dashboard' : 'Join SkinNova and start managing your health'}</p>
+          <p className="text-gray-600 mb-6 text-sm">{mode === 'login' ? 'Sign in to access your dashboard' : 'Join skinova and start managing your health'}</p>
 
           {error && <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm font-medium flex items-start gap-2">
             <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/></svg>
@@ -272,7 +272,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
           
           <div className="relative z-10">
             <div className="inline-block mb-6 px-4 py-2 bg-white/20 rounded-full backdrop-blur-sm">
-              <p className="text-sm font-bold tracking-wide">🏥 SkinNova Platform</p>
+              <p className="text-sm font-bold tracking-wide">🏥 skinova Platform</p>
             </div>
             <h3 className="text-4xl font-bold mb-6 leading-tight">
               {mode === 'login' ? 'Your Health Journey Continues' : 'Welcome to Healthcare Excellence'}
@@ -280,7 +280,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
             <p className="text-lg opacity-90 mb-8 leading-relaxed">
               {mode === 'login' 
                 ? 'Access your personalized dashboard with real-time health insights and doctor consultations.' 
-                : 'Join thousands of patients and doctors already managing healthcare with SkinNova.'}
+                : 'Join thousands of patients and doctors already managing healthcare with skinova.'}
             </p>
           </div>
 
