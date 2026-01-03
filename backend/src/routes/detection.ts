@@ -219,35 +219,15 @@ router.post('/tinea', upload.single('file'), async (req: Request, res: Response)
   }
 });
 
-// Detect Leprosy
+// Detect Leprosy - Model not available
 router.post('/leprosy', upload.single('file'), async (req: Request, res: Response) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
     }
-
-    const imagePath = req.file.path;
-    const result = await runTripleEnsembleDetection(imagePath, 'leprosy');
-
-    // Clean up uploaded file after processing
-    if (fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath);
-    }
-
-    res.json({
-      success: true,
-      is_leprosy: result.is_positive,
-      confidence: result.confidence,
-      details: result.details,
-      totalInferences: result.totalInferences,
-      totalPositiveCount: result.totalPositiveCount,
-      totalNegativeCount: result.totalNegativeCount,
-      totalAccuracy: result.totalAccuracy,
-      ensembleRuns: result.ensembleRuns,
-      ensembleVote: result.ensembleVote,
-      message: result.is_positive 
-        ? `CONFIRMED: Leprosy characteristics detected in ${result.totalPositiveCount}/60 analyses across 3 verification runs. Please consult a dermatologist immediately.`
-        : `CONFIRMED NEGATIVE: No leprosy characteristics detected. Only ${result.totalPositiveCount}/60 analyses showed positive results.`
+    res.status(503).json({ 
+      error: 'Leprosy detection model is not currently available',
+      message: 'Only Psoriasis detection is available at this time. Please check back soon.'
     });
   } catch (error) {
     if (req.file && fs.existsSync(req.file.path)) {
