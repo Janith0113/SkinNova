@@ -3,6 +3,8 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
+import Report from '../models/Report';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
@@ -182,6 +184,228 @@ router.post('/analyze', upload.single('file'), async (req: Request, res: Respons
     const errorMessage = error instanceof Error ? error.message : 'Detection failed';
     console.error('[New Model Endpoint] Sending error response:', errorMessage);
     res.status(500).json({ error: errorMessage, success: false });
+  }
+});
+
+// Save scan result to database
+router.post('/save-scan', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const patientId = (req as any).userId;
+    const userData = (req as any).user;
+    const { diseaseType, skinCondition, confidence, scanArea, scanStatus, imagePath, reportName } = req.body;
+
+    if (!diseaseType || !scanArea) {
+      return res.status(400).json({ success: false, message: 'diseaseType and scanArea are required' });
+    }
+
+    const newScan = new Report({
+      patientId,
+      patientName: userData?.name || 'Patient',
+      patientEmail: userData?.email || 'unknown@example.com',
+      reportName: reportName || `${diseaseType} Scan - ${scanArea}`,
+      reportType: 'Skin Analysis',
+      diseaseType,
+      skinCondition: skinCondition || 'Analysis Complete',
+      confidence: confidence || 0,
+      scanArea,
+      scanStatus: scanStatus || 'Monitor',
+      imagePath: imagePath || '',
+      description: `${diseaseType} scan on ${scanArea}`,
+      uploadedAt: new Date(),
+    });
+
+    await newScan.save();
+    res.status(201).json({ 
+      success: true, 
+      message: 'Scan saved successfully',
+      scan: newScan 
+    });
+  } catch (err) {
+    console.error('Error saving scan:', err);
+    res.status(500).json({ success: false, message: 'Failed to save scan' });
+  }
+});
+
+// Get scan history for a disease type
+router.get('/scan-history/:diseaseType', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const patientId = (req as any).userId;
+    const diseaseType = req.params.diseaseType;
+
+    const scans = await Report.find({ 
+      patientId,
+      diseaseType 
+    }).sort({ uploadedAt: -1 }).limit(20);
+
+    res.json({ 
+      success: true, 
+      diseaseType,
+      scans,
+      latestScan: scans.length > 0 ? scans[0] : null
+    });
+  } catch (err) {
+    console.error('Error fetching scan history:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch scan history' });
+  }
+});
+
+// Get all recent scans for patient
+router.get('/all-scans', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const patientId = (req as any).userId;
+
+    const scans = await Report.find({ 
+      patientId,
+      diseaseType: { $exists: true, $ne: null }
+    }).sort({ uploadedAt: -1 }).limit(50);
+
+    // Group scans by disease type
+    const scansByDisease: { [key: string]: any[] } = {};
+    scans.forEach(scan => {
+      if (scan.diseaseType) {
+        if (!scansByDisease[scan.diseaseType]) {
+          scansByDisease[scan.diseaseType] = [];
+        }
+        scansByDisease[scan.diseaseType].push(scan);
+      }
+    });
+
+    res.json({ 
+      success: true,
+      allScans: scans,
+      scansByDisease
+    });
+  } catch (err) {
+    console.error('Error fetching all scans:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch scans' });
+  }
+});
+
+// Admin endpoint to create sample scans (for testing/development)
+router.post('/create-sample-scans', async (req: Request, res: Response) => {
+  try {
+    const patientId = req.body.patientId || 'test-patient-1';
+    
+    // Check if samples already exist for this patient
+    const existing = await Report.findOne({ patientId, diseaseType: 'psoriasis' });
+    if (existing) {
+      return res.json({ 
+        success: true, 
+        message: 'Sample scans already exist for this patient',
+        existingScans: await Report.find({ patientId, diseaseType: { $ne: null } })
+      });
+    }
+
+    const sampleScans = [
+      {
+        patientId,
+        patientName: 'Test Patient',
+        patientEmail: 'test@example.com',
+        reportName: 'Psoriasis Scan - Elbows',
+        reportType: 'Skin Analysis',
+        diseaseType: 'psoriasis',
+        skinCondition: 'Psoriasis',
+        confidence: 0.92,
+        scanArea: 'Elbows',
+        scanStatus: 'Stable',
+        description: 'Plaque psoriasis pattern detected on elbows',
+        uploadedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      },
+      {
+        patientId,
+        patientName: 'Test Patient',
+        patientEmail: 'test@example.com',
+        reportName: 'Psoriasis Scan - Knees',
+        reportType: 'Skin Analysis',
+        diseaseType: 'psoriasis',
+        skinCondition: 'Psoriasis',
+        confidence: 0.78,
+        scanArea: 'Knees',
+        scanStatus: 'Improving',
+        description: 'Mild scaling detected on knees',
+        uploadedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+      {
+        patientId,
+        patientName: 'Test Patient',
+        patientEmail: 'test@example.com',
+        reportName: 'Psoriasis Scan - Scalp',
+        reportType: 'Skin Analysis',
+        diseaseType: 'psoriasis',
+        skinCondition: 'Psoriasis',
+        confidence: 0.65,
+        scanArea: 'Scalp line',
+        scanStatus: 'Monitor',
+        description: 'Psoriasis vs dandruff - monitoring required',
+        uploadedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+      {
+        patientId,
+        patientName: 'Test Patient',
+        patientEmail: 'test@example.com',
+        reportName: 'Tinea Scan - Neck',
+        reportType: 'Skin Analysis',
+        diseaseType: 'tinea',
+        skinCondition: 'Tinea',
+        confidence: 0.85,
+        scanArea: 'Neck',
+        scanStatus: 'Improving',
+        description: 'Ring-like patch improving with treatment',
+        uploadedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      },
+      {
+        patientId,
+        patientName: 'Test Patient',
+        patientEmail: 'test@example.com',
+        reportName: 'Tinea Scan - Chest',
+        reportType: 'Skin Analysis',
+        diseaseType: 'tinea',
+        skinCondition: 'Tinea',
+        confidence: 0.72,
+        scanArea: 'Chest',
+        scanStatus: 'Stable',
+        description: 'Mild fungal pattern on chest',
+        uploadedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+      },
+      {
+        patientId,
+        patientName: 'Test Patient',
+        patientEmail: 'test@example.com',
+        reportName: 'Leprosy Scan - Forearm',
+        reportType: 'Skin Analysis',
+        diseaseType: 'leprosy',
+        skinCondition: 'Leprosy',
+        confidence: 0.88,
+        scanArea: 'Forearm patch',
+        scanStatus: 'Under treatment',
+        description: 'Reduced sensation area under treatment',
+        uploadedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+      {
+        patientId,
+        patientName: 'Test Patient',
+        patientEmail: 'test@example.com',
+        reportName: 'Skin Cancer Scan - Back',
+        reportType: 'Skin Analysis',
+        diseaseType: 'skinCancer',
+        skinCondition: 'Melanoma Risk',
+        confidence: 0.76,
+        scanArea: 'Upper back mole',
+        scanStatus: 'Needs review',
+        description: 'Asymmetry and color change detected',
+        uploadedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      },
+    ];
+
+    const created = await Report.insertMany(sampleScans);
+    res.json({ 
+      success: true,
+      message: `Created ${created.length} sample scans`,
+      scans: created
+    });
+  } catch (err) {
+    console.error('Error creating sample scans:', err);
+    res.status(500).json({ success: false, message: 'Failed to create sample scans' });
   }
 });
 
