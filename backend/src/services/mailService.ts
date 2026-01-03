@@ -80,11 +80,16 @@ export async function sendPasswordResetEmail(email: string, token: string, reset
 export async function testEmailConnection() {
   try {
     console.log('Testing email connection...')
-    await transporter.verify()
+    // Add timeout of 5 seconds to prevent hanging
+    const verifyPromise = transporter.verify()
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Email verification timeout')), 5000)
+    )
+    await Promise.race([verifyPromise, timeoutPromise])
     console.log('Email connection verified successfully')
     return true
   } catch (err: any) {
-    console.error('Email connection failed:', err.message)
+    console.warn('Email service warning - Email connection test failed:', err.message)
     return false
   }
 }

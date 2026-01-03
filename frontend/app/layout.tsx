@@ -6,7 +6,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/footer";
 
 export const metadata = {
-  title: "SkinNova",
+  title: "skinova",
   description: "Starter Next.js + TypeScript + Tailwind project",
 };
 
