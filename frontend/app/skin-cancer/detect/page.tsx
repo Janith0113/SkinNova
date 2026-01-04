@@ -319,42 +319,8 @@ export default function SkinCancerDetection() {
                                             <Spinner />
                                         </div>
                                     ) : predictions ? (
-                                        <div className="space-y-6 animate-fadeIn">
-                                            {/* Results Details */}
-                                            <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-lg">
-                                                <h3 className="text-xl font-bold text-gray-900 mb-4">Detection Results</h3>
-                                                <div className="space-y-4">
-                                                    {predictions.map((pred, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            className={`rounded-xl p-4 border-2 ${
-                                                                idx === 0
-                                                                    ? "bg-gradient-to-r from-green-50 to-cyan-50 border-green-300 shadow-md"
-                                                                    : "bg-gray-50 border-gray-200"
-                                                            }`}
-                                                        >
-                                                            <div className="flex justify-between items-center mb-2">
-                                                                <span className={`font-bold ${idx === 0 ? "text-green-700 text-lg" : "text-gray-700"}`}>
-                                                                    {pred.className}
-                                                                </span>
-                                                                <span className={`font-bold text-lg ${idx === 0 ? "text-green-600" : "text-gray-600"}`}>
-                                                                    {(pred.probability * 100).toFixed(1)}%
-                                                                </span>
-                                                            </div>
-                                                            <div className="bg-gray-200 rounded-full h-3 overflow-hidden">
-                                                                <div
-                                                                    className={`h-full transition-all ${
-                                                                        idx === 0
-                                                                            ? "bg-gradient-to-r from-green-500 to-cyan-500"
-                                                                            : "bg-gray-400"
-                                                                    }`}
-                                                                    style={{ width: `${pred.probability * 100}%` }}
-                                                                ></div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                        <div className="animate-fadeIn">
+                                            <Results predictions={predictions} />
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-green-50 to-cyan-50 rounded-2xl border-2 border-green-300 shadow-md">
