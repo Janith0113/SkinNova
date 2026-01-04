@@ -118,8 +118,8 @@ const DISEASE_CONFIG: Record<
   },
   skinCancer: {
     label: "Skin Cancer",
-    accent: "text-green-800",
-    bgPill: "bg-green-600/90",
+    accent: "text-red-800",
+    bgPill: "bg-red-600/90",
     lastScan: "Today",
     risk: "High priority",
     riskColor: "text-red-600",
@@ -977,7 +977,7 @@ export default function PatientDashboard() {
                     psoriasis: "/psoriasis/upload",
                     tinea: "/tinea/detect",
                     leprosy: "/leprosy/detect",
-                    skinCancer: "/melanoma/detect"
+                    skinCancer: "/skin-cancer/detect"
                   };
                   router.push(diseaseRoutes[selectedDisease]);
                 }}
@@ -1313,7 +1313,7 @@ export default function PatientDashboard() {
                           {recommendedDisease === "psoriasis" && "🔴"}
                           {recommendedDisease === "tinea" && "🟡"}
                           {recommendedDisease === "leprosy" && "🔴"}
-                          {recommendedDisease === "skinCancer" && "⚫"}
+                          {recommendedDisease === "skinCancer" && "⚠️"}
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900">
                           {recommendedDisease === "psoriasis" && "Psoriasis"}

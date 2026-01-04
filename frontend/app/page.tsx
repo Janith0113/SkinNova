@@ -136,22 +136,22 @@ export default function DashboardPage() {
           </article>
 
           {/* Skin Cancer */}
-          <article className="relative rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-sky-600 text-white p-5 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer">
+          <article className="relative rounded-3xl bg-gradient-to-br from-red-600 via-rose-600 to-red-600 text-white p-5 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer">
             <div className="flex items-start justify-between mb-4">
               <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
-                <span className="text-2xl">🌞</span>
+                <span className="text-2xl">⚠️</span>
               </div>
               <span className="rounded-full bg-white/20 px-3 py-1 text-[10px] font-semibold">
                 High‑priority checks
               </span>
             </div>
             <h2 className="text-xl font-extrabold mb-2">Skin Cancer</h2>
-            <p className="text-xs leading-relaxed text-emerald-50 mb-4">
+            <p className="text-xs leading-relaxed text-red-50 mb-4">
               New or changing moles, spots that bleed, or wounds that never fully heal can be early warnings when sun‑exposed cells start multiplying out of control.
             </p>
             <button
               onClick={() => (window.location.href = "/skin-cancer")}
-              className="w-full mt-auto inline-flex justify-center items-center rounded-2xl bg-white text-xs font-semibold text-emerald-800 py-2.5 shadow hover:bg-emerald-50 transition-colors"
+              className="w-full mt-auto inline-flex justify-center items-center rounded-2xl bg-white text-xs font-semibold text-red-800 py-2.5 shadow hover:bg-red-50 transition-colors"
             >
               Open Skin Cancer workspace
             </button>
