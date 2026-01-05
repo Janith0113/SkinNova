@@ -226,6 +226,62 @@ router.post('/save-scan', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
+// New detection endpoint - handles both analysis and saving in one request
+router.post('/new-detection', requireAuth, upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    const patientId = (req as any).userId;
+    const userData = (req as any).user;
+    const { reportName, reportType, diseaseType, skinCondition, confidence, scanStatus, description } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    if (!diseaseType) {
+      return res.status(400).json({ success: false, message: 'diseaseType is required' });
+    }
+
+    // Save the uploaded file path
+    const imagePath = req.file.path;
+
+    // Create and save the report
+    const newReport = new Report({
+      patientId,
+      patientName: userData?.name || 'Patient',
+      patientEmail: userData?.email || 'unknown@example.com',
+      reportName: reportName || `${diseaseType} Scan - ${new Date().toLocaleDateString()}`,
+      reportType: reportType || 'Skin Analysis',
+      diseaseType,
+      skinCondition: skinCondition || 'Analysis Complete',
+      confidence: parseFloat(confidence) || 0,
+      scanArea: 'Full scan',
+      scanStatus: scanStatus || 'Monitor',
+      imagePath: imagePath,
+      description: description || `${diseaseType} scan result`,
+      uploadedAt: new Date(),
+    });
+
+    await newReport.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Scan saved successfully',
+      scan: newReport,
+      imagePath: imagePath
+    });
+  } catch (err) {
+    console.error('Error in new-detection endpoint:', err);
+    
+    // Clean up uploaded file if there's an error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    const errorMessage = err instanceof Error ? err.message : 'Failed to save detection result';
+    res.status(500).json({ success: false, message: errorMessage });
+  }
+});
+
 // Get scan history for a disease type
 router.get('/scan-history/:diseaseType', requireAuth, async (req: Request, res: Response) => {
   try {
