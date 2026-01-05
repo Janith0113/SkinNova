@@ -4,7 +4,7 @@ import { Heart, Shield, Activity, Utensils, Smile, Eye, AlertCircle, CheckCircle
 
 export default function LeprosyPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white pt-20">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 text-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">

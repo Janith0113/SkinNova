@@ -855,6 +855,14 @@ export default function PatientDashboard() {
             >
               🔍 Symptom Checker
             </button>
+            {selectedDisease === "leprosy" && (
+              <button
+                onClick={() => router.push("/leprosy/assistant")}
+                className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-red-400"
+              >
+                💬 Care Assistant
+              </button>
+            )}
             {selectedDisease === "skinCancer" && (
               <>
                 <button
@@ -1002,7 +1010,18 @@ export default function PatientDashboard() {
               <button onClick={() => router.push('/patient/reports')} className="w-full rounded-2xl bg-sky-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-sky-700 transition-all">
                 View my previous reports
               </button>
-              <button className="w-full rounded-2xl bg-purple-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-purple-700 transition-all">
+              <button 
+                onClick={() => {
+                  const diseaseRoutes: Record<DiseaseKey, string> = {
+                    psoriasis: "/psoriasis/risk-analysis",
+                    tinea: "/tinea",
+                    leprosy: "/leprosy",
+                    skinCancer: "/skin-cancer"
+                  };
+                  router.push(diseaseRoutes[selectedDisease]);
+                }}
+                className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:shadow-lg hover:scale-105 transition-all"
+              >
                 Ask a doctor about {cfg.label.toLowerCase()}
               </button>
             </div>
@@ -1234,6 +1253,8 @@ export default function PatientDashboard() {
                     <input
                       type="file"
                       accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp"
+                      placeholder="Choose your profile photo"
+                      title="Upload a profile photo (JPG, PNG, GIF, WEBP - Max 5MB)"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -1456,6 +1477,8 @@ export default function PatientDashboard() {
                       setScheduleFormData({ ...scheduleFormData, requestedDate: e.target.value })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    title="Select an available appointment date"
+                    aria-label="Appointment Date"
                   >
                     <option value="">-- Select Available Date --</option>
                     {generateAvailableDates().map((dateStr) => {
