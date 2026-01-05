@@ -2,7 +2,7 @@
 
 ## AI-Driven Framework for Diagnosing Psoriasis, Tinea, Leprosy & Skin Cancer with Explainable Multimodal Analysis
 
-This project develops an integrated AI system combining computer vision, sensor analytics, and multimodal data fusion to diagnose and manage four major dermatological conditions. By leveraging image analysis, environmental data, clinical metadata, and laboratory reports with explainable AI techniques, the system provides clinicians with interpretable diagnostics and personalized treatment guidance.
+This project develops an integrated AI system combining computer vision, sensor analytics, and multimodal data fusion to diagnose and manage four major dermatological conditions, which are psoriasis, tinea, leprosy and skin cancer. By leveraging image analysis, environmental data and clinical metadata,  with explainable AI techniques, the system provides clinicians with interpretable diagnostics and personalized treatment guidance.
 ​
 
 The unified framework addresses limitations of single-modality systems through four specialized components, each incorporating novel multimodal fusion and explainability tailored to clinical workflows.
