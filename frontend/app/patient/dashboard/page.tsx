@@ -1226,6 +1226,8 @@ export default function PatientDashboard() {
                     <input
                       type="file"
                       accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp"
+                      placeholder="Choose your profile photo"
+                      title="Upload a profile photo (JPG, PNG, GIF, WEBP - Max 5MB)"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -1448,6 +1450,8 @@ export default function PatientDashboard() {
                       setScheduleFormData({ ...scheduleFormData, requestedDate: e.target.value })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    title="Select an available appointment date"
+                    aria-label="Appointment Date"
                   >
                     <option value="">-- Select Available Date --</option>
                     {generateAvailableDates().map((dateStr) => {
