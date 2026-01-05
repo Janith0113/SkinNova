@@ -864,12 +864,20 @@ export default function PatientDashboard() {
               </button>
             )}
             {selectedDisease === "skinCancer" && (
-              <button
-                onClick={() => router.push("/skin-cancer")}
-                className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-green-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-blue-400"
-              >
-                📚 Learn More
-              </button>
+              <>
+                <button
+                  onClick={() => router.push("/skin-cancer/predict")}
+                  className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-red-400"
+                >
+                  🎯 Predict Risk
+                </button>
+                <button
+                  onClick={() => router.push("/skin-cancer")}
+                  className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-green-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-blue-400"
+                >
+                  📚 Learn More
+                </button>
+              </>
             )}
           </div>
         </div>
