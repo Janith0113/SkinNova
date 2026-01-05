@@ -680,6 +680,12 @@ export default function PatientDashboard() {
     }
   }
 
+  function transformScanLabel(label: string): string {
+    if (label === 'Leprosy Skin') return 'Leprosy Positive';
+    if (label === 'Normal Skin') return 'Leprosy Negative';
+    return label;
+  }
+
   function getRecentScans(diseaseType: string): any[] {
     const scans = scanData[diseaseType] || [];
     return scans.slice(0, 3); // Get last 3 scans
@@ -923,7 +929,7 @@ export default function PatientDashboard() {
                         {scan.scanArea || 'Area'}
                       </p>
                       <p className="text-xs text-gray-600">
-                        {scan.skinCondition || 'Analysis'} ({(scan.confidence * 100).toFixed(0)}% confidence)
+                        {transformScanLabel(scan.skinCondition || 'Analysis')} ({(scan.confidence * 100).toFixed(0)}% confidence)
                       </p>
                     </div>
                     <span
