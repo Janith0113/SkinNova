@@ -33,6 +33,7 @@ export default function DoctorDashboard() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
 
   useEffect(() => {
@@ -270,104 +271,204 @@ export default function DoctorDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 py-24 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 pt-20 pb-24 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-10">
-        {/* Top section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <div className="flex items-center gap-6">
-            {/* Profile Photo - Creative Design */}
+        {/* Modern Header Section - Clean Layout */}
+        <div className="relative p-8 sm:p-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
+          {/* Left side - Profile and text */}
+          <div className="flex items-center gap-6 flex-1">
+            {/* Profile Photo */}
             <div className="relative group">
-              {/* Animated background gradient circles */}
-              <div className="absolute -inset-1 bg-gradient-to-br from-emerald-400 via-sky-500 to-cyan-400 rounded-full blur-xl opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+              <div className="absolute -inset-1 bg-white/30 rounded-full blur-lg group-hover:blur-xl transition-all duration-300"></div>
               
-              {/* Main profile container */}
               <div
                 onClick={() => setShowPhotoModal(true)}
-                className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-emerald-500 to-sky-600 flex items-center justify-center cursor-pointer overflow-hidden group/photo shadow-2xl hover:shadow-3xl transition-all duration-300 border-4 border-white"
+                className="relative w-48 h-48 sm:w-56 sm:h-56 lg:w-64 lg:h-64 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center cursor-pointer overflow-hidden group/photo shadow-2xl hover:shadow-3xl transition-all duration-300 border-4 border-white/40 group-hover:border-white/60"
               >
-                {/* Animated border effect */}
-                <div className="absolute inset-0 rounded-full border-2 border-transparent bg-gradient-to-r from-white/50 via-transparent to-white/50 opacity-0 group-hover/photo:opacity-100 transition-opacity duration-300 animate-spin" style={{ animationDuration: '3s' }}></div>
-                
                 {profilePhoto ? (
                   <img
                     src={profilePhoto}
                     alt="Profile"
-                    className="w-full h-full object-cover relative z-10 group-hover/photo:scale-110 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover/photo:scale-110 transition-transform duration-300"
                   />
                 ) : (
-                  <span className="text-5xl sm:text-6xl relative z-10 group-hover/photo:scale-125 transition-transform duration-300">👨‍⚕️</span>
+                  <span className="text-6xl sm:text-7xl group-hover/photo:scale-125 transition-transform duration-300">👨‍⚕️</span>
                 )}
                 
-                {/* Hover overlay with gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-0 group-hover/photo:opacity-100 transition-all duration-300 flex items-end justify-center pb-4 z-20 rounded-full">
-                  <span className="text-white text-xs font-bold uppercase tracking-wider">Upload</span>
-                </div>
-
-                {/* Status indicator badge */}
-                <div className="absolute -bottom-2 -right-2 w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full border-3 border-white shadow-lg z-30 flex items-center justify-center">
-                  <span className="text-xs">✓</span>
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/photo:opacity-100 transition-opacity duration-300 flex items-center justify-center rounded-full">
+                  <span className="text-white text-sm font-bold">Edit Photo</span>
                 </div>
               </div>
             </div>
 
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-                Welcome back, <span className="bg-gradient-to-r from-emerald-600 to-sky-600 bg-clip-text text-transparent">Dr {user.name}</span>
+            {/* Text Content */}
+            <div className="text-gray-900">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-3 leading-tight text-gray-900">
+                Welcome back,<br />
+                <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Dr {user.name}</span>
               </h1>
-              <p className="mt-3 text-sm sm:text-base text-gray-700 max-w-xl leading-relaxed">
+              <p className="text-sm sm:text-base text-gray-700 max-w-lg leading-relaxed">
                 Manage your patients, review AI-generated skin assessments, and track clinical insights from a single, smart dashboard.
               </p>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-3">
-            <span className="inline-flex items-center rounded-full bg-emerald-600/90 px-3 py-1 text-xs font-semibold text-white shadow-md">
-              Role • {user.role?.toUpperCase()}
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => router.push("/doctor/availability")}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-blue-600 transition-all"
-              >
-                <span>📅 Availability</span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-red-600 transition-all"
-              >
-                <span>Logout</span>
-              </button>
+
+          {/* Right side - Status and action */}
+          <div className="flex flex-col items-end gap-4">
+            <div className="flex items-center gap-3 px-4 py-3 bg-blue-400/30 backdrop-blur-md rounded-2xl border border-blue-400/60 hover:border-blue-400/80 transition-all">
+              <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
+              <div>
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">System Status</p>
+                <p className="text-sm font-bold text-blue-900">Active</p>
+              </div>
             </div>
+            
+            <button
+              onClick={() => router.push("/doctor/availability")}
+              className="px-6 py-3 bg-sky-400/30 backdrop-blur-md text-sky-700 rounded-2xl font-semibold hover:bg-sky-400/50 transition-all duration-300 border border-sky-400/60 hover:border-sky-400/80 flex items-center gap-2 shadow-lg hover:shadow-xl"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              📅 Manage Availability
+            </button>
           </div>
         </div>
 
-        {/* Stats cards */}
+
+        {/* Stats cards - Professional Modern Design with Transparency */}
         <div className="grid gap-6 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-lg p-5 flex flex-col gap-2">
-            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-              Pending Appointments
-            </span>
-            <span className="text-3xl font-extrabold text-gray-900">{pendingAppointments.length}</span>
-            <span className="text-xs text-yellow-700 font-medium">
-              Awaiting your approval
-            </span>
+          {/* Pending Appointments Card */}
+          <div className="group relative rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/20 hover:border-white/40">
+            {/* Top gradient accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-orange-500"></div>
+            
+            <div className="p-7 sm:p-8">
+              {/* Header with icon */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 group-hover:border-white/50 transition-colors">
+                    <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Pending</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-amber-500/20 backdrop-blur-sm border border-amber-500/40">
+                    <span className="text-xs font-semibold text-amber-700">Action Required</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Number display */}
+              <div className="mb-4">
+                <div className="text-4xl sm:text-5xl font-bold text-gray-900">{pendingAppointments.length}</div>
+                <p className="text-sm text-gray-700 mt-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Awaiting your approval
+                </p>
+              </div>
+              
+              {/* Footer progress */}
+              <div className="pt-4 border-t border-white/20">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-600">Response needed</span>
+                  <span className="font-semibold text-amber-600">Priority</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-lg p-5 flex flex-col gap-2">
-            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-              Approved Appointments
-            </span>
-            <span className="text-3xl font-extrabold text-gray-900">{approvedAppointments.length}</span>
-            <span className="text-xs text-emerald-700 font-medium">
-              Confirmed with patients
-            </span>
+
+          {/* Approved Appointments Card */}
+          <div className="group relative rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/20 hover:border-white/40">
+            {/* Top gradient accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+            
+            <div className="p-7 sm:p-8">
+              {/* Header with icon */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 group-hover:border-white/50 transition-colors">
+                    <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Approved</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-500/20 backdrop-blur-sm border border-emerald-500/40">
+                    <span className="text-xs font-semibold text-emerald-700">Confirmed</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Number display */}
+              <div className="mb-4">
+                <div className="text-4xl sm:text-5xl font-bold text-gray-900">{approvedAppointments.length}</div>
+                <p className="text-sm text-gray-700 mt-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Confirmed with patients
+                </p>
+              </div>
+              
+              {/* Footer progress */}
+              <div className="pt-4 border-t border-white/20">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-600">Active appointments</span>
+                  <span className="font-semibold text-emerald-600">On Track</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-lg p-5 flex flex-col gap-2">
-            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-              Total Appointments
-            </span>
-            <span className="text-3xl font-extrabold text-gray-900">{appointments.length}</span>
-            <span className="text-xs text-blue-700 font-medium">
-              Overall management
-            </span>
+
+          {/* Total Appointments Card */}
+          <div className="group relative rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/20 hover:border-white/40">
+            {/* Top gradient accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+            
+            <div className="p-7 sm:p-8">
+              {/* Header with icon */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 group-hover:border-white/50 transition-colors">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Total</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-500/20 backdrop-blur-sm border border-blue-500/40">
+                    <span className="text-xs font-semibold text-blue-700">Overview</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Number display */}
+              <div className="mb-4">
+                <div className="text-4xl sm:text-5xl font-bold text-gray-900">{appointments.length}</div>
+                <p className="text-sm text-gray-700 mt-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                  Overall management
+                </p>
+              </div>
+              
+              {/* Footer progress */}
+              <div className="pt-4 border-t border-white/20">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-600">Managed patients</span>
+                  <span className="font-semibold text-blue-600">Complete</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -377,33 +478,95 @@ export default function DoctorDashboard() {
           <div className="lg:col-span-2 rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-7 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-                Recent AI‑Flagged Cases
+                Your Patients
               </h2>
-              <span className="text-xs text-gray-600 cursor-pointer hover:text-gray-800">
+              <span 
+                onClick={() => router.push("/doctor/view-patient-reports")}
+                className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-semibold">
                 View all
               </span>
             </div>
             <div className="space-y-4">
-              {[
-                { name: "Patient A", type: "Psoriasis", risk: "High", color: "text-red-600 bg-red-100" },
-                { name: "Patient B", type: "Tinea", risk: "Medium", color: "text-amber-600 bg-amber-100" },
-                { name: "Patient C", type: "Skin Cancer", risk: "Critical", color: "text-red-700 bg-red-200" },
-              ].map((p, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between rounded-2xl bg-white/40 px-4 py-3 shadow-sm hover:shadow-md transition-all"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{p.name}</p>
-                    <p className="text-xs text-gray-600">{p.type}</p>
+              {approvedAppointments.length > 0 ? (
+                <>
+                  {approvedAppointments
+                    .slice((currentPage - 1) * 3, currentPage * 3)
+                    .map((apt) => (
+                      <div
+                        key={apt._id}
+                        className="flex items-center justify-between rounded-2xl bg-white/40 px-4 py-3 shadow-sm hover:shadow-md transition-all"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">{apt.patientName}</p>
+                          <p className="text-xs text-gray-600">{apt.reason}</p>
+                        </div>
+                        <div className="flex items-center gap-2 ml-3">
+                          <button
+                            onClick={() => router.push(`/doctor/view-patient-reports?patientId=${apt.patientId}&appointmentId=${apt._id}`)}
+                            className="w-9 h-9 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow hover:shadow-md transition-all flex items-center justify-center text-lg"
+                            title="View Reports"
+                          >
+                            📄
+                          </button>
+                          <button
+                            onClick={() => router.push("/chat")}
+                            className="w-9 h-9 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow hover:shadow-md transition-all flex items-center justify-center text-lg"
+                            title="Chat"
+                          >
+                            💬
+                          </button>
+                          <span
+                            className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold text-emerald-600 bg-emerald-100"
+                          >
+                            ✓ Approved
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  {/* Modern Pagination Controls */}
+                  <div className="flex items-center justify-center gap-3 mt-6 pt-6 border-t border-white/20">
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-xl bg-gradient-to-br from-white/40 to-white/20 text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed hover:from-white/60 hover:to-white/40 transition-all duration-300 shadow-sm hover:shadow-md border border-white/30"
+                    >
+                      <span className="text-lg">←</span>
+                    </button>
+                    
+                    <div className="flex gap-2">
+                      {Array.from({ length: Math.ceil(approvedAppointments.length / 3) }).map((_, idx) => (
+                        <button
+                          key={idx + 1}
+                          onClick={() => setCurrentPage(idx + 1)}
+                          className={`h-9 w-9 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                            currentPage === idx + 1
+                              ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 scale-105"
+                              : "bg-white/30 text-gray-900 hover:bg-white/50 shadow-sm hover:shadow-md border border-white/30"
+                          }`}
+                        >
+                          {idx + 1}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(approvedAppointments.length / 3)))}
+                      disabled={currentPage === Math.ceil(approvedAppointments.length / 3)}
+                      className="p-2 rounded-xl bg-gradient-to-br from-white/40 to-white/20 text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed hover:from-white/60 hover:to-white/40 transition-all duration-300 shadow-sm hover:shadow-md border border-white/30"
+                    >
+                      <span className="text-lg">→</span>
+                    </button>
+                    
+                    <span className="ml-2 text-xs text-gray-700 font-medium bg-white/30 px-3 py-1.5 rounded-lg border border-white/30">
+                      {currentPage} / {Math.ceil(approvedAppointments.length / 3)}
+                    </span>
                   </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${p.color}`}
-                  >
-                    {p.risk} risk
-                  </span>
+                </>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-600">No approved patients yet</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -416,8 +579,10 @@ export default function DoctorDashboard() {
               <button className="w-full rounded-2xl bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-emerald-700 transition-all">
                 Review AI assessments
               </button>
-              <button className="w-full rounded-2xl bg-sky-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-sky-700 transition-all">
-                Schedule new appointment
+              <button 
+                onClick={() => router.push("/doctor/appointments")}
+                className="w-full rounded-2xl bg-blue-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-blue-700 transition-all">
+                View All Appointments
               </button>
               <button className="w-full rounded-2xl bg-purple-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-purple-700 transition-all">
                 View patient history
@@ -483,88 +648,10 @@ export default function DoctorDashboard() {
             </div>
           )}
 
-          {/* Approved Appointments */}
-          {approvedAppointments.length > 0 && (
-            <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                ✅ Approved Appointments ({approvedAppointments.length})
-              </h2>
-              <div className="space-y-4">
-                {approvedAppointments.map((apt) => (
-                  <div key={apt._id} className="bg-white/40 rounded-2xl p-5 border border-green-200 hover:shadow-lg transition-all">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="text-lg font-semibold text-gray-900">
-                          {apt.patientName} <span className="text-xs text-gray-600">({apt.patientId})</span>
-                        </p>
-                        <p className="text-sm text-gray-700 mt-1">📅 Approved: {apt.approvedDate ? new Date(apt.approvedDate).toLocaleString() : "N/A"}</p>
-                        <p className="text-sm text-gray-700">📝 {apt.reason}</p>
-                        {apt.location?.address && (
-                          <p className="text-sm text-blue-700 mt-1 flex items-center gap-1">
-                            📍 {apt.location.address}
-                          </p>
-                        )}
-                        {apt.notes && <p className="text-sm text-gray-700 mt-2"><strong>Notes:</strong> {apt.notes}</p>}
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() =>
-                            router.push(
-                              `/doctor/view-patient-reports?patientId=${apt.patientId}&appointmentId=${apt._id}`
-                            )
-                          }
-                          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold whitespace-nowrap"
-                        >
-                          📄 View Reports
-                        </button>
-                        <button
-                          onClick={() => router.push(`/direct-chat?patientId=${apt.patientId}&doctorId=${user._id || user.id}`)}
-                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold whitespace-nowrap"
-                        >
-                          💬 Chat
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {appointments.length === 0 && (
             <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-12 text-center">
               <p className="text-gray-700 text-lg">No appointments yet</p>
               <p className="text-gray-600 text-sm mt-2">Appointments will appear here when patients request them</p>
-            </div>
-          )}
-
-          {/* Past/Completed Appointments */}
-          {pastAppointments.length > 0 && (
-            <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                📋 Past Appointments ({pastAppointments.length})
-              </h2>
-              <div className="space-y-4">
-                {pastAppointments.map((apt) => (
-                  <div key={apt._id} className="bg-white/40 rounded-2xl p-5 border border-gray-300 hover:shadow-lg transition-all opacity-75">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="text-lg font-semibold text-gray-700">
-                          {apt.patientName} <span className="text-xs text-gray-600">({apt.patientId})</span>
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1">📅 {new Date(apt.approvedDate || apt.requestedDate).toLocaleString()}</p>
-                        <p className="text-sm text-gray-600">📝 {apt.reason}</p>
-                        {apt.notes && <p className="text-sm text-gray-600 mt-2"><strong>Notes:</strong> {apt.notes}</p>}
-                      </div>
-                      <div className="flex items-center">
-                        <span className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold text-gray-700">
-                          Completed
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>

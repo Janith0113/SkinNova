@@ -9,13 +9,18 @@ export default function Footer() {
         <div className="rounded-3xl bg-black/40 backdrop-blur-xl border border-white/10 text-white px-6 sm:px-8 py-6 sm:py-7 shadow-lg">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             {/* Left block */}
-            <div>
-              <h3 className="text-lg font-semibold tracking-tight">
-                SkinNova
-              </h3>
-              <p className="mt-1 text-xs sm:text-sm text-gray-200 max-w-md">
-                AI‑assisted guidance for understanding your skin. Always double‑check important decisions with a qualified healthcare professional.
-              </p>
+            <div className="flex items-center gap-4">
+              
+              <div>
+               <img 
+                src="/images/SKÍNOVA_Logo_Variation_4-removebg-preview (1).png" 
+                alt="skinova Logo"
+                className="h-12 w-auto object-contain"
+              />
+                <p className="mt-1 text-xs sm:text-sm text-gray-200 max-w-md">
+                  AI‑assisted guidance for understanding your skin. Always double‑check important decisions with a qualified healthcare professional.
+                </p>
+              </div>
             </div>
 
             {/* Center links */}
@@ -41,7 +46,7 @@ export default function Footer() {
                 <span>System status: Online</span>
               </span>
               <span className="text-[10px] text-gray-300">
-                © {new Date().getFullYear()} SkinNova. For educational use only.
+                © {new Date().getFullYear()} skinova. For educational use only.
               </span>
             </div>
           </div>

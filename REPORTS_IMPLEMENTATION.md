@@ -1,4 +1,4 @@
-# Patient Reports Management - Implementation Summary
+.# Patient Reports Management - Implementation Summary
 
 ## Overview
 A complete reports management system has been added to the SkinNova patient dashboard, allowing patients to upload, view, edit, and delete their medical reports.

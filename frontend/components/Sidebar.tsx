@@ -56,7 +56,7 @@ export default function Sidebar() {
             <li>
               <a
                 href="/melanoma"
-                className="block py-2 px-3 rounded font-semibold text-green-600 hover:text-green-100 hover:bg-green-500/40"
+                className="block py-2 px-3 rounded font-semibold text-red-600 hover:text-red-100 hover:bg-red-500/40"
               >
                 Melanoma
               </a>

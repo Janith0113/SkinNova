@@ -17,6 +17,8 @@ export default function DirectChatPage() {
   const [otherUserName, setOtherUserName] = useState("");
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [error, setError] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState("");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -36,10 +38,10 @@ export default function DirectChatPage() {
   useEffect(() => {
     if (user && patientIdParam && doctorIdParam) {
       loadDirectChat(patientIdParam, doctorIdParam);
-      // Poll for updates every 2 seconds
+      // Poll for updates every 5 seconds
       const interval = setInterval(() => {
         loadDirectChat(patientIdParam, doctorIdParam);
-      }, 2000);
+      }, 5000);
       return () => clearInterval(interval);
     }
   }, [user, patientIdParam, doctorIdParam]);
@@ -149,6 +151,75 @@ export default function DirectChatPage() {
     }
   };
 
+  const handleEditMessage = async (messageId: string) => {
+    if (!editingContent.trim() || !selectedChat) return;
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `http://localhost:4000/api/chat/${selectedChat.patientId}/${selectedChat.doctorId}/message/${messageId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: editingContent,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to edit message");
+      }
+
+      const data = await response.json();
+      setMessages(data.chat?.messages || []);
+      setEditingMessageId(null);
+      setEditingContent("");
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Failed to edit message"
+      );
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm("Are you sure you want to delete this message?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `http://localhost:4000/api/chat/${selectedChat.patientId}/${selectedChat.doctorId}/message/${messageId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete message");
+      }
+
+      const data = await response.json();
+      setMessages(data.chat?.messages || []);
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete message"
+      );
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100">
@@ -182,18 +253,18 @@ export default function DirectChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 flex flex-col">
+    <div className="min-h-screen pt-16 bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 sm:p-6 shadow-lg flex items-center justify-between">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 sm:p-3 shadow-lg flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Chat with {otherUserName}</h1>
-          <p className="text-sm text-blue-100 mt-1">{user.name}</p>
+          <h1 className="text-lg sm:text-xl font-bold">Chat with {otherUserName}</h1>
+          <p className="text-xs text-blue-100 mt-0.5">{user.name}</p>
         </div>
         <Link
           href={
             user.role === "patient" ? "/patient/dashboard" : "/doctor/dashboard"
           }
-          className="text-white hover:opacity-80 transition-opacity text-2xl"
+          className="text-white hover:opacity-80 transition-opacity text-xl"
           title="Go back"
         >
           ✕
@@ -224,7 +295,7 @@ export default function DirectChatPage() {
             return (
               <div
                 key={idx}
-                className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}
               >
                 <div
                   className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg shadow-md ${
@@ -233,18 +304,85 @@ export default function DirectChatPage() {
                       : "bg-white text-gray-900 border border-gray-300 rounded-bl-none"
                   }`}
                 >
-                  <p className="text-sm break-words">{msg.content}</p>
-                  <p
-                    className={`text-xs mt-2 ${
-                      isOwn ? "text-blue-100" : "text-gray-500"
-                    }`}
-                  >
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
+                  {editingMessageId === msg._id?.toString() ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editingContent}
+                        onChange={(e) =>
+                          setEditingContent(e.target.value)
+                        }
+                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() =>
+                          handleEditMessage(msg._id?.toString() || "")
+                        }
+                        className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingMessageId(null);
+                          setEditingContent("");
+                        }}
+                        className="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm break-words">{msg.content}</p>
+                      {msg.isEdited && !msg.isDeleted && (
+                        <p className={`text-xs mt-1 ${
+                          isOwn ? "text-blue-200" : "text-gray-400"
+                        }`}>
+                          (edited)
+                        </p>
+                      )}
+                      <p
+                        className={`text-xs mt-2 ${
+                          isOwn ? "text-blue-100" : "text-gray-500"
+                        }`}
+                      >
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </>
+                  )}
                 </div>
+                {isOwn && !msg.isDeleted && (
+                  <div className="flex gap-2 mt-1">
+                    {editingMessageId !== msg._id?.toString() && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingMessageId(msg._id?.toString() || null);
+                            setEditingContent(msg.content);
+                          }}
+                          className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap shadow-sm font-semibold"
+                          title="Edit message"
+                        >
+                          ✎ Edit
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleDeleteMessage(msg._id?.toString() || "")
+                          }
+                          className="px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 transition-colors whitespace-nowrap shadow-sm font-semibold"
+                          title="Delete message"
+                        >
+                          🗑 Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })

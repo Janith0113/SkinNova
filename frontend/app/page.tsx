@@ -1,15 +1,45 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-
+import AnimatedLogo from "../components/AnimatedLogo";
 import Banner from './components/banner/Banner';
 
 export default function DashboardPage() {
+  const [showContent, setShowContent] = useState(false);
+
+  useEffect(() => {
+    // Show content after logo animation (2.5 seconds)
+    const timer = setTimeout(() => {
+      setShowContent(true);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 flex">
+      <style>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .fade-in-up {
+          animation: fadeInUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+      `}</style>
+
+      <AnimatedLogo />
       <Sidebar />
 
-      <main className="flex-1 pt-20 px-4 sm:px-6 lg:px-10 pb-10">
+      <main className={`flex-1 pt-32 px-4 sm:px-6 lg:px-10 pb-10 ${showContent ? "fade-in-up" : "opacity-0"}`}>
         {/* Banner Section */}
         <section className="max-w-6xl mx-auto mb-8">
           <Banner />
@@ -23,7 +53,7 @@ export default function DashboardPage() {
                 Overview
               </p>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mt-1">
-                Skin Nova Conditions
+                SkiNova Conditions
               </h1>
               <p className="mt-2 text-sm sm:text-base text-gray-700 max-w-xl">
                 Choose a condition to explore focused explanations, risk cues, and guidance tailored to that specific disease.
@@ -106,22 +136,22 @@ export default function DashboardPage() {
           </article>
 
           {/* Skin Cancer */}
-          <article className="relative rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-sky-600 text-white p-5 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer">
+          <article className="relative rounded-3xl bg-gradient-to-br from-red-600 via-rose-600 to-red-600 text-white p-5 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer">
             <div className="flex items-start justify-between mb-4">
               <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
-                <span className="text-2xl">🌞</span>
+                <span className="text-2xl">⚠️</span>
               </div>
               <span className="rounded-full bg-white/20 px-3 py-1 text-[10px] font-semibold">
                 High‑priority checks
               </span>
             </div>
             <h2 className="text-xl font-extrabold mb-2">Skin Cancer</h2>
-            <p className="text-xs leading-relaxed text-emerald-50 mb-4">
+            <p className="text-xs leading-relaxed text-red-50 mb-4">
               New or changing moles, spots that bleed, or wounds that never fully heal can be early warnings when sun‑exposed cells start multiplying out of control.
             </p>
             <button
               onClick={() => (window.location.href = "/skin-cancer")}
-              className="w-full mt-auto inline-flex justify-center items-center rounded-2xl bg-white text-xs font-semibold text-emerald-800 py-2.5 shadow hover:bg-emerald-50 transition-colors"
+              className="w-full mt-auto inline-flex justify-center items-center rounded-2xl bg-white text-xs font-semibold text-red-800 py-2.5 shadow hover:bg-red-50 transition-colors"
             >
               Open Skin Cancer workspace
             </button>

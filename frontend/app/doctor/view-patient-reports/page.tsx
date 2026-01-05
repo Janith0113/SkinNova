@@ -44,25 +44,29 @@ export default function DoctorViewPatientReports() {
   }, [router]);
 
   useEffect(() => {
-    if (user?.role === "doctor" && patientId && appointmentId) {
+    if (user?.role === "doctor" && patientId) {
       fetchPatientReports();
     }
-  }, [user, patientId, appointmentId]);
+  }, [user, patientId]);
 
   const fetchPatientReports = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:4000/api/patient-reports/${patientId}/${appointmentId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      
+      // Build URL based on available parameters
+      let url = `http://localhost:4000/api/patient-reports/${patientId}`;
+      if (appointmentId) {
+        url += `/${appointmentId}`;
+      }
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         if (response.status === 403) {

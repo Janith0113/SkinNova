@@ -118,8 +118,8 @@ const DISEASE_CONFIG: Record<
   },
   skinCancer: {
     label: "Skin Cancer",
-    accent: "text-green-800",
-    bgPill: "bg-green-600/90",
+    accent: "text-red-800",
+    bgPill: "bg-red-600/90",
     lastScan: "Today",
     risk: "High priority",
     riskColor: "text-red-600",
@@ -150,6 +150,121 @@ const DISEASE_CONFIG: Record<
   },
 };
 
+interface SymptomQuestion {
+  id: number;
+  question: string;
+  answers: { text: string; diseaseScores: Record<DiseaseKey, number> }[];
+}
+
+const SYMPTOM_QUESTIONS: SymptomQuestion[] = [
+  {
+    id: 1,
+    question: "Where do you see the skin issue on your body?",
+    answers: [
+      {
+        text: "Elbows, knees, scalp (extensor surfaces)",
+        diseaseScores: { psoriasis: 8, tinea: 2, leprosy: 1, skinCancer: 1 },
+      },
+      {
+        text: "Neck, chest, back, inner thighs (warm, moist areas)",
+        diseaseScores: { psoriasis: 2, tinea: 8, leprosy: 2, skinCancer: 1 },
+      },
+      {
+        text: "Face, hands, patches with numbness",
+        diseaseScores: { psoriasis: 2, tinea: 2, leprosy: 8, skinCancer: 4 },
+      },
+      {
+        text: "Anywhere, especially sun-exposed areas",
+        diseaseScores: { psoriasis: 1, tinea: 1, leprosy: 1, skinCancer: 9 },
+      },
+    ],
+  },
+  {
+    id: 2,
+    question: "What does the skin look like?",
+    answers: [
+      {
+        text: "Red, scaly, raised plaques with silvery scales",
+        diseaseScores: { psoriasis: 9, tinea: 3, leprosy: 1, skinCancer: 1 },
+      },
+      {
+        text: "Ring-shaped patches with clear center (circular)",
+        diseaseScores: { psoriasis: 1, tinea: 9, leprosy: 2, skinCancer: 1 },
+      },
+      {
+        text: "Light-colored flat patches or nodules",
+        diseaseScores: { psoriasis: 2, tinea: 1, leprosy: 9, skinCancer: 2 },
+      },
+      {
+        text: "Mole or spot with irregular shape or multiple colors",
+        diseaseScores: { psoriasis: 1, tinea: 1, leprosy: 1, skinCancer: 10 },
+      },
+    ],
+  },
+  {
+    id: 3,
+    question: "How long has this been present?",
+    answers: [
+      {
+        text: "Weeks to months (chronic condition)",
+        diseaseScores: { psoriasis: 8, tinea: 6, leprosy: 7, skinCancer: 4 },
+      },
+      {
+        text: "Recent development (days to weeks)",
+        diseaseScores: { psoriasis: 3, tinea: 8, leprosy: 2, skinCancer: 5 },
+      },
+      {
+        text: "Present for years with slow progression",
+        diseaseScores: { psoriasis: 6, tinea: 2, leprosy: 9, skinCancer: 8 },
+      },
+    ],
+  },
+  {
+    id: 4,
+    question: "Is there any of the following?",
+    answers: [
+      {
+        text: "Itching or burning sensation",
+        diseaseScores: { psoriasis: 8, tinea: 9, leprosy: 2, skinCancer: 3 },
+      },
+      {
+        text: "Numbness or reduced sensation",
+        diseaseScores: { psoriasis: 1, tinea: 1, leprosy: 9, skinCancer: 1 },
+      },
+      {
+        text: "Bleeding, oozing, or texture changes",
+        diseaseScores: { psoriasis: 5, tinea: 2, leprosy: 3, skinCancer: 8 },
+      },
+      {
+        text: "No specific sensation issues",
+        diseaseScores: { psoriasis: 4, tinea: 5, leprosy: 2, skinCancer: 4 },
+      },
+    ],
+  },
+  {
+    id: 5,
+    question: "How did it start?",
+    answers: [
+      {
+        text: "After exposure to heat, sweat, or moisture",
+        diseaseScores: { psoriasis: 2, tinea: 10, leprosy: 1, skinCancer: 1 },
+      },
+      {
+        text: "After stress, weather changes, or injury",
+        diseaseScores: { psoriasis: 9, tinea: 2, leprosy: 1, skinCancer: 1 },
+      },
+      {
+        text: "Gradually, with slow changes over time",
+        diseaseScores: { psoriasis: 5, tinea: 1, leprosy: 8, skinCancer: 7 },
+      },
+      {
+        text: "Unsure of the cause",
+        diseaseScores: { psoriasis: 3, tinea: 3, leprosy: 3, skinCancer: 5 },
+      },
+    ],
+  },
+];
+
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
   const [profilePhoto, setProfilePhoto] = useState<string>("");
@@ -166,6 +281,19 @@ export default function PatientDashboard() {
     reason: "",
   });
   const [doctorAvailability, setDoctorAvailability] = useState<any[]>([]);
+  // Scan data states
+  const [scanData, setScanData] = useState<{ [key: string]: any }>({});
+  const [loadingScans, setLoadingScans] = useState(false);
+  // Symptom checker states
+  const [showSymptomChecker, setShowSymptomChecker] = useState(false);
+  const [currentSymptomQuestion, setCurrentSymptomQuestion] = useState(0);
+  const [symptomScores, setSymptomScores] = useState<Record<DiseaseKey, number>>({
+    psoriasis: 0,
+    tinea: 0,
+    leprosy: 0,
+    skinCancer: 0,
+  });
+  const [recommendedDisease, setRecommendedDisease] = useState<DiseaseKey | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -189,8 +317,18 @@ export default function PatientDashboard() {
     if (user?.role === "patient") {
       fetchAppointments();
       fetchVerifiedDoctors();
-      const interval = setInterval(fetchAppointments, 5000);
-      return () => clearInterval(interval);
+      fetchAllScans();
+      
+      // Refetch every 5 seconds for appointments
+      const appointmentInterval = setInterval(fetchAppointments, 5000);
+      
+      // Refetch scans every 10 seconds to catch newly saved scans
+      const scanInterval = setInterval(fetchAllScans, 10000);
+      
+      return () => {
+        clearInterval(appointmentInterval);
+        clearInterval(scanInterval);
+      };
     }
   }, [user]);
 
@@ -239,6 +377,35 @@ export default function PatientDashboard() {
     } catch (err) {
       console.error("Error fetching doctors:", err);
       setDoctors([]);
+    }
+  };
+
+  const fetchAllScans = async () => {
+    try {
+      setLoadingScans(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:4000/api/analysis/all-scans", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Error fetching scans:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success && data.scansByDisease) {
+        setScanData(data.scansByDisease);
+        console.log("Scans loaded:", data.scansByDisease);
+      }
+    } catch (err) {
+      console.error("Error fetching scans:", err);
+    } finally {
+      setLoadingScans(false);
     }
   };
 
@@ -496,6 +663,90 @@ export default function PatientDashboard() {
     }
   };
 
+  function getTimeSinceScan(date: string): string {
+    const scanDate = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - scanDate.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffDays === 0) {
+      if (diffHours === 0) return "Today";
+      return `${diffHours}h ago`;
+    } else if (diffDays === 1) {
+      return "1 day ago";
+    } else {
+      return `${diffDays} days ago`;
+    }
+  }
+
+  function transformScanLabel(label: string): string {
+    if (label === 'Leprosy Skin') return 'Leprosy Positive';
+    if (label === 'Normal Skin') return 'Leprosy Negative';
+    return label;
+  }
+
+  function getRecentScans(diseaseType: string): any[] {
+    const scans = scanData[diseaseType] || [];
+    return scans.slice(0, 3); // Get last 3 scans
+  }
+
+  function getLatestScanDate(diseaseType: string): string {
+    const scans = scanData[diseaseType] || [];
+    if (scans.length > 0) {
+      return getTimeSinceScan(scans[0].uploadedAt);
+    }
+    return "No scans yet";
+  }
+
+  function getAverageRiskLevel(diseaseType: string): string {
+    const scans = scanData[diseaseType] || [];
+    if (scans.length === 0) return "No data";
+    
+    const confidences = scans.map((s: any) => s.confidence || 0);
+    const avgConfidence = confidences.reduce((a: number, b: number) => a + b, 0) / confidences.length;
+    
+    if (avgConfidence < 0.3) return "Low";
+    if (avgConfidence < 0.6) return "Medium";
+    if (avgConfidence < 0.8) return "Medium-High";
+    return "High";
+  }
+
+  const handleSymptomAnswer = (diseaseScores: Record<DiseaseKey, number>) => {
+    // Add the scores from this answer to the running total
+    const newScores = { ...symptomScores };
+    (Object.keys(diseaseScores) as DiseaseKey[]).forEach((key) => {
+      newScores[key] += diseaseScores[key];
+    });
+    setSymptomScores(newScores);
+
+    // Move to next question or finish quiz
+    if (currentSymptomQuestion < SYMPTOM_QUESTIONS.length - 1) {
+      setCurrentSymptomQuestion(currentSymptomQuestion + 1);
+    } else {
+      // Quiz finished - find the disease with highest score
+      const highestScore = Math.max(...Object.values(newScores));
+      const recommended = (Object.keys(newScores) as DiseaseKey[]).find(
+        (key) => newScores[key] === highestScore
+      ) || "psoriasis";
+      setRecommendedDisease(recommended);
+    }
+  };
+
+  const handleCloseSymptomChecker = () => {
+    setShowSymptomChecker(false);
+    setCurrentSymptomQuestion(0);
+    setRecommendedDisease(null);
+    setSymptomScores({ psoriasis: 0, tinea: 0, leprosy: 0, skinCancer: 0 });
+  };
+
+  const handleSelectRecommendedDisease = () => {
+    if (recommendedDisease) {
+      setSelectedDisease(recommendedDisease);
+      handleCloseSymptomChecker();
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100">
@@ -507,9 +758,12 @@ export default function PatientDashboard() {
   }
 
   const cfg = DISEASE_CONFIG[selectedDisease];
+  const recentScans = getRecentScans(selectedDisease);
+  const latestScanTime = getLatestScanDate(selectedDisease);
+  const riskLevel = getAverageRiskLevel(selectedDisease);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 py-24 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 pt-28 px-4 sm:px-6 lg:px-8 pb-24">
       <div className="max-w-6xl mx-auto space-y-10">
         {/* Top section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
@@ -554,7 +808,7 @@ export default function PatientDashboard() {
                 Hi, <span className="bg-gradient-to-r from-emerald-600 to-sky-600 bg-clip-text text-transparent">{user.name}</span>
               </h1>
               <p className="mt-3 text-sm sm:text-base text-gray-700 max-w-xl leading-relaxed">
-                Welcome to your SkinNova space. Track your skin health, review AI insights,
+                Welcome to your skinova space. Track your skin health, review AI insights,
                 and stay ahead of potential issues with simple, clear guidance.
               </p>
             </div>
@@ -563,40 +817,53 @@ export default function PatientDashboard() {
             <span className="inline-flex items-center rounded-full bg-sky-600/90 px-3 py-1 text-xs font-semibold text-white shadow-md">
               Role • {user.role?.toUpperCase()}
             </span>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-xl bg-red-500 text-white text-sm font-semibold px-4 py-2 shadow hover:bg-red-600 transition-all"
-            >
-              Logout
-            </button>
           </div>
         </div>
 
         {/* Disease selector tabs */}
-        <div className="flex flex-wrap gap-3">
-          {(
-            [
-              { key: "psoriasis", label: "Psoriasis" },
-              { key: "tinea", label: "Tinea" },
-              { key: "leprosy", label: "Leprosy" },
-              { key: "skinCancer", label: "Skin Cancer" },
-            ] as { key: DiseaseKey; label: string }[]
-          ).map((d) => {
-            const active = selectedDisease === d.key;
-            return (
+        <div className="flex flex-wrap gap-3 items-center justify-between">
+          <div className="flex flex-wrap gap-3">
+            {(
+              [
+                { key: "psoriasis", label: "Psoriasis" },
+                { key: "tinea", label: "Tinea" },
+                { key: "leprosy", label: "Leprosy" },
+                { key: "skinCancer", label: "Skin Cancer" },
+              ] as { key: DiseaseKey; label: string }[]
+            ).map((d) => {
+              const active = selectedDisease === d.key;
+              return (
+                <button
+                  key={d.key}
+                  onClick={() => setSelectedDisease(d.key)}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold shadow-sm transition-all border ${
+                    active
+                      ? "bg-white/80 border-transparent text-emerald-800"
+                      : "bg-white/10 border-white/50 text-gray-700 hover:bg-white/40"
+                  }`}
+                >
+                  {d.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowSymptomChecker(true)}
+              className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-purple-400"
+            >
+              🔍 Symptom Checker
+            </button>
+            {selectedDisease === "skinCancer" && (
               <button
-                key={d.key}
-                onClick={() => setSelectedDisease(d.key)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold shadow-sm transition-all border ${
-                  active
-                    ? "bg-white/80 border-transparent text-emerald-800"
-                    : "bg-white/10 border-white/50 text-gray-700 hover:bg-white/40"
-                }`}
+                onClick={() => router.push("/skin-cancer")}
+                className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-green-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-blue-400"
               >
-                {d.label}
+                📚 Learn More
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
 
         {/* Status cards – content depends on selectedDisease */}
@@ -606,7 +873,7 @@ export default function PatientDashboard() {
               Last Scan ({cfg.label})
             </span>
             <span className="text-lg font-bold text-gray-900">
-              {cfg.lastScan}
+              {loadingScans ? "Loading..." : latestScanTime}
             </span>
             <span className={`text-xs font-medium ${cfg.accent}`}>
               {cfg.upcomingHint}
@@ -617,7 +884,7 @@ export default function PatientDashboard() {
               AI Risk Level
             </span>
             <span className={`text-lg font-bold ${cfg.riskColor}`}>
-              {cfg.risk}
+              {loadingScans ? "Loading..." : riskLevel}
             </span>
             <span className="text-xs text-amber-700 font-medium">
               {cfg.riskHint}
@@ -649,24 +916,58 @@ export default function PatientDashboard() {
             </div>
 
             <div className="space-y-4">
-              {cfg.checks.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between rounded-2xl bg-white/50 px-4 py-3 shadow-sm hover:shadow-md transition-all"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {item.area}
-                    </p>
-                    <p className="text-xs text-gray-600">{item.label}</p>
-                  </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${item.color}`}
+              {loadingScans ? (
+                <div className="text-center py-8 text-gray-600">Loading scan data...</div>
+              ) : recentScans.length > 0 ? (
+                recentScans.map((scan: any, i: number) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-2xl bg-white/50 px-4 py-3 shadow-sm hover:shadow-md transition-all"
                   >
-                    {item.status}
-                  </span>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {scan.scanArea || 'Area'}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {transformScanLabel(scan.skinCondition || 'Analysis')} ({(scan.confidence * 100).toFixed(0)}% confidence)
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
+                        scan.scanStatus === 'Stable' ? 'text-emerald-700 bg-emerald-100' :
+                        scan.scanStatus === 'Improving' ? 'text-sky-700 bg-sky-100' :
+                        scan.scanStatus === 'Monitor' ? 'text-amber-700 bg-amber-100' :
+                        scan.scanStatus === 'Needs review' ? 'text-red-700 bg-red-100' :
+                        scan.scanStatus === 'Healed' ? 'text-emerald-800 bg-emerald-200' :
+                        'text-red-700 bg-red-100'
+                      }`}
+                    >
+                      {scan.scanStatus || 'Monitor'}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="space-y-4">
+                  {cfg.checks.map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-2xl bg-white/50 px-4 py-3 shadow-sm hover:shadow-md transition-all"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {item.area}
+                        </p>
+                        <p className="text-xs text-gray-600">{item.label}</p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${item.color}`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -676,8 +977,19 @@ export default function PatientDashboard() {
               What would you like to do?
             </h2>
             <div className="space-y-3">
-              <button className="w-full rounded-2xl bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-emerald-700 transition-all">
-                Start a new {cfg.label.toLowerCase()} scan
+              <button 
+                onClick={() => {
+                  const diseaseRoutes: Record<DiseaseKey, string> = {
+                    psoriasis: "/psoriasis/upload",
+                    tinea: "/tinea/detect",
+                    leprosy: "/leprosy/detect",
+                    skinCancer: "/skin-cancer/detect"
+                  };
+                  router.push(diseaseRoutes[selectedDisease]);
+                }}
+                className="w-full rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:shadow-lg hover:scale-105 transition-all"
+              >
+                🔍 Start a new {cfg.label.toLowerCase()} scan
               </button>
               <button onClick={() => router.push('/patient/reports')} className="w-full rounded-2xl bg-sky-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-sky-700 transition-all">
                 View my previous reports
@@ -708,20 +1020,55 @@ export default function PatientDashboard() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {doctors.map((doctor) => (
-                <div key={doctor._id} className="bg-white/40 rounded-2xl p-5 border border-white/50 hover:shadow-lg transition-all">
-                  <div className="flex flex-col gap-3">
+                <div key={doctor._id} className="bg-white/40 rounded-2xl p-5 border border-white/50 hover:shadow-lg transition-all hover:scale-105 duration-300">
+                  <div className="flex flex-col gap-4 h-full">
+                    {/* Doctor Header */}
                     <div>
-                      <p className="text-lg font-semibold text-gray-900">Dr. {doctor.name}</p>
-                      <p className="text-xs text-gray-600 mt-1">{doctor.email}</p>
-                      <div className="mt-2 inline-flex items-center rounded-full bg-emerald-100 px-2 py-1">
-                        <span className="text-xs font-semibold text-emerald-700">✓ Verified</span>
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="text-lg font-bold text-gray-900">Dr. {doctor.name}</p>
+                          <p className="text-xs text-gray-600 mt-1">📧 {doctor.email}</p>
+                        </div>
+                        <div className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-1 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-emerald-700">✓ Verified</span>
+                        </div>
+                      </div>
+                      
+                      {/* Additional Doctor Info */}
+                      <div className="mt-3 space-y-2 text-xs">
+                        {doctor.specialization && (
+                          <p className="flex items-center gap-2 text-gray-700">
+                            <span>🩺</span>
+                            <span className="font-medium">{doctor.specialization}</span>
+                          </p>
+                        )}
+                        {doctor.phone && (
+                          <p className="flex items-center gap-2 text-gray-700">
+                            <span>📱</span>
+                            <span>{doctor.phone}</span>
+                          </p>
+                        )}
+                        {doctor.experience && (
+                          <p className="flex items-center gap-2 text-gray-700">
+                            <span>⏱️</span>
+                            <span>{doctor.experience} years experience</span>
+                          </p>
+                        )}
+                        {doctor.location && (
+                          <p className="flex items-center gap-2 text-gray-700">
+                            <span>📍</span>
+                            <span>{doctor.location}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
+                    
+                    {/* Action Button */}
                     <button
                       onClick={() => handleScheduleAppointment(doctor._id)}
-                      className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all text-sm"
+                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-bold shadow-md hover:shadow-lg transition-all text-sm mt-auto"
                     >
-                      Book Appointment
+                      📅 Book Appointment
                     </button>
                   </div>
                 </div>
@@ -739,47 +1086,10 @@ export default function PatientDashboard() {
           {appointments.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-700 text-lg">No appointments scheduled yet</p>
-              <p className="text-gray-600 text-sm mt-2">Request an appointment through the admin to schedule with a doctor</p>
+              <p className="text-gray-600 text-sm mt-2">Book an appointment with a doctor from the available doctors section</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Pending Appointments */}
-              {appointments.filter(apt => apt.status === "pending").length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-yellow-700 mb-3">⏳ Pending (Waiting for Doctor Approval)</h3>
-                  <div className="space-y-3">
-                    {appointments.filter(apt => apt.status === "pending").map((apt) => (
-                      <div key={apt._id} className="bg-yellow-50 rounded-2xl p-4 border border-yellow-200">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900">
-                              Dr. {apt.doctorName}
-                            </p>
-                            <p className="text-xs text-gray-700 mt-1">
-                              📅 Requested: {new Date(apt.requestedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                              {apt.requestedDate && new Date(apt.requestedDate).getHours() !== 0 && (
-                                <span className="ml-2">at {new Date(apt.requestedDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                              )}
-                            </p>
-                            <p className="text-xs text-gray-700 mt-1">
-                              📝 Reason: {apt.reason}
-                            </p>
-                            {apt.location?.address && (
-                              <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
-                                📍 {apt.location.address}
-                              </p>
-                            )}
-                            <p className="text-xs text-yellow-700 mt-2 font-medium">
-                              ⏳ Doctor will confirm a specific time for this appointment
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Approved Appointments */}
               {appointments.filter(apt => apt.status === "approved").length > 0 && (
                 <div className="mb-6">
@@ -916,6 +1226,8 @@ export default function PatientDashboard() {
                     <input
                       type="file"
                       accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp"
+                      placeholder="Choose your profile photo"
+                      title="Upload a profile photo (JPG, PNG, GIF, WEBP - Max 5MB)"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -972,6 +1284,154 @@ export default function PatientDashboard() {
           </div>
         )}
 
+        {/* Symptom Checker Modal */}
+        {showSymptomChecker && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+              {/* Header */}
+              <div className="px-5 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+                <div className="relative z-10">
+                  <h2 className="text-2xl font-bold text-white">🩺 Symptom Checker</h2>
+                  <p className="text-white/90 text-sm mt-2">
+                    {recommendedDisease ? "Your Results" : "Let's help you identify what you might have. Answer these questions based on your symptoms."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Quiz Content */}
+              <div className="px-5 py-6">
+                {recommendedDisease ? (
+                  // RESULTS SCREEN
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="text-5xl mb-2">✓</div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-1">
+                        Based on your symptoms, we recommend:
+                      </h3>
+                      <p className="text-gray-600 text-xs">
+                        Please consult a doctor for accurate diagnosis.
+                      </p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border-2 border-purple-200">
+                      <div className="text-center space-y-2">
+                        <div className="text-4xl">
+                          {recommendedDisease === "psoriasis" && "🔴"}
+                          {recommendedDisease === "tinea" && "🟡"}
+                          {recommendedDisease === "leprosy" && "🔴"}
+                          {recommendedDisease === "skinCancer" && "⚠️"}
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          {recommendedDisease === "psoriasis" && "Psoriasis"}
+                          {recommendedDisease === "tinea" && "Tinea"}
+                          {recommendedDisease === "leprosy" && "Leprosy"}
+                          {recommendedDisease === "skinCancer" && "Skin Cancer"}
+                        </h2>
+                        <p className="text-xs text-gray-700 font-medium">
+                          Confidence: {Math.round((symptomScores[recommendedDisease] / 45) * 100)}%
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                      <p className="text-xs text-blue-800 leading-relaxed">
+                        <strong>📋 Next Steps:</strong> Accept to view details, review symptoms, take a scan, or book a doctor.
+                      </p>
+                    </div>
+
+                    <p className="text-xs text-gray-500 text-center">
+                      ⚠️ Not a medical diagnosis. Consult a healthcare professional.
+                    </p>
+                  </div>
+                ) : (
+                  // QUIZ SCREEN
+                  <>
+                    {/* Progress Bar */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-gray-700">
+                          Q{currentSymptomQuestion + 1}/{SYMPTOM_QUESTIONS.length}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {Math.round(((currentSymptomQuestion + 1) / SYMPTOM_QUESTIONS.length) * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 h-1.5 rounded-full transition-all duration-300"
+                          style={{
+                            width: `${((currentSymptomQuestion + 1) / SYMPTOM_QUESTIONS.length) * 100}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Current Question */}
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-bold text-gray-900">
+                        {SYMPTOM_QUESTIONS[currentSymptomQuestion].question}
+                      </h3>
+
+                      <div className="space-y-2">
+                        {SYMPTOM_QUESTIONS[currentSymptomQuestion].answers.map((answer, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSymptomAnswer(answer.diseaseScores)}
+                            className="w-full text-left p-3 rounded-lg border border-gray-200 bg-white hover:border-purple-500 hover:bg-purple-50 transition-all duration-200 group"
+                          >
+                            <span className="text-xs font-medium text-gray-700 group-hover:text-purple-700">
+                              {answer.text}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Help Text */}
+                    <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-xs text-blue-800">
+                        💡 Not a medical diagnosis. Consult a doctor.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-3 bg-gray-50 rounded-b-2xl border-t border-gray-200 flex justify-between items-center gap-2">
+                <button
+                  onClick={handleCloseSymptomChecker}
+                  className="px-3 py-1.5 text-sm bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+                >
+                  {recommendedDisease ? "Close" : "Cancel"}
+                </button>
+                
+                {recommendedDisease && (
+                  <button
+                    onClick={handleSelectRecommendedDisease}
+                    className="px-4 py-1.5 text-sm bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+                  >
+                    ✅ Accept
+                  </button>
+                )}
+
+                {!recommendedDisease && currentSymptomQuestion > 0 && (
+                  <button
+                    onClick={() => {
+                      setCurrentSymptomQuestion(currentSymptomQuestion - 1);
+                    }}
+                    className="px-3 py-1.5 text-sm bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition-colors font-medium"
+                  >
+                    ← Back
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Schedule Appointment Modal */}
         {showScheduleModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -990,6 +1450,8 @@ export default function PatientDashboard() {
                       setScheduleFormData({ ...scheduleFormData, requestedDate: e.target.value })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    title="Select an available appointment date"
+                    aria-label="Appointment Date"
                   >
                     <option value="">-- Select Available Date --</option>
                     {generateAvailableDates().map((dateStr) => {
