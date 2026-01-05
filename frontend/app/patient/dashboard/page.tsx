@@ -855,6 +855,14 @@ export default function PatientDashboard() {
             >
               🔍 Symptom Checker
             </button>
+            {selectedDisease === "leprosy" && (
+              <button
+                onClick={() => router.push("/leprosy/assistant")}
+                className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-red-400"
+              >
+                💬 Care Assistant
+              </button>
+            )}
             {selectedDisease === "skinCancer" && (
               <button
                 onClick={() => router.push("/skin-cancer")}
