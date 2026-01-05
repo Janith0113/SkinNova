@@ -10,11 +10,16 @@ The unified framework addresses limitations of single-modality systems through f
 ---
 ## Main Diagram
 <p>
-<img src="" alt="Main diagram" width="1200"">
+<img src="https://github.com/Janith0113/SkinNova/blob/main/WhatsApp%20Image%202026-01-05%20at%203.13.40%20PM.jpeg" alt="Main diagram" width="1200"">
 </p>
 
 ---
+## 📌 Project Components Overview
+---
+
+
 ## 1️⃣ Psoriasis Detection & Environmental Monitoring
+
 ### Owner: Gunarathne.J (IT22166760)
 
 ### 🔍 Key Components
@@ -30,7 +35,9 @@ Real-time psoriasis detection with environmental context
 Personalized treatment based on phototype & conditions
 
 Predictive analytics for flare-up prevention
+
 ​
+
 
 ## 2️⃣ Tinea Detection with Ayurvedic Integration
 ### Owner: Gunawardhana.D.N.M.P (IT22629876)
@@ -48,6 +55,7 @@ Automated tinea recognition from images
 Dosha-based holistic treatment planning
 
 Privacy-aware federated learning architecture
+
 ​
 
 ## 3️⃣ Leprosy Diagnosis via Multimodal Fusion
@@ -66,9 +74,11 @@ Early-stage leprosy detection
 Automated lab report interpretation
 
 Grad-CAM heatmaps + key lab value extraction
+
 ​
 
 ## 4️⃣ Skin Cancer Detection & Risk Stratification
+
 ### Owner: Kulasekara.K.M.D (IT22313270)
 
 ### 🔍 Key Components
@@ -83,7 +93,8 @@ Detect Melanoma, BCC, SCC with risk scores
 
 Personalized prevention recommendations
 
-Clinical-grade interpretability reports
+Clinical-grade interpretability 
+
 
 ## Technologies Used
 
@@ -93,7 +104,9 @@ Clinical-grade interpretability reports
 📱 Mobile Sensors (temp, humidity)
 ⚕️ Clinical Decision Support Systems
 
+
 ## 📈 Why This Project Matters
+
 ### Current dermatological AI systems suffer from:
 
 Single-modality limitations (image-only)
@@ -106,13 +119,17 @@ Underrepresentation of tropical diseases (tinea, leprosy)
 
 This system provides: Clinical-grade explainability + multimodal fusion + region-specific disease focus
 
+
+
 ## 👥 Group Details
 | Name                 | Components      	    |      Email	                |  GitHub Profile	                               | Status
 | -------------        | -------------------- |  ------------------------- |  ----------------------------------------------| ----------------------
 | Bambarandage.T.B.M.S | IT22006370           |  IT22006370@my.sliit.lk    | [@Malithi](https://github.com/malithi01)       |  ⭐Leader
-| Kulasekara.K.M.D     | IT22313270           |  IT22313270@my.sliit.lk    | [@Dishani](https://github.com/Thiwanka49)      |   👨‍💻Member
+| Kulasekara.K.M.D     | IT22313270           |  IT22313270@my.sliit.lk    | [@Dishani](https://github.com/dish1307)        |   👨‍💻Member
 | Gunarathne.J         | IT22166760           |  IT22166760@my.sliit.lk    | [@Janith](https://github.com/Janith0113)       |   👨‍💻Member
 | Gunawardhana.D.N.M.P | IT22629876           |  IT22629876@my.sliit.lk    | [@Nipun](https://github.com/PrasadG2000314)    |   👨‍💻Member
+
+
 
 
 <p>
