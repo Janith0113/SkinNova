@@ -64,16 +64,16 @@ Privacy-aware federated learning architecture
 ### 🔍 Key Components
 AI image classification for Leprosy
 
-Slit-skin smear analysis automation
+Personalized Lifestyle & Self-Care Guidance Engine
 
-Clinician-ready explainable reports
+Probability-based risk scores
 
 ### 🎯 Objectives
-Early-stage leprosy detection
+To develop an accurate and robust image-based model for early leprosy risk identification.
 
-Automated lab report interpretation
+To support early screening and triage, not clinical diagnosis of leprosy.
 
-Grad-CAM heatmaps + key lab value extraction
+To enable seamless integration with doctor referral and patient guidance modules.
 
 ​
 
