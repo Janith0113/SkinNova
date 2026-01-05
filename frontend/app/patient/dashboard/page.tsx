@@ -994,7 +994,18 @@ export default function PatientDashboard() {
               <button onClick={() => router.push('/patient/reports')} className="w-full rounded-2xl bg-sky-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-sky-700 transition-all">
                 View my previous reports
               </button>
-              <button className="w-full rounded-2xl bg-purple-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-purple-700 transition-all">
+              <button 
+                onClick={() => {
+                  const diseaseRoutes: Record<DiseaseKey, string> = {
+                    psoriasis: "/psoriasis/risk-analysis",
+                    tinea: "/tinea",
+                    leprosy: "/leprosy",
+                    skinCancer: "/skin-cancer"
+                  };
+                  router.push(diseaseRoutes[selectedDisease]);
+                }}
+                className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:shadow-lg hover:scale-105 transition-all"
+              >
                 Ask a doctor about {cfg.label.toLowerCase()}
               </button>
             </div>
