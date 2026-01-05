@@ -217,8 +217,8 @@ export default function LeprosyDetection() {
 
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto">
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="max-w-4xl mx-auto pt-28 px-4 sm:px-6 lg:px-8 pb-24">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">

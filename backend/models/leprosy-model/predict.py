@@ -50,10 +50,10 @@ def predict_image(image_path):
 
     class_labels = {0: "Normal Skin", 1: "Leprosy Skin"}
 
-    print(f"
---- Prediction for {image_path} ---")
-    print(f"Predicted Class: {class_labels.get(predicted_class, 'Unknown')}")
-    print(f"Confidence: {confidence:.4f}")
+#     print(f"
+# --- Prediction for {image_path} ---")
+#     print(f"Predicted Class: {class_labels.get(predicted_class, 'Unknown')}")
+#     print(f"Confidence: {confidence:.4f}")
 
     if predicted_class == 1:
         print("The model predicts this image shows Leprosy Skin.")
