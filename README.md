@@ -82,18 +82,18 @@ To enable seamless integration with doctor referral and patient guidance modules
 ### Owner: Kulasekara.K.M.D (IT22313270)
 
 ### 🔍 Key Components
-Dermoscopic image analysis (CNN/ViT)
+Dermoscopic image analysis using CNN / Vision Transformer (ViT) models
 
 Multimodal fusion with patient metadata
 
 Dual explainability (Grad-CAM + SHAP)
 
 ### 🎯 Objectives
-Detect Melanoma, BCC, SCC with risk scores
+Detect Melanoma  risk scores
 
-Personalized prevention recommendations
+Generate risk scores to support early screening and clinical decision-making
 
-Clinical-grade interpretability 
+Provide clinically interpretable and explainable AI outputs for dermatologist trust
 
 
 ## Technologies Used
