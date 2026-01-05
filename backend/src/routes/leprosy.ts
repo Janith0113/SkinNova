@@ -2,8 +2,90 @@ import express from 'express'
 import { requireAuth } from '../middleware/auth'
 import SymptomLog from '../models/SymptomLog'
 import LeprosyAssistantChat from '../models/LeprosyAssistantChat'
+import LeprosyUserProfile from '../models/LeprosyUserProfile'
 
 const router = express.Router()
+
+// User Profile Management
+
+// Create or update user profile
+router.post('/profile', requireAuth, async (req: any, res: any) => {
+  try {
+    const { userId, personalInfo, medical, leprosy, lifestyle, goals, notes } = req.body
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    let profile = await LeprosyUserProfile.findOne({ userId })
+
+    if (profile) {
+      // Update existing profile
+      profile.personalInfo = { ...profile.personalInfo, ...personalInfo }
+      profile.medical = { ...profile.medical, ...medical }
+      profile.leprosy = { ...profile.leprosy, ...leprosy }
+      profile.lifestyle = { ...profile.lifestyle, ...lifestyle }
+      if (goals) profile.goals = goals
+      if (notes) profile.notes = notes
+    } else {
+      // Create new profile
+      profile = new LeprosyUserProfile({
+        userId,
+        personalInfo,
+        medical,
+        leprosy,
+        lifestyle,
+        goals,
+        notes
+      })
+    }
+
+    await profile.save()
+
+    res.json({
+      success: true,
+      message: 'Profile saved successfully',
+      profile
+    })
+  } catch (error) {
+    console.error('Error saving profile:', error)
+    res.status(500).json({ error: 'Failed to save profile' })
+  }
+})
+
+// Get user profile
+router.get('/profile', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.userId
+
+    const profile = await LeprosyUserProfile.findOne({ userId })
+
+    res.json({
+      success: true,
+      profile: profile || null
+    })
+  } catch (error) {
+    console.error('Error fetching profile:', error)
+    res.status(500).json({ error: 'Failed to fetch profile' })
+  }
+})
+
+// Delete user profile
+router.delete('/profile', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.userId
+
+    await LeprosyUserProfile.findOneAndDelete({ userId })
+
+    res.json({
+      success: true,
+      message: 'Profile deleted successfully'
+    })
+  } catch (error) {
+    console.error('Error deleting profile:', error)
+    res.status(500).json({ error: 'Failed to delete profile' })
+  }
+})
 
 // Log symptoms
 router.post('/symptom-log', requireAuth, async (req: any, res: any) => {
@@ -87,6 +169,9 @@ router.post('/chat/leprosy-assistant', requireAuth, async (req: any, res: any) =
       })
     }
 
+    // Fetch user profile for personalized response
+    const userProfile = await LeprosyUserProfile.findOne({ userId })
+
     // Add user message to history
     chatHistory.messages.push({
       text: message,
@@ -94,8 +179,8 @@ router.post('/chat/leprosy-assistant', requireAuth, async (req: any, res: any) =
       timestamp: new Date()
     })
 
-    // Generate assistant response based on keywords and context
-    const reply = generateAssistantResponse(message)
+    // Generate assistant response based on keywords, context, and user profile
+    const reply = generateAssistantResponse(message, userProfile)
 
     // Add assistant message to history
     chatHistory.messages.push({
@@ -156,9 +241,29 @@ router.delete('/chat-history', requireAuth, async (req: any, res: any) => {
   }
 })
 
-// Generate assistant response based on message content
-function generateAssistantResponse(message: string): string {
+// Generate assistant response based on message content and user profile
+function generateAssistantResponse(message: string, userProfile: any): string {
   const lowerMessage = message.toLowerCase()
+  let personalizationContext = ''
+
+  // Build personalization context from user profile
+  if (userProfile) {
+    if (userProfile.personalInfo?.age) {
+      personalizationContext += ` (Age: ${userProfile.personalInfo.age})`
+    }
+    if (userProfile.medical?.leprosyType) {
+      personalizationContext += ` (Leprosy Type: ${userProfile.medical.leprosyType})`
+    }
+    if (userProfile.lifestyle?.physicalActivity) {
+      personalizationContext += ` (Activity Level: ${userProfile.lifestyle.physicalActivity})`
+    }
+    if (userProfile.leprosy?.nerveInvolvement) {
+      personalizationContext += ' (Has nerve involvement)'
+    }
+    if (userProfile.leprosy?.eyeInvolvement) {
+      personalizationContext += ' (Has eye involvement)'
+    }
+  }
 
   // Treatment and medication responses
   if (
@@ -167,10 +272,18 @@ function generateAssistantResponse(message: string): string {
     lowerMessage.includes('mdt') ||
     lowerMessage.includes('drug')
   ) {
-    const responses = [
+    let responses = [
       'Medication adherence is critical for leprosy treatment. Take your MDT (Multi-Drug Therapy) medications exactly as prescribed, typically for 6-12 months depending on classification. Set daily reminders to avoid missing doses. If you experience side effects, report them to your healthcare provider immediately—do not stop medication on your own.',
       'Your MDT regimen is designed specifically for your type of leprosy. Never skip doses or stop early, even if you feel better. Regular adherence prevents drug resistance and ensures complete cure. Keep a medication log and set phone alarms for each dose.'
     ]
+
+    // Personalize for specific leprosy types
+    if (userProfile?.medical?.leprosyType === 'tuberculoid') {
+      responses.push('For tuberculoid leprosy, your MDT typically lasts 6 months. Since you have the less severe form, ensure consistent adherence and watch for any changes in sensation or new patches.')
+    } else if (userProfile?.medical?.leprosyType === 'lepromatous') {
+      responses.push('For lepromatous leprosy, your MDT will be for 12 months. This more severe form requires strict adherence and frequent monitoring. Regular clinic visits are essential.')
+    }
+
     return responses[Math.floor(Math.random() * responses.length)]
   }
 
@@ -181,10 +294,16 @@ function generateAssistantResponse(message: string): string {
     lowerMessage.includes('lesion') ||
     lowerMessage.includes('spot')
   ) {
-    const responses = [
+    let responses = [
       'Monitor your skin regularly for changes in existing patches or new lesions. Document any changes with photos and notes. Report new patches immediately to your healthcare provider. Check for loss of sensation in affected areas using temperature and touch tests.',
       'Skin examination is crucial. Check for: (1) New patches appearing, (2) Color changes in existing areas, (3) Size changes, (4) Sensation loss (use ice/warm water to test). Keep a log with dates and photos to share with your doctor.'
     ]
+
+    // Personalize if user has known affected areas
+    if (userProfile?.leprosy?.affectedAreas && userProfile.leprosy.affectedAreas.length > 0) {
+      responses.push(`Pay special attention to your known affected areas: ${userProfile.leprosy.affectedAreas.join(', ')}. Monitor these closely for any changes in size, color, or sensation.`)
+    }
+
     return responses[Math.floor(Math.random() * responses.length)]
   }
 
@@ -195,10 +314,16 @@ function generateAssistantResponse(message: string): string {
     lowerMessage.includes('numbness') ||
     lowerMessage.includes('weakness')
   ) {
-    const responses = [
+    let responses = [
       'Nerve involvement is a key feature of leprosy. Perform daily sensation checks on affected areas—test with light touch, temperature, and pin prick. Exercise regularly to maintain nerve function. Report any new numbness, weakness, or pain to your doctor immediately.',
       'Nerve damage from leprosy can be prevented with early treatment and monitoring. Do sensation tests (hot/cold/touch) on affected areas daily. Perform hand and foot exercises. Use protective gear if needed. Report changes within 24 hours to your healthcare provider.'
     ]
+
+    // Personalize if user has confirmed nerve involvement
+    if (userProfile?.leprosy?.nerveInvolvement) {
+      responses.push('Since you have confirmed nerve involvement, it\'s critical to: (1) Perform daily sensation tests on all affected areas, (2) Do specific nerve exercises prescribed by your doctor, (3) Wear protective gloves/shoes, (4) Avoid activities that risk nerve damage, (5) Report any worsening to your healthcare provider immediately.')
+    }
+
     return responses[Math.floor(Math.random() * responses.length)]
   }
 
@@ -237,10 +362,16 @@ function generateAssistantResponse(message: string): string {
     lowerMessage.includes('sight') ||
     lowerMessage.includes('eyebrow')
   ) {
-    const responses = [
+    let responses = [
       'If leprosy affects your eyes, extra care is needed. Wear protective glasses, use lubricating drops, perform blinking exercises, and avoid eye strain. Report any redness, pain, or vision changes immediately. Monthly eye check-ups are important during treatment.',
       'Eye involvement in leprosy requires special attention. Symptoms include eyebrow/eyelash loss, dry eyes, and reduced sensation. Use protective eyewear, keep eyes moist, and see an eye specialist. Regular monitoring prevents complications.'
     ]
+
+    // Personalize if user has eye involvement
+    if (userProfile?.leprosy?.eyeInvolvement) {
+      responses.push('Since you have eye involvement, daily eye care is essential. Use protective glasses during outdoor activities, apply lubricating drops regularly, and report any vision changes immediately to your ophthalmologist.')
+    }
+
     return responses[Math.floor(Math.random() * responses.length)]
   }
 
@@ -258,6 +389,29 @@ function generateAssistantResponse(message: string): string {
     return responses[Math.floor(Math.random() * responses.length)]
   }
 
+  // Smoking, alcohol, and lifestyle habits
+  if (
+    lowerMessage.includes('smoke') ||
+    lowerMessage.includes('smoking') ||
+    lowerMessage.includes('tobacco') ||
+    lowerMessage.includes('alcohol') ||
+    lowerMessage.includes('drink')
+  ) {
+    let responses = [
+      'Smoking and alcohol use can slow healing and weaken your immune system during leprosy treatment. Both impact medication effectiveness. If you smoke or drink, discuss cessation strategies with your healthcare provider. Your recovery depends on overall health habits.',
+      'Avoid or minimize smoking and alcohol during treatment. These substances: (1) Reduce medication effectiveness, (2) Slow skin healing, (3) Weaken immune response, (4) May interact with MDT drugs. Support programs and replacement therapies are available.'
+    ]
+
+    // Personalize if user is a current smoker
+    if (userProfile?.lifestyle?.smokingStatus === 'current') {
+      responses.push('As a current smoker, quitting is strongly recommended during leprosy treatment. Smoking reduces immune function and healing capacity. Discuss nicotine replacement therapy or smoking cessation programs with your doctor. Your recovery depends on this lifestyle change.')
+    } else if (userProfile?.lifestyle?.smokingStatus === 'former') {
+      responses.push('Great that you\'ve quit smoking! This supports better healing and immune function during your treatment. Continue avoiding smoking to ensure optimal treatment outcomes.')
+    }
+
+    return responses[Math.floor(Math.random() * responses.length)]
+  }
+
   // Exercise and physical activity responses
   if (
     lowerMessage.includes('exercise') ||
@@ -265,10 +419,20 @@ function generateAssistantResponse(message: string): string {
     lowerMessage.includes('sport') ||
     lowerMessage.includes('physical')
   ) {
-    const responses = [
+    let responses = [
       'Light to moderate exercise is beneficial during leprosy treatment. Start with gentle activities like walking and stretching. Avoid high-impact sports that might injure affected areas. Gradually increase intensity as tolerated. Always protect vulnerable areas from injury.',
       'Regular, gentle exercise helps maintain nerve and muscle function. Safe activities include: walking, swimming, yoga, stretching, and light strength training. Avoid contact sports and activities that risk injury to affected limbs. Consult your doctor about appropriate activities.'
     ]
+
+    // Personalize based on current activity level
+    if (userProfile?.lifestyle?.physicalActivity) {
+      if (userProfile.lifestyle.physicalActivity === 'sedentary') {
+        responses.push('Since you have a sedentary lifestyle, start slowly with light activity: 10-minute walks, gentle stretching, or slow yoga. Gradually increase to 30 minutes daily. Movement helps prevent complications and improves healing. Begin with activities that don\'t stress affected areas.')
+      } else if (userProfile.lifestyle.physicalActivity === 'vigorous') {
+        responses.push('Given your active lifestyle, maintain movement but adapt your routine during treatment. Avoid high-impact activities that risk injury to affected areas. Focus on: low-impact cardio (swimming, cycling), strength training with caution, and protective gear for vulnerable areas.')
+      }
+    }
+
     return responses[Math.floor(Math.random() * responses.length)]
   }
 
@@ -292,10 +456,16 @@ function generateAssistantResponse(message: string): string {
     lowerMessage.includes('reaction') ||
     lowerMessage.includes('reaction type')
   ) {
-    const responses = [
+    let responses = [
       'Leprosy can have reactions (Type 1 and Type 2) that require medical attention. Signs include: sudden inflammation, new lesions, nerve swelling, fever, and skin pain. Report these immediately. Proper treatment prevents permanent damage. Stay vigilant and don\'t ignore warning signs.',
       'Some patients experience leprosy reactions during or after treatment. These are treatable but need prompt medical attention. Watch for: rapid changes in lesions, severe inflammation, new patches, or nerve pain. Contact your doctor immediately if you notice these symptoms.'
     ]
+
+    // Personalize for comorbidities
+    if (userProfile?.medical?.comorbidities && userProfile.medical.comorbidities.length > 0) {
+      responses.push(`Given your existing conditions (${userProfile.medical.comorbidities.join(', ')}), complications from leprosy may interact differently. Report any symptoms immediately and ensure your doctor knows about all your conditions. Some medications may need adjustment.`)
+    }
+
     return responses[Math.floor(Math.random() * responses.length)]
   }
 
