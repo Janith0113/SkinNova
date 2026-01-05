@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Question {
   id: number;
@@ -11,6 +12,168 @@ interface Question {
     dosha: 'vata' | 'pitta' | 'kapha';
   }[];
 }
+
+interface DoshaInfo {
+  name: string;
+  emoji: string;
+  icon: string;
+  color: string;
+  gradientStart: string;
+  gradientEnd: string;
+  description: string;
+  characteristics: string[];
+  skinAdvice: string[];
+  dietAdvice: string[];
+  balancingActivities: string[];
+  tineaRisk: {
+    risk: 'Low' | 'Moderate' | 'High';
+    description: string;
+  };
+}
+
+const DOSHA_INFO: Record<'vata' | 'pitta' | 'kapha', DoshaInfo> = {
+  vata: {
+    name: 'Vata',
+    emoji: '💨',
+    icon: 'Wind',
+    color: 'blue',
+    gradientStart: 'from-blue-400',
+    gradientEnd: 'to-cyan-400',
+    description: 'The element of Space & Air. You are the creative, energetic, and adaptable type.',
+    characteristics: [
+      'Adaptable and flexible',
+      'Creative and imaginative',
+      'Quick-thinking and communicative',
+      'Tends to be anxious or restless',
+      'Prefers warm environments',
+      'Variable energy levels',
+      'Thin, light build',
+      'Dry skin tendency',
+    ],
+    skinAdvice: [
+      'Use warm, nourishing oils (sesame, almond)',
+      'Apply moisturizers regularly',
+      'Avoid harsh soaps and chemicals',
+      'Keep skin warm and protected',
+      'Stay hydrated internally',
+      'Use herbal face masks weekly',
+    ],
+    dietAdvice: [
+      'Eat warm, cooked foods',
+      'Include healthy oils and ghee',
+      'Consume grounding grains and roots',
+      'Add warm spices (cumin, ginger)',
+      'Maintain regular meal times',
+      'Avoid dry, raw foods',
+    ],
+    balancingActivities: [
+      'Yoga (especially Hatha yoga)',
+      'Meditation and grounding exercises',
+      'Oil massage (Abhyanga)',
+      'Gentle walking',
+      'Aromatherapy with warming oils',
+      'Warm baths and treatments',
+    ],
+    tineaRisk: {
+      risk: 'Moderate',
+      description: 'Vata types may be prone to tinea due to dry skin and weak immune barrier. Focus on nourishing treatments.',
+    },
+  },
+  pitta: {
+    name: 'Pitta',
+    emoji: '🔥',
+    icon: 'Fire',
+    color: 'orange',
+    gradientStart: 'from-orange-400',
+    gradientEnd: 'to-red-400',
+    description: 'The element of Fire & Water. You are the ambitious, driven, and intelligent type.',
+    characteristics: [
+      'Ambitious and goal-oriented',
+      'Sharp intellect and leadership',
+      'Strong metabolism and digestion',
+      'Can be perfectionist or impatient',
+      'Prefers cool environments',
+      'Medium, muscular build',
+      'Warm, oily, sensitive skin',
+      'Strong body odor',
+    ],
+    skinAdvice: [
+      'Use cooling products (coconut, neem)',
+      'Avoid heating oils and treatments',
+      'Apply sunscreen regularly',
+      'Use anti-inflammatory masks',
+      'Keep skin cool and calm',
+      'Avoid excessive sun exposure',
+    ],
+    dietAdvice: [
+      'Eat cooling vegetables and fruits',
+      'Consume coconut and aloe vera',
+      'Avoid spicy and heating foods',
+      'Include bitter and sweet tastes',
+      'Drink cooling herbal teas',
+      'Limit alcohol and caffeine',
+    ],
+    balancingActivities: [
+      'Swimming and water activities',
+      'Cooling pranayama (Sitali breath)',
+      'Moon gazing meditation',
+      'Gentle yoga practices',
+      'Spending time in nature',
+      'Creative pursuits',
+    ],
+    tineaRisk: {
+      risk: 'High',
+      description: 'Pitta types are prone to inflammatory tinea due to heat and moisture. Maintain cool, dry conditions.',
+    },
+  },
+  kapha: {
+    name: 'Kapha',
+    emoji: '🌊',
+    icon: 'Water',
+    color: 'green',
+    gradientStart: 'from-green-400',
+    gradientEnd: 'to-emerald-400',
+    description: 'The element of Water & Earth. You are the stable, grounded, and compassionate type.',
+    characteristics: [
+      'Calm and grounded nature',
+      'Loyal and compassionate',
+      'Strong and stable health',
+      'Can be stubborn or lethargic',
+      'Prefers warm, dry environments',
+      'Good strength and endurance',
+      'Heavy, sturdy build',
+      'Thick, moist skin',
+    ],
+    skinAdvice: [
+      'Use light, stimulating treatments',
+      'Regular dry brushing (Garshana)',
+      'Avoid heavy oils',
+      'Use warming spices in masks',
+      'Maintain dry skin conditions',
+      'Do regular exfoliation',
+    ],
+    dietAdvice: [
+      'Eat light, warm foods',
+      'Include warming spices',
+      'Reduce heavy, oily foods',
+      'Add bitter and pungent tastes',
+      'Limit dairy and sweets',
+      'Consume stimulating foods',
+    ],
+    balancingActivities: [
+      'Vigorous exercise and cardio',
+      'Invigorating yoga practices',
+      'Dynamic activities and sports',
+      'Early morning wake-ups',
+      'Sauna and steam treatments',
+      'Social engagement and travel',
+    ],
+    tineaRisk: {
+      risk: 'Low',
+      description: 'Kapha types have stronger immunity but moisture creates risk. Keep skin dry and maintain hygiene.',
+    },
+  },
+};
 
 const questions: Question[] = [
   {
@@ -240,18 +403,17 @@ const questions: Question[] = [
   },
 ];
 
-interface DoshaScores {
-  vata: number;
-  pitta: number;
-  kapha: number;
-}
-
-export default function DoshaQuizPage() {
+export default function DoshaAssessmentPage() {
   const router = useRouter();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<('vata' | 'pitta' | 'kapha')[]>([]);
   const [showResults, setShowResults] = useState(false);
-  const [doshaScores, setDoshaScores] = useState<DoshaScores>({ vata: 0, pitta: 0, kapha: 0 });
+  const [activeTab, setActiveTab] = useState<'info' | 'quiz' | 'result'>('info');
+  const [doshaScores, setDoshaScores] = useState<Record<'vata' | 'pitta' | 'kapha', number>>({
+    vata: 0,
+    pitta: 0,
+    kapha: 0,
+  });
 
   const handleAnswer = (dosha: 'vata' | 'pitta' | 'kapha') => {
     const newAnswers = [...answers, dosha];
@@ -261,266 +423,359 @@ export default function DoshaQuizPage() {
       setCurrentQuestion(currentQuestion + 1);
     } else {
       calculateDosha(newAnswers);
+      setActiveTab('result');
     }
   };
 
   const calculateDosha = (answers: ('vata' | 'pitta' | 'kapha')[]) => {
-    const scores: DoshaScores = { vata: 0, pitta: 0, kapha: 0 };
-    answers.forEach(answer => {
-      scores[answer]++;
-    });
+    const scores: Record<'vata' | 'pitta' | 'kapha', number> = {
+      vata: answers.filter(a => a === 'vata').length,
+      pitta: answers.filter(a => a === 'pitta').length,
+      kapha: answers.filter(a => a === 'kapha').length,
+    };
     setDoshaScores(scores);
     setShowResults(true);
   };
 
   const getPrimaryDosha = () => {
-    const { vata, pitta, kapha } = doshaScores;
-    if (vata >= pitta && vata >= kapha) return 'vata';
-    if (pitta >= vata && pitta >= kapha) return 'pitta';
-    return 'kapha';
+    const entries = Object.entries(doshaScores) as [string, number][];
+    return entries.reduce((a, b) => (a[1] > b[1] ? a : b))[0] as 'vata' | 'pitta' | 'kapha';
   };
 
-  const getDoshaInfo = (dosha: string) => {
-    const info: Record<string, { title: string; color: string; description: string; characteristics: string[] }> = {
-      vata: {
-        title: 'Vata Dosha',
-        color: 'from-blue-400 to-cyan-400',
-        description: 'You are the creative, energetic, and adaptable type. Vatas are characterized by qualities of air and space.',
-        characteristics: [
-          'Adaptable and flexible',
-          'Creative and imaginative',
-          'Quick-thinking and communicative',
-          'Tends to be anxious or restless',
-          'Prefers warm environments',
-          'Has variable energy levels',
-        ],
-      },
-      pitta: {
-        title: 'Pitta Dosha',
-        color: 'from-orange-400 to-red-400',
-        description: 'You are the ambitious, driven, and intelligent type. Pittas are characterized by qualities of fire and water.',
-        characteristics: [
-          'Ambitious and goal-oriented',
-          'Sharp intellect and leadership',
-          'Strong metabolism and digestion',
-          'Can be perfectionist or impatient',
-          'Prefers cool environments',
-          'Medium, muscular build',
-        ],
-      },
-      kapha: {
-        title: 'Kapha Dosha',
-        color: 'from-green-400 to-emerald-400',
-        description: 'You are the stable, grounded, and compassionate type. Kaphas are characterized by qualities of earth and water.',
-        characteristics: [
-          'Calm and grounded nature',
-          'Loyal and compassionate',
-          'Strong and stable health',
-          'Can be stubborn or lethargic',
-          'Prefers warm, dry environments',
-          'Good strength and endurance',
-        ],
-      },
-    };
-    return info[dosha];
+  const resetQuiz = () => {
+    setCurrentQuestion(0);
+    setAnswers([]);
+    setShowResults(false);
+    setActiveTab('info');
+    setDoshaScores({ vata: 0, pitta: 0, kapha: 0 });
   };
-
-  const getRecommendations = (dosha: string) => {
-    const recommendations: Record<string, string[]> = {
-      vata: [
-        'Maintain a regular routine to ground yourself',
-        'Include warm, nourishing foods in your diet',
-        'Practice grounding exercises like yoga or tai chi',
-        'Get adequate sleep and rest',
-        'Avoid excessive stimulation',
-        'Stay hydrated and keep warm',
-      ],
-      pitta: [
-        'Practice cooling activities like swimming',
-        'Avoid excessive heat and spicy foods',
-        'Cultivate patience and forgiveness',
-        'Take breaks to avoid burnout',
-        'Practice meditation or cooling pranayama',
-        'Maintain a balanced work-life schedule',
-      ],
-      kapha: [
-        'Increase physical activity and exercise',
-        'Include warm, light foods in your diet',
-        'Embrace change and new challenges',
-        'Practice stimulating activities',
-        'Wake up early to establish routine',
-        'Avoid excessive rest and sluggishness',
-      ],
-    };
-    return recommendations[dosha] || [];
-  };
-
-  if (showResults) {
-    const primaryDosha = getPrimaryDosha();
-    const doshaInfo = getDoshaInfo(primaryDosha);
-    const recommendations = getRecommendations(primaryDosha);
-
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Results Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Your Dosha Analysis</h1>
-            <p className="text-lg text-gray-600">Based on your answers, here's your constitutional profile</p>
-          </div>
-
-          {/* Primary Dosha Card */}
-          <div className={`bg-gradient-to-r ${doshaInfo.color} rounded-lg shadow-2xl p-8 mb-8 text-white`}>
-            <div className="text-center">
-              <h2 className="text-4xl font-bold mb-4">{doshaInfo.title}</h2>
-              <p className="text-lg mb-6 opacity-90">{doshaInfo.description}</p>
-              <div className="text-5xl mb-4">
-                {primaryDosha === 'vata' && '💨'}
-                {primaryDosha === 'pitta' && '🔥'}
-                {primaryDosha === 'kapha' && '🌊'}
-              </div>
-            </div>
-          </div>
-
-          {/* Dosha Scores */}
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">Your Score Breakdown</h3>
-            <div className="space-y-4">
-              {(['vata', 'pitta', 'kapha'] as const).map(dosha => (
-                <div key={dosha}>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-semibold text-gray-700 capitalize">{dosha}</span>
-                    <span className="text-lg font-bold text-gray-900">{doshaScores[dosha]}/25</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className={`h-3 rounded-full transition-all duration-500 ${
-                        dosha === 'vata' ? 'bg-blue-500' : dosha === 'pitta' ? 'bg-orange-500' : 'bg-green-500'
-                      }`}
-                      style={{ width: `${(doshaScores[dosha] / 25) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Characteristics */}
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">Your Characteristics</h3>
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {doshaInfo.characteristics.map((char, idx) => (
-                <li key={idx} className="flex items-start">
-                  <span className="text-2xl mr-3">✓</span>
-                  <span className="text-gray-700">{char}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Recommendations */}
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg shadow-lg p-8 mb-8 border-l-4 border-indigo-500">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">Personalized Recommendations</h3>
-            <ul className="space-y-3">
-              {recommendations.map((rec, idx) => (
-                <li key={idx} className="flex items-start">
-                  <span className="text-xl mr-3">💡</span>
-                  <span className="text-gray-700">{rec}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={() => {
-                setCurrentQuestion(0);
-                setAnswers([]);
-                setShowResults(false);
-              }}
-              className="px-8 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition-colors"
-            >
-              Retake Quiz
-            </button>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="px-8 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-            >
-              Go to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const progress = ((currentQuestion + 1) / questions.length) * 100;
   const question = questions[currentQuestion];
+  const primaryDosha = showResults ? getPrimaryDosha() : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Dosha Quiz</h1>
-          <p className="text-lg text-gray-600">Discover Your Ayurvedic Constitution</p>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-semibold text-gray-600">
-              Question {currentQuestion + 1} of {questions.length}
-            </span>
-            <span className="text-sm font-semibold text-gray-600">{Math.round(progress)}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-              className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
-
-        {/* Question Card */}
-        <div className="bg-white rounded-lg shadow-2xl p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-8">{question.question}</h2>
-
-          {/* Options */}
-          <div className="space-y-3">
-            {question.options.map((option, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleAnswer(option.dosha)}
-                className="w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all duration-200 font-semibold text-gray-700 hover:text-purple-600"
-              >
-                {option.text}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <div className="flex justify-between items-center">
-          <button
-            onClick={() => {
-              if (currentQuestion > 0) {
-                setCurrentQuestion(currentQuestion - 1);
-                setAnswers(answers.slice(0, -1));
-              }
-            }}
-            disabled={currentQuestion === 0}
-            className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-400 transition-colors"
-          >
-            Previous
-          </button>
-          <span className="text-sm text-gray-600">
-            {currentQuestion + 1}/{questions.length}
-          </span>
-          <div></div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-blue-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Animated background blobs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
+
+      <div className="max-w-4xl mx-auto relative z-10">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <h1 className="text-5xl font-bold text-white mb-3">Dosha Assessment</h1>
+          <p className="text-xl text-pink-200">Discover Your Ayurvedic Constitution & Skin Profile</p>
+          <Link href="/tinea">
+            <button className="mt-4 px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/40 border border-cyan-400 text-cyan-300 rounded-lg transition-all text-sm">
+              ← Back to Tinea Detection
+            </button>
+          </Link>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-4 mb-8 justify-center">
+          <button
+            onClick={() => setActiveTab('info')}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === 'info'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                : 'bg-white/10 text-white/70 hover:bg-white/20'
+            }`}
+          >
+            📚 Learn Doshas
+          </button>
+          <button
+            onClick={() => setActiveTab('quiz')}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === 'quiz'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                : 'bg-white/10 text-white/70 hover:bg-white/20'
+            }`}
+          >
+            ❓ Take Quiz
+          </button>
+          <button
+            onClick={() => showResults && setActiveTab('result')}
+            disabled={!showResults}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === 'result'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                : 'bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-50'
+            }`}
+          >
+            🎯 Results
+          </button>
+        </div>
+
+        {/* Info Tab */}
+        {activeTab === 'info' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-8 mb-8">
+              <h2 className="text-3xl font-bold text-white mb-4">What are Doshas?</h2>
+              <p className="text-white/80 text-lg leading-relaxed">
+                In Ayurvedic medicine, the three doshas (Vata, Pitta, and Kapha) represent the fundamental energies that govern physical and mental
+                characteristics. Understanding your dosha can help optimize your skincare routine and overall wellness.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {(['vata', 'pitta', 'kapha'] as const).map(dosha => {
+                const info = DOSHA_INFO[dosha];
+                return (
+                  <div
+                    key={dosha}
+                    className={`bg-gradient-to-br ${info.gradientStart} ${info.gradientEnd} rounded-xl p-6 text-white shadow-2xl hover:scale-105 transition-transform`}
+                  >
+                    <div className="text-5xl mb-4">{info.emoji}</div>
+                    <h3 className="text-2xl font-bold mb-3">{info.name}</h3>
+                    <p className="text-sm opacity-90 mb-6">{info.description}</p>
+
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-bold text-sm mb-2">✨ Key Traits:</h4>
+                        <ul className="text-xs space-y-1">
+                          {info.characteristics.slice(0, 4).map((char, i) => (
+                            <li key={i}>• {char}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h4 className="font-bold text-sm mb-2">🍽️ Diet Tips:</h4>
+                        <ul className="text-xs space-y-1">
+                          {info.dietAdvice.slice(0, 2).map((advice, i) => (
+                            <li key={i}>• {advice}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="pt-3 border-t border-white/30">
+                        <p className="text-xs font-semibold">⚠️ Tinea Risk: {info.tineaRisk.risk}</p>
+                        <p className="text-xs mt-1 opacity-80">{info.tineaRisk.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setActiveTab('quiz')}
+              className="w-full mt-8 px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg hover:shadow-2xl transition-all text-lg"
+            >
+              Start Your Assessment →
+            </button>
+          </div>
+        )}
+
+        {/* Quiz Tab */}
+        {activeTab === 'quiz' && (
+          <div className="animate-fadeIn">
+            {/* Progress Bar */}
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-white font-semibold">Question {currentQuestion + 1} of {questions.length}</span>
+                <span className="text-pink-300 font-bold">{Math.round(progress)}%</span>
+              </div>
+              <div className="w-full bg-white/10 rounded-full h-3 border border-white/20 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` } as unknown as React.CSSProperties}
+                ></div>
+              </div>
+            </div>
+
+            {/* Question Card */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-10 mb-8 shadow-2xl">
+              <h2 className="text-3xl font-bold text-white mb-10">{question.question}</h2>
+
+              <div className="space-y-4">
+                {question.options.map((option, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleAnswer(option.dosha)}
+                    className="w-full p-5 text-left bg-white/5 hover:bg-white/20 border-2 border-white/20 hover:border-white/50 rounded-lg transition-all duration-200 text-white font-semibold hover:shadow-lg hover:scale-105"
+                  >
+                    {option.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between items-center">
+              <button
+                onClick={() => {
+                  if (currentQuestion > 0) {
+                    setCurrentQuestion(currentQuestion - 1);
+                    setAnswers(answers.slice(0, -1));
+                  }
+                }}
+                disabled={currentQuestion === 0}
+                className="px-6 py-3 bg-white/10 text-white rounded-lg font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-all"
+              >
+                ← Previous
+              </button>
+
+              <button
+                onClick={resetQuiz}
+                className="px-6 py-3 bg-white/10 text-white rounded-lg font-semibold hover:bg-white/20 transition-all"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Results Tab */}
+        {activeTab === 'result' && primaryDosha && (
+          <div className="animate-fadeIn space-y-8">
+            {/* Primary Dosha Display */}
+            <div
+              className={`bg-gradient-to-r ${DOSHA_INFO[primaryDosha].gradientStart} ${DOSHA_INFO[primaryDosha].gradientEnd} rounded-xl shadow-2xl p-10 text-white text-center`}
+            >
+              <div className="text-7xl mb-6">{DOSHA_INFO[primaryDosha].emoji}</div>
+              <h2 className="text-5xl font-bold mb-3">{DOSHA_INFO[primaryDosha].name} Dosha</h2>
+              <p className="text-lg opacity-90 max-w-2xl mx-auto">{DOSHA_INFO[primaryDosha].description}</p>
+            </div>
+
+            {/* Score Breakdown */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-8">Your Constitution Scores</h3>
+              <div className="space-y-6">
+                {(['vata', 'pitta', 'kapha'] as const).map(dosha => (
+                  <div key={dosha}>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-white font-semibold capitalize text-lg">{dosha}</span>
+                      <span className="text-pink-300 font-bold text-lg">{doshaScores[dosha]}/8</span>
+                    </div>
+                    <div className="w-full bg-white/10 rounded-full h-4 border border-white/20 overflow-hidden">
+                      <div
+                        className={`h-4 rounded-full transition-all duration-500 ${
+                          dosha === 'vata'
+                            ? 'bg-blue-400'
+                            : dosha === 'pitta'
+                              ? 'bg-orange-400'
+                              : 'bg-green-400'
+                        }`}
+                        style={{ width: `${(doshaScores[dosha] / 8) * 100}%` } as unknown as React.CSSProperties}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Characteristics */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-6">Your Characteristics</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {DOSHA_INFO[primaryDosha].characteristics.map((char, idx) => (
+                  <div key={idx} className="flex items-start gap-3">
+                    <span className="text-2xl">✓</span>
+                    <span className="text-white">{char}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Skincare Advice */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-6">💆 Skincare Advice</h3>
+              <ul className="space-y-3">
+                {DOSHA_INFO[primaryDosha].skinAdvice.map((advice, idx) => (
+                  <li key={idx} className="flex items-start gap-3 text-white">
+                    <span className="text-xl">💧</span>
+                    <span>{advice}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Diet Advice */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-6">🍽️ Diet Recommendations</h3>
+              <ul className="space-y-3">
+                {DOSHA_INFO[primaryDosha].dietAdvice.map((advice, idx) => (
+                  <li key={idx} className="flex items-start gap-3 text-white">
+                    <span className="text-xl">🥗</span>
+                    <span>{advice}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Balancing Activities */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-6">🧘 Balancing Activities</h3>
+              <ul className="space-y-3">
+                {DOSHA_INFO[primaryDosha].balancingActivities.map((activity, idx) => (
+                  <li key={idx} className="flex items-start gap-3 text-white">
+                    <span className="text-xl">⚡</span>
+                    <span>{activity}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Tinea Risk */}
+            <div className="bg-red-500/20 border-2 border-red-500/50 backdrop-blur-md rounded-xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-4">⚠️ Tinea Risk Assessment</h3>
+              <p className="text-lg text-white mb-3">
+                <span className="font-bold">Risk Level: {DOSHA_INFO[primaryDosha].tineaRisk.risk}</span>
+              </p>
+              <p className="text-white/80">{DOSHA_INFO[primaryDosha].tineaRisk.description}</p>
+              <Link href="/tinea">
+                <button className="mt-6 w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-bold hover:shadow-xl transition-all">
+                  Check for Tinea →
+                </button>
+              </Link>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={resetQuiz}
+                className="px-8 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white rounded-lg font-semibold transition-all"
+              >
+                Retake Quiz
+              </button>
+              <Link href="/dashboard">
+                <button className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all">
+                  Go to Dashboard
+                </button>
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-in;
+        }
+      `}</style>
     </div>
   );
 }

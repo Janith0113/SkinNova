@@ -4,7 +4,7 @@ import { Heart, Shield, Activity, Utensils, Smile, Eye, AlertCircle, CheckCircle
 
 export default function LeprosyPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white pt-20">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 text-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
@@ -312,9 +312,14 @@ export default function LeprosyPage() {
         <section className="text-center py-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Have concerns about your skin?</h2>
           <p className="text-gray-600 mb-6">Consult with our qualified healthcare professionals for proper diagnosis and treatment guidance</p>
-          <button className="bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 hover:shadow-lg text-white font-semibold py-3 px-8 rounded-lg transition shadow-lg">
-            Book a Consultation
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/leprosy/detect" className="bg-gradient-to-r from-orange-600 to-rose-600 hover:shadow-lg text-white font-semibold py-3 px-8 rounded-lg transition shadow-lg inline-flex items-center justify-center gap-2">
+              🔍 Start a New Leprosy Scan
+            </a>
+            <button className="bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 hover:shadow-lg text-white font-semibold py-3 px-8 rounded-lg transition shadow-lg">
+              Book a Consultation
+            </button>
+          </div>
         </section>
       </div>
     </div>

@@ -118,8 +118,8 @@ const DISEASE_CONFIG: Record<
   },
   skinCancer: {
     label: "Skin Cancer",
-    accent: "text-green-800",
-    bgPill: "bg-green-600/90",
+    accent: "text-red-800",
+    bgPill: "bg-red-600/90",
     lastScan: "Today",
     risk: "High priority",
     riskColor: "text-red-600",
@@ -680,6 +680,12 @@ export default function PatientDashboard() {
     }
   }
 
+  function transformScanLabel(label: string): string {
+    if (label === 'Leprosy Skin') return 'Leprosy Positive';
+    if (label === 'Normal Skin') return 'Leprosy Negative';
+    return label;
+  }
+
   function getRecentScans(diseaseType: string): any[] {
     const scans = scanData[diseaseType] || [];
     return scans.slice(0, 3); // Get last 3 scans
@@ -923,7 +929,7 @@ export default function PatientDashboard() {
                         {scan.scanArea || 'Area'}
                       </p>
                       <p className="text-xs text-gray-600">
-                        {scan.skinCondition || 'Analysis'} ({(scan.confidence * 100).toFixed(0)}% confidence)
+                        {transformScanLabel(scan.skinCondition || 'Analysis')} ({(scan.confidence * 100).toFixed(0)}% confidence)
                       </p>
                     </div>
                     <span
@@ -977,7 +983,7 @@ export default function PatientDashboard() {
                     psoriasis: "/psoriasis/upload",
                     tinea: "/tinea/detect",
                     leprosy: "/leprosy/detect",
-                    skinCancer: "/melanoma/detect"
+                    skinCancer: "/skin-cancer/detect"
                   };
                   router.push(diseaseRoutes[selectedDisease]);
                 }}
@@ -1220,6 +1226,8 @@ export default function PatientDashboard() {
                     <input
                       type="file"
                       accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp"
+                      placeholder="Choose your profile photo"
+                      title="Upload a profile photo (JPG, PNG, GIF, WEBP - Max 5MB)"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -1313,7 +1321,7 @@ export default function PatientDashboard() {
                           {recommendedDisease === "psoriasis" && "🔴"}
                           {recommendedDisease === "tinea" && "🟡"}
                           {recommendedDisease === "leprosy" && "🔴"}
-                          {recommendedDisease === "skinCancer" && "⚫"}
+                          {recommendedDisease === "skinCancer" && "⚠️"}
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900">
                           {recommendedDisease === "psoriasis" && "Psoriasis"}
@@ -1442,6 +1450,8 @@ export default function PatientDashboard() {
                       setScheduleFormData({ ...scheduleFormData, requestedDate: e.target.value })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    title="Select an available appointment date"
+                    aria-label="Appointment Date"
                   >
                     <option value="">-- Select Available Date --</option>
                     {generateAvailableDates().map((dateStr) => {
