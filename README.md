@@ -43,7 +43,7 @@ Predictive analytics for flare-up prevention
 ### Owner: Gunawardhana.D.N.M.P (IT22629876)
 
 ### 🔍 Key Components
-Tinea classification (dry/wet types)
+Tinea classification
 
 Smartwatch dosha detection (HR, HRV)
 
