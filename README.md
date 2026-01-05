@@ -10,7 +10,7 @@ The unified framework addresses limitations of single-modality systems through f
 ---
 ## Main Diagram
 <p>
-<img src="https://github.com/Thiwanka49/Ceyloncoffee-Research/blob/main/Untitled%20Diagram.drawio.png" alt="Main diagram" width="1200"">
+<img src="" alt="Main diagram" width="1200"">
 </p>
 
 ---
@@ -113,5 +113,10 @@ This system provides: Clinical-grade explainability + multimodal fusion + region
 | Kulasekara.K.M.D     | IT22313270           |  IT22313270@my.sliit.lk    | [@Dishani](https://github.com/Thiwanka49)      |   👨‍💻Member
 | Gunarathne.J         | IT22166760           |  IT22166760@my.sliit.lk    | [@Janith](https://github.com/Janith0113)       |   👨‍💻Member
 | Gunawardhana.D.N.M.P | IT22629876           |  IT22629876@my.sliit.lk    | [@Nipun](https://github.com/PrasadG2000314)    |   👨‍💻Member
+
+
+<p>
+<img src="https://github.com/Janith0113/SkinNova/blob/main/WhatsApp%20Image%202026-01-05%20at%203.26.56%20PM.jpeg" alt="Main diagram" width="1200"">
+</p>
 
 
