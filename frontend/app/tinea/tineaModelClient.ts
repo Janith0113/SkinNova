@@ -80,7 +80,7 @@ class TineaModelClient {
       }
 
       // Resize to model input size (224x224)
-      const resized = tf.image.resizeBilinear(image, [224, 224]);
+      const resized = tf.image.resizeBilinear(image as tf.Tensor3D | tf.Tensor4D, [224, 224]);
       
       // Normalize pixel values to 0-1 range
       const normalized = resized.div(tf.scalar(255.0));

@@ -18,7 +18,7 @@ interface TineaResult {
 }
 
 interface DoishaResult {
-  dominantDoisha: 'Vata' | 'Pitta' | 'Kapha';
+  dominantDoisha: 'vata' | 'pitta' | 'kapha';
   scores: {
     vata: number;
     pitta: number;
@@ -395,13 +395,13 @@ export default function TinePage() {
         kapha: newAnswers.filter(a => a === 'kapha').length
       };
 
-      const dominantDoisha = Object.entries(scores).reduce((a, b) => 
+      const doishKey = Object.entries(scores).reduce((a, b) => 
         a[1] > b[1] ? a : b
       )[0] as 'vata' | 'pitta' | 'kapha';
 
-      const info = DOISHA_INFO[dominantDoisha];
+      const info = DOISHA_INFO[doishKey];
       setDoishaResult({
-        dominantDoisha,
+        dominantDoisha: doishKey,
         scores,
         characteristics: info.characteristics,
         recommendations: info.skinAdvice,
@@ -717,18 +717,25 @@ export default function TinePage() {
                     </div>
 
                     {/* Hidden Inputs */}
+                    <label htmlFor="fileInput" className="hidden">
+                      Upload image file
+                    </label>
                     <input
+                      id="fileInput"
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
                       onChange={handleFileInput}
                       className="hidden"
                     />
+                    <label htmlFor="cameraInput" className="hidden">
+                      Capture image from camera
+                    </label>
                     <input
+                      id="cameraInput"
                       ref={cameraInputRef}
                       type="file"
                       accept="image/*"
-                      capture="environment"
                       onChange={handleFileInput}
                       className="hidden"
                     />
@@ -887,7 +894,7 @@ export default function TinePage() {
             )}
 
             {/* Doisha Detection Mode */}
-            {detectionMode === 'doisha' && !doishaResult && (
+            {detectionMode !== 'tinea' && !doishaResult && (
               <>
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">🧘 Doisha Assessment</h1>
                 <p className="text-gray-700 text-lg mb-8">Discover your Ayurvedic constitution through this simple quiz</p>
@@ -927,7 +934,7 @@ export default function TinePage() {
             )}
 
             {/* Doisha Result */}
-            {detectionMode === 'doisha' && doishaResult && (
+            {detectionMode !== 'tinea' && doishaResult && (
               <div className="space-y-8 animate-fade-in">
                 <div className={`bg-gradient-to-r ${DOISHA_INFO[doishaResult.dominantDoisha].color} rounded-2xl p-8 border-2 border-purple-400`}>
                   <div className="text-center mb-6">
