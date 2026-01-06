@@ -9,7 +9,7 @@ import Link from "next/link";
 
 // Model configuration
 const MODEL_CONFIG = {
-  detectEndpoint: "/api//new-detection",
+  detectEndpoint: "/api//new-detection", 
 
 };
 
