@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Calendar, HelpCircle, Pill, Activity, ArrowLeft } from 'lucide-react';
+import { Heart, MessageCircle, Calendar, HelpCircle, Pill, Activity, ArrowLeft, User, Plus, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface Message {
@@ -138,7 +138,7 @@ const DEFAULT_SCHEDULE: ScheduleItem[] = [
 
 export default function LeprosyAssistantPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'chat' | 'symptoms' | 'schedule' | 'qa'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'symptoms' | 'schedule' | 'qa' | 'profile'>('chat');
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -164,10 +164,79 @@ export default function LeprosyAssistantPage() {
   const [schedule, setSchedule] = useState<ScheduleItem[]>(DEFAULT_SCHEDULE);
   const [selectedFAQ, setSelectedFAQ] = useState<FAQ | null>(null);
   const [searchFAQ, setSearchFAQ] = useState('');
+  
+  // Profile state
+  const [profile, setProfile] = useState({
+    personalInfo: {
+      age: undefined as number | undefined,
+      gender: '',
+      weight: undefined as number | undefined,
+      height: undefined as number | undefined
+    },
+    medical: {
+      leprosyType: '',
+      treatmentDuration: undefined as number | undefined,
+      treatmentStatus: 'ongoing',
+      medications: [] as string[],
+      allergies: [] as string[],
+      comorbidities: [] as string[]
+    },
+    leprosy: {
+      affectedAreas: [] as string[],
+      nerveInvolvement: false,
+      eyeInvolvement: false,
+      disabilities: [] as string[],
+      treatmentResponse: 'unknown'
+    },
+    lifestyle: {
+      occupation: '',
+      physicalActivity: 'moderate',
+      dietType: 'non-veg',
+      sleepHours: 7,
+      smokingStatus: 'never'
+    },
+    goals: [] as string[],
+    notes: ''
+  });
+  
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
+  const [medicationInput, setMedicationInput] = useState('');
+  const [allergyInput, setAllergyInput] = useState('');
+  const [comorbidityInput, setComorbidityInput] = useState('');
+  const [areaInput, setAreaInput] = useState('');
+  const [disabilityInput, setDisabilityInput] = useState('');
+  const [goalInput, setGoalInput] = useState('');
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Load user profile on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:4000/api/leprosy/profile', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.profile) {
+            setProfile(data.profile);
+          }
+        }
+      } catch (error) {
+        console.log('No profile found, starting fresh');
+      }
+    };
+    
+    loadProfile();
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -257,6 +326,37 @@ export default function LeprosyAssistantPage() {
     }
     
     return 'Thank you for your question. Based on your concern, I recommend discussing this with your healthcare provider for personalized guidance. In the meantime, ensure you\'re following your medication schedule and keeping your skin care routine consistent.';
+  };
+
+  const handleSaveProfile = async () => {
+    setProfileLoading(true);
+    setProfileMessage('');
+    
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('http://localhost:4000/api/leprosy/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(profile)
+      });
+
+      if (response.ok) {
+        setProfileMessage('✓ Profile saved successfully! Your personalized guidance will now be tailored to your needs.');
+        setTimeout(() => setProfileMessage(''), 3000);
+      } else {
+        const error = await response.json();
+        setProfileMessage('✗ Failed to save profile: ' + (error.message || 'Unknown error'));
+      }
+    } catch (error) {
+      setProfileMessage('✗ Error saving profile. Please try again.');
+      console.error('Profile save error:', error);
+    } finally {
+      setProfileLoading(false);
+    }
   };
 
   const handleSymptomSubmit = async () => {
@@ -367,6 +467,17 @@ export default function LeprosyAssistantPage() {
           >
             <HelpCircle className="w-5 h-5" />
             Q&A
+          </button>
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex items-center gap-2 px-4 py-3 font-semibold border-b-2 transition-all ${
+              activeTab === 'profile'
+                ? 'border-red-600 text-red-600'
+                : 'border-transparent text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <User className="w-5 h-5" />
+            Profile
           </button>
         </div>
 
@@ -564,6 +675,525 @@ export default function LeprosyAssistantPage() {
                 <p className="text-gray-600">No questions match your search. Try different keywords.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Profile Tab */}
+        {activeTab === 'profile' && (
+          <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-200 max-h-[600px] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Your Health Profile</h2>
+            <p className="text-gray-600 mb-6">
+              Provide your health information for personalized guidance from your AI assistant.
+            </p>
+
+            {profileMessage && (
+              <div className={`mb-6 p-4 rounded-2xl text-center font-semibold ${
+                profileMessage.includes('✓') 
+                  ? 'bg-green-100 text-green-800 border border-green-300'
+                  : 'bg-red-100 text-red-800 border border-red-300'
+              }`}>
+                {profileMessage}
+              </div>
+            )}
+
+            <div className="space-y-8">
+              {/* Personal Information */}
+              <div className="pb-8 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <User className="w-5 h-5 text-red-600" />
+                  Personal Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="number"
+                    placeholder="Age"
+                    value={profile.personalInfo.age || ''}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      personalInfo: { ...profile.personalInfo, age: e.target.value ? parseInt(e.target.value) : undefined }
+                    })}
+                    className="px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  />
+                  <select
+                    value={profile.personalInfo.gender}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      personalInfo: { ...profile.personalInfo, gender: e.target.value }
+                    })}
+                    className="px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <input
+                    type="number"
+                    placeholder="Weight (kg)"
+                    value={profile.personalInfo.weight || ''}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      personalInfo: { ...profile.personalInfo, weight: e.target.value ? parseInt(e.target.value) : undefined }
+                    })}
+                    className="px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Height (cm)"
+                    value={profile.personalInfo.height || ''}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      personalInfo: { ...profile.personalInfo, height: e.target.value ? parseInt(e.target.value) : undefined }
+                    })}
+                    className="px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  />
+                </div>
+              </div>
+
+              {/* Medical Information */}
+              <div className="pb-8 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Pill className="w-5 h-5 text-red-600" />
+                  Medical Information
+                </h3>
+                <div className="space-y-4">
+                  <select
+                    value={profile.medical.leprosyType}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      medical: { ...profile.medical, leprosyType: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="">Select Leprosy Type</option>
+                    <option value="tuberculoid">Tuberculoid</option>
+                    <option value="borderline">Borderline</option>
+                    <option value="lepromatous">Lepromatous</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+
+                  <select
+                    value={profile.medical.treatmentStatus}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      medical: { ...profile.medical, treatmentStatus: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="ongoing">Treatment Ongoing</option>
+                    <option value="completed">Treatment Completed</option>
+                    <option value="not_started">Not Started</option>
+                  </select>
+
+                  <input
+                    type="number"
+                    placeholder="Treatment Duration (months)"
+                    value={profile.medical.treatmentDuration || ''}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      medical: { ...profile.medical, treatmentDuration: e.target.value ? parseInt(e.target.value) : undefined }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  />
+
+                  {/* Medications */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Current Medications</label>
+                    <div className="space-y-2 mb-3">
+                      {profile.medical.medications.map((med, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-red-50 p-2 rounded-2xl">
+                          <span className="flex-1 text-sm">{med}</span>
+                          <button
+                            onClick={() => setProfile({
+                              ...profile,
+                              medical: {
+                                ...profile.medical,
+                                medications: profile.medical.medications.filter((_, i) => i !== idx)
+                              }
+                            })}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={medicationInput}
+                        onChange={(e) => setMedicationInput(e.target.value)}
+                        placeholder="Add medication (e.g., Rifampicin)"
+                        className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                      />
+                      <button
+                        onClick={() => {
+                          if (medicationInput.trim()) {
+                            setProfile({
+                              ...profile,
+                              medical: {
+                                ...profile.medical,
+                                medications: [...profile.medical.medications, medicationInput]
+                              }
+                            });
+                            setMedicationInput('');
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-2xl hover:bg-red-700 flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Allergies */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Known Allergies</label>
+                    <div className="space-y-2 mb-3">
+                      {profile.medical.allergies.map((allergy, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-red-50 p-2 rounded-2xl">
+                          <span className="flex-1 text-sm">{allergy}</span>
+                          <button
+                            onClick={() => setProfile({
+                              ...profile,
+                              medical: {
+                                ...profile.medical,
+                                allergies: profile.medical.allergies.filter((_, i) => i !== idx)
+                              }
+                            })}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={allergyInput}
+                        onChange={(e) => setAllergyInput(e.target.value)}
+                        placeholder="Add allergy"
+                        className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                      />
+                      <button
+                        onClick={() => {
+                          if (allergyInput.trim()) {
+                            setProfile({
+                              ...profile,
+                              medical: {
+                                ...profile.medical,
+                                allergies: [...profile.medical.allergies, allergyInput]
+                              }
+                            });
+                            setAllergyInput('');
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-2xl hover:bg-red-700 flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Comorbidities */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Other Medical Conditions</label>
+                    <div className="space-y-2 mb-3">
+                      {profile.medical.comorbidities.map((condition, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-red-50 p-2 rounded-2xl">
+                          <span className="flex-1 text-sm">{condition}</span>
+                          <button
+                            onClick={() => setProfile({
+                              ...profile,
+                              medical: {
+                                ...profile.medical,
+                                comorbidities: profile.medical.comorbidities.filter((_, i) => i !== idx)
+                              }
+                            })}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={comorbidityInput}
+                        onChange={(e) => setComorbidityInput(e.target.value)}
+                        placeholder="Add condition (e.g., Diabetes)"
+                        className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                      />
+                      <button
+                        onClick={() => {
+                          if (comorbidityInput.trim()) {
+                            setProfile({
+                              ...profile,
+                              medical: {
+                                ...profile.medical,
+                                comorbidities: [...profile.medical.comorbidities, comorbidityInput]
+                              }
+                            });
+                            setComorbidityInput('');
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-2xl hover:bg-red-700 flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Leprosy Specifics */}
+              <div className="pb-8 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Leprosy Specifics</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Affected Areas</label>
+                    <div className="space-y-2 mb-3">
+                      {profile.leprosy.affectedAreas.map((area, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-red-50 p-2 rounded-2xl">
+                          <span className="flex-1 text-sm">{area}</span>
+                          <button
+                            onClick={() => setProfile({
+                              ...profile,
+                              leprosy: {
+                                ...profile.leprosy,
+                                affectedAreas: profile.leprosy.affectedAreas.filter((_, i) => i !== idx)
+                              }
+                            })}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={areaInput}
+                        onChange={(e) => setAreaInput(e.target.value)}
+                        placeholder="Add affected area (e.g., Left hand)"
+                        className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                      />
+                      <button
+                        onClick={() => {
+                          if (areaInput.trim()) {
+                            setProfile({
+                              ...profile,
+                              leprosy: {
+                                ...profile.leprosy,
+                                affectedAreas: [...profile.leprosy.affectedAreas, areaInput]
+                              }
+                            });
+                            setAreaInput('');
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-2xl hover:bg-red-700 flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={profile.leprosy.nerveInvolvement}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          leprosy: { ...profile.leprosy, nerveInvolvement: e.target.checked }
+                        })}
+                        className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-600"
+                      />
+                      <span className="text-sm font-semibold text-gray-700">Nerve Involvement</span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={profile.leprosy.eyeInvolvement}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          leprosy: { ...profile.leprosy, eyeInvolvement: e.target.checked }
+                        })}
+                        className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-600"
+                      />
+                      <span className="text-sm font-semibold text-gray-700">Eye Involvement</span>
+                    </label>
+                  </div>
+
+                  <select
+                    value={profile.leprosy.treatmentResponse}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      leprosy: { ...profile.leprosy, treatmentResponse: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="unknown">Treatment Response</option>
+                    <option value="excellent">Excellent</option>
+                    <option value="good">Good</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="poor">Poor</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Lifestyle */}
+              <div className="pb-8 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Lifestyle</h3>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Your Occupation"
+                    value={profile.lifestyle.occupation}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      lifestyle: { ...profile.lifestyle, occupation: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  />
+
+                  <select
+                    value={profile.lifestyle.physicalActivity}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      lifestyle: { ...profile.lifestyle, physicalActivity: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="sedentary">Sedentary (Little activity)</option>
+                    <option value="light">Light Activity</option>
+                    <option value="moderate">Moderate Activity</option>
+                    <option value="vigorous">Vigorous Activity</option>
+                  </select>
+
+                  <select
+                    value={profile.lifestyle.dietType}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      lifestyle: { ...profile.lifestyle, dietType: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="vegetarian">Vegetarian</option>
+                    <option value="non-veg">Non-Vegetarian</option>
+                    <option value="vegan">Vegan</option>
+                  </select>
+
+                  <input
+                    type="number"
+                    placeholder="Average Sleep Hours (per day)"
+                    min="0"
+                    max="24"
+                    value={profile.lifestyle.sleepHours}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      lifestyle: { ...profile.lifestyle, sleepHours: parseInt(e.target.value) || 7 }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  />
+
+                  <select
+                    value={profile.lifestyle.smokingStatus}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      lifestyle: { ...profile.lifestyle, smokingStatus: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="never">Never Smoked</option>
+                    <option value="former">Former Smoker</option>
+                    <option value="current">Current Smoker</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Goals & Notes */}
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Additional Information</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Treatment Goals</label>
+                    <div className="space-y-2 mb-3">
+                      {profile.goals.map((goal, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-red-50 p-2 rounded-2xl">
+                          <span className="flex-1 text-sm">{goal}</span>
+                          <button
+                            onClick={() => setProfile({
+                              ...profile,
+                              goals: profile.goals.filter((_, i) => i !== idx)
+                            })}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={goalInput}
+                        onChange={(e) => setGoalInput(e.target.value)}
+                        placeholder="Add goal (e.g., Complete treatment)"
+                        className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                      />
+                      <button
+                        onClick={() => {
+                          if (goalInput.trim()) {
+                            setProfile({
+                              ...profile,
+                              goals: [...profile.goals, goalInput]
+                            });
+                            setGoalInput('');
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-2xl hover:bg-red-700 flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={profile.notes}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      notes: e.target.value
+                    })}
+                    placeholder="Any additional notes or concerns..."
+                    rows={3}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600 resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex gap-3">
+              <button
+                onClick={handleSaveProfile}
+                disabled={profileLoading}
+                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 disabled:opacity-50 font-semibold transition-colors"
+              >
+                {profileLoading ? 'Saving...' : 'Save Profile'}
+              </button>
+              <button
+                onClick={() => setActiveTab('chat')}
+                className="flex-1 px-6 py-3 border-2 border-red-600 text-red-600 rounded-2xl hover:bg-red-50 font-semibold transition-colors"
+              >
+                Back to Chat
+              </button>
+            </div>
           </div>
         )}
       </div>
