@@ -69,19 +69,36 @@ router.post('/reports', requireAuth, async (req: Request, res: Response) => {
     const userData = (req as any).user
     const { reportName, reportType, description, fileUrl, fileName } = req.body
 
-    if (!reportName) {
+    if (!reportName || !reportName.trim()) {
       return res.status(400).json({ success: false, message: 'Report name is required' })
+    }
+
+    // Get user data from database if not available in middleware
+    let patientName = userData?.name || 'Patient'
+    let patientEmail = userData?.email || 'unknown@example.com'
+
+    if (!userData) {
+      try {
+        const User = require('../models/User').default
+        const user = await User.findById(userId).select('name email')
+        if (user) {
+          patientName = user.name || patientName
+          patientEmail = user.email || patientEmail
+        }
+      } catch (err) {
+        console.error('Error fetching user data:', err)
+      }
     }
 
     const newReport = new Report({
       patientId: userId,
-      patientName: userData?.name || 'Patient',
-      patientEmail: userData?.email || 'unknown@example.com',
+      patientName,
+      patientEmail,
       reportName,
       reportType: reportType || 'General Report',
-      description,
-      fileUrl,
-      fileName,
+      description: description || '',
+      fileUrl: fileUrl || '',
+      fileName: fileName || '',
       uploadedAt: new Date(),
     })
 
@@ -89,7 +106,7 @@ router.post('/reports', requireAuth, async (req: Request, res: Response) => {
     res.status(201).json({ success: true, message: 'Report uploaded successfully', report: newReport })
   } catch (err) {
     console.error('Error uploading report:', err)
-    res.status(500).json({ success: false, message: 'Failed to upload report' })
+    res.status(500).json({ success: false, message: 'Failed to upload report', error: err instanceof Error ? err.message : 'Unknown error' })
   }
 })
 

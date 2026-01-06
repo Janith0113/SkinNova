@@ -31,11 +31,11 @@ const ReportSchema = new Schema<IReport>(
     fileName: { type: String },
     description: { type: String },
     // Scan/Detection fields
-    diseaseType: { type: String, enum: ['psoriasis', 'tinea', 'leprosy', 'skinCancer'], default: null },
+    diseaseType: { type: String, enum: ['psoriasis', 'tinea', 'leprosy', 'skinCancer'], default: undefined },
     skinCondition: { type: String },
     confidence: { type: Number, min: 0, max: 1 },
     scanArea: { type: String },
-    scanStatus: { type: String, enum: ['Stable', 'Improving', 'Monitor', 'Needs review', 'Healed', 'Under treatment'], default: 'Monitor' },
+    scanStatus: { type: String, enum: ['Stable', 'Improving', 'Monitor', 'Needs review', 'Healed', 'Under treatment'], default: undefined },
     imagePath: { type: String },
     uploadedAt: { type: Date, default: () => new Date() },
   },
