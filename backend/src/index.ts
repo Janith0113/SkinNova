@@ -65,6 +65,7 @@ app.use('/api/detect', detectionRoutes)
 app.use('/api/analysis', newDetectionRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/leprosy', leprosyRoutes)
+app.use('/api/new-detection', newDetectionRoutes)
 
 async function start() {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://Skin123:Skin123%23@cluster0.ycpp8kz.mongodb.net/?appName=Cluster0'
