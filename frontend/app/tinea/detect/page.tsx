@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import * as tf from '@tensorflow/tfjs'
 import * as tmImage from '@teachablemachine/image'
 
@@ -13,12 +14,15 @@ interface Prediction {
 const MODEL_URL = '/models/New%20folder/'
 
 export default function TineaDetectionPage() {
+  const router = useRouter()
   const [preview, setPreview] = useState<string | null>(null)
   const [predictions, setPredictions] = useState<Prediction[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [modelLoading, setModelLoading] = useState(false)
   const [model, setModel] = useState<tmImage.CustomMobileNet | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -50,6 +54,9 @@ export default function TineaDetectionPage() {
 
   const handleImageSelect = useCallback(async (file: File) => {
     try {
+      // Store the file for later saving
+      setSelectedFile(file)
+      
       // Create preview
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -175,6 +182,68 @@ export default function TineaDetectionPage() {
     setPreview(null)
     setPredictions([])
     setError(null)
+    setSelectedFile(null)
+  }
+
+  const handleSaveAndContinue = async () => {
+    if (!predictions.length || !selectedFile) {
+      setError('No detection results to save')
+      return
+    }
+
+    try {
+      setSaving(true)
+      setError(null)
+
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setError('Please login to save results')
+        router.push('/login')
+        return
+      }
+
+      const topPrediction = predictions[0]
+      const isTineaDetected = topPrediction?.className === 'Tinea Detected' || topPrediction?.className?.includes('tinea')
+      const confidenceDecimal = topPrediction?.probability || 0
+      
+      // Use FormData to send both file and data
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('diseaseType', 'tinea')
+      formData.append('skinCondition', topPrediction?.className || 'Unknown')
+      formData.append('confidence', confidenceDecimal.toString())
+      formData.append('scanStatus', isTineaDetected ? 'Needs review' : 'Monitor')
+      formData.append('reportType', 'Tinea Detection')
+      formData.append('reportName', `Tinea Detection - ${new Date().toLocaleDateString()}`)
+      formData.append('description', `${topPrediction?.className} detected with ${(confidenceDecimal * 100).toFixed(1)}% confidence`)
+      
+      console.log('💾 Saving tinea detection...')
+      const response = await fetch('http://localhost:4000/api/analysis/new-detection', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ Save failed:', errorData)
+        throw new Error(errorData.message || 'Failed to save scan')
+      }
+
+      const data = await response.json()
+      console.log('✅ Tinea scan saved successfully:', data)
+      
+      // Navigate to patient dashboard and refresh
+      router.push('/patient/dashboard')
+      router.refresh()
+    } catch (err) {
+      console.error('❌ Error saving scan:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save results'
+      setError(errorMessage)
+      setSaving(false)
+    }
   }
 
   const sortedPredictions = [...predictions].sort((a, b) => b.probability - a.probability)
@@ -432,12 +501,21 @@ export default function TineaDetectionPage() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={handleReset}
-                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Analyze Another Image
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={handleReset}
+                      className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Analyze Another Image
+                    </button>
+                    <button
+                      onClick={handleSaveAndContinue}
+                      disabled={saving}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {saving ? '⏳ Saving...' : '💾 Save & Continue'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

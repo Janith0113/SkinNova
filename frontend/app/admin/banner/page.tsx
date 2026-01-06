@@ -420,13 +420,16 @@ export default function AdminBannerPage() {
                     <div className="border-2 border-dashed border-blue-300 rounded-lg p-4">
                       <p className="text-sm text-gray-600 mb-3 font-medium">Media Preview:</p>
                       {formData.imageUrl.includes('.mp4') || formData.imageUrl.includes('video') ? (
-                        <video src={formData.imageUrl} className="w-full h-48 object-cover rounded-lg" controls />
+                        <video src={`http://localhost:4000${formData.imageUrl}`} className="w-full h-48 object-cover rounded-lg" controls />
                       ) : (
                         <img
-                          src={formData.imageUrl}
+                          src={`http://localhost:4000${formData.imageUrl}`}
                           alt="Preview"
                           className="w-full h-48 object-cover rounded-lg"
-                          onError={() => console.log('Image failed to load')}
+                          onError={(e) => {
+                            console.log('Image failed to load:', formData.imageUrl)
+                            e.currentTarget.src = '/images/placeholder.png'
+                          }}
                         />
                       )}
                     </div>
