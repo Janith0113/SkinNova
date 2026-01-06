@@ -107,9 +107,13 @@ export default function Banner() {
       <div className="relative w-full h-64 md:h-96 rounded-2xl overflow-hidden shadow-2xl">
         {/* Banner Image */}
         <img
-          src={currentBanner.imageUrl}
+          src={currentBanner.imageUrl.startsWith('http') ? currentBanner.imageUrl : `http://localhost:4000${currentBanner.imageUrl}`}
           alt={currentBanner.title}
           className="w-full h-full object-cover"
+          onError={(e) => {
+            console.error('Banner image failed to load:', currentBanner.imageUrl);
+            e.currentTarget.src = 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1200&h=400&fit=crop';
+          }}
         />
 
         {/* Overlay */}

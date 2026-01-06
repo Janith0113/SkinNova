@@ -9,7 +9,7 @@ import Link from "next/link";
 
 // Model configuration
 const MODEL_CONFIG = {
-  detectEndpoint: "/api/analysis",
+  detectEndpoint: "/api//new-detection", 
 
 };
 
@@ -18,7 +18,7 @@ interface Prediction {
   probability: number;
 }
 
-export default function PsoriasisDetection() {
+export default function LeprosyDetection() {
   const [model, setModel] = useState<tmImage.CustomMobileNet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
