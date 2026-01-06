@@ -908,6 +908,11 @@ export default function TinePage() {
                   >
                     📚 Learn More
                   </button>
+                  <Link href="/dashboard" className="flex-1">
+                    <button className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold hover:shadow-lg transition-all transform hover:scale-105">
+                      💾 Save & Continue
+                    </button>
+                  </Link>
                 </div>
               </div>
             )}
