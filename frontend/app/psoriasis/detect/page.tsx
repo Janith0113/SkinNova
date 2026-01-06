@@ -9,7 +9,7 @@ import Link from "next/link";
 
 // Model configuration
 const MODEL_CONFIG = {
-  detectEndpoint: "/api/psoriasis-detect",
+  detectEndpoint: "/api/analysis",
 
 };
 
