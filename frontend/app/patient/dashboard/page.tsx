@@ -120,7 +120,7 @@ const DISEASE_CONFIG: Record<
     label: "Skin Cancer",
     accent: "text-red-800",
     bgPill: "bg-red-600/90",
-    lastScan: "Today",
+    lastScan: "Recently scanned",
     risk: "High priority",
     riskColor: "text-red-600",
     riskHint: "Watch any changing mole closely and follow medical advice promptly.",
@@ -128,22 +128,22 @@ const DISEASE_CONFIG: Record<
     upcomingHint: "Early review can dramatically improve outcomes.",
     checks: [
       {
-        area: "Upper back mole",
-        label: "Asymmetry + color change",
-        status: "Needs review",
-        color: "text-red-700 bg-red-100",
+        area: "Monitoring",
+        label: "Start a scan to track lesions",
+        status: "Ready",
+        color: "text-blue-700 bg-blue-100",
       },
       {
-        area: "Shoulder freckle",
-        label: "Stable pigment",
-        status: "Stable",
-        color: "text-emerald-700 bg-emerald-100",
+        area: "Prevention",
+        label: "Use SPF 30+ sunscreen daily",
+        status: "Important",
+        color: "text-orange-700 bg-orange-100",
       },
       {
-        area: "Facial spot",
-        label: "Sun‑exposed area",
-        status: "Monitor",
-        color: "text-amber-700 bg-amber-100",
+        area: "Follow-up",
+        label: "Quarterly dermatologist visits",
+        status: "Recommended",
+        color: "text-purple-700 bg-purple-100",
       },
     ],
     tip: "Use sunscreen daily and photograph suspicious spots monthly to track any change in size, color or border.",
@@ -307,6 +307,15 @@ export default function PatientDashboard() {
       if (userData._id || userData.id || userData.userId) {
         const userId = userData._id || userData.id || userData.userId;
         setProfilePhoto(`http://localhost:4000/api/profile/photo/${userId}?t=${Date.now()}`);
+      }
+
+      // Check URL parameters for disease selection
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const disease = params.get("disease");
+        if (disease && ["psoriasis", "tinea", "leprosy", "skinCancer"].includes(disease)) {
+          setSelectedDisease(disease as DiseaseKey);
+        }
       }
     } else {
       router.push("/login");
@@ -712,6 +721,38 @@ export default function PatientDashboard() {
     return "High";
   }
 
+  function getDynamicChecks(diseaseType: DiseaseKey): { area: string; label: string; status: string; color: string }[] {
+    const scans = scanData[diseaseType] || [];
+    
+    // If we have actual scans, create checks from them
+    if (scans.length > 0) {
+      return scans.slice(0, 3).map((scan: any, index: number) => {
+        const confidencePercent = Math.round((scan.confidence || 0) * 100);
+        let area = scan.scanArea || `Scan ${index + 1}`;
+        
+        // Format area for skinCancer
+        if (diseaseType === 'skinCancer' && scan.skinCondition) {
+          area = `${scan.skinCondition} (${confidencePercent}%)`;
+        }
+        
+        return {
+          area: area,
+          label: scan.skinCondition ? `${scan.skinCondition} detected` : `Analysis - ${confidencePercent}% confidence`,
+          status: scan.scanStatus || 'Monitor',
+          color: 
+            scan.scanStatus === 'Stable' ? 'text-emerald-700 bg-emerald-100' :
+            scan.scanStatus === 'Improving' ? 'text-sky-700 bg-sky-100' :
+            scan.scanStatus === 'Needs review' ? 'text-red-700 bg-red-100' :
+            scan.scanStatus === 'Healed' ? 'text-emerald-800 bg-emerald-200' :
+            'text-amber-700 bg-amber-100'
+        };
+      });
+    }
+    
+    // Otherwise return default checks from config
+    return DISEASE_CONFIG[diseaseType].checks;
+  }
+
   const handleSymptomAnswer = (diseaseScores: Record<DiseaseKey, number>) => {
     // Add the scores from this answer to the running total
     const newScores = { ...symptomScores };
@@ -964,7 +1005,7 @@ export default function PatientDashboard() {
                 ))
               ) : (
                 <div className="space-y-4">
-                  {cfg.checks.map((item, i) => (
+                  {getDynamicChecks(selectedDisease).map((item, i) => (
                     <div
                       key={i}
                       className="flex items-center justify-between rounded-2xl bg-white/50 px-4 py-3 shadow-sm hover:shadow-md transition-all"

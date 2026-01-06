@@ -187,42 +187,157 @@ router.post('/analyze', upload.single('file'), async (req: Request, res: Respons
   }
 });
 
+// Test endpoint to verify route is registered
+router.post('/test-save-scan', (req: Request, res: Response) => {
+  console.log('[Test Endpoint] Received request to /save-scan test');
+  res.status(200).json({ 
+    success: true, 
+    message: 'Test endpoint reached - route is registered',
+    receivedBody: req.body,
+    headers: req.headers
+  });
+});
+
 // Save scan result to database
 router.post('/save-scan', requireAuth, async (req: Request, res: Response) => {
   try {
     const patientId = (req as any).userId;
     const userData = (req as any).user;
-    const { diseaseType, skinCondition, confidence, scanArea, scanStatus, imagePath, reportName } = req.body;
+    const { diseaseType, skinCondition, confidence, scanArea, scanStatus, imagePath, reportName, allPredictions, timestamp } = req.body;
 
-    if (!diseaseType || !scanArea) {
-      return res.status(400).json({ success: false, message: 'diseaseType and scanArea are required' });
+    console.log('[Save Scan] ========== REQUEST RECEIVED ==========');
+    console.log('[Save Scan] Received request:', {
+      patientId,
+      userDataExists: !!userData,
+      userEmail: userData?.email,
+      diseaseType,
+      skinCondition,
+      confidence,
+      scanArea,
+      scanStatus,
+      hasReportName: !!reportName,
+      bodyKeys: Object.keys(req.body)
+    });
+
+    // Validate required fields
+    if (!diseaseType) {
+      console.log('[Save Scan] ❌ Validation failed: Missing diseaseType');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'diseaseType is required',
+        received: { diseaseType }
+      });
     }
+
+    if (!scanArea) {
+      console.log('[Save Scan] ❌ Validation failed: Missing scanArea');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'scanArea is required',
+        received: { scanArea }
+      });
+    }
+
+    // Validate diseaseType is one of the allowed values
+    const validDiseaseTypes = ['psoriasis', 'tinea', 'leprosy', 'skinCancer'];
+    if (!validDiseaseTypes.includes(diseaseType)) {
+      console.log('[Save Scan] ❌ Validation failed: Invalid diseaseType:', diseaseType);
+      return res.status(400).json({ 
+        success: false, 
+        message: `Invalid diseaseType. Must be one of: ${validDiseaseTypes.join(', ')}`,
+        received: { diseaseType },
+        valid: validDiseaseTypes
+      });
+    }
+
+    // Validate scanStatus is one of the allowed values
+    const validStatuses = ['Stable', 'Improving', 'Monitor', 'Needs review', 'Healed', 'Under treatment'];
+    const finalScanStatus = scanStatus && validStatuses.includes(scanStatus) ? scanStatus : 'Monitor';
+
+    // Prepare patient data with fallbacks
+    const patientName = userData?.name || 'Patient';
+    const patientEmail = userData?.email || 'unknown@example.com';
+
+    console.log('[Save Scan] ✅ Validation passed');
+    console.log('[Save Scan] Creating new scan with:', {
+      patientId,
+      patientName,
+      patientEmail,
+      diseaseType,
+      scanArea,
+      scanStatus: finalScanStatus,
+      confidence: confidence,
+      reportName: reportName || `${diseaseType} Scan - ${scanArea}`
+    });
 
     const newScan = new Report({
       patientId,
-      patientName: userData?.name || 'Patient',
-      patientEmail: userData?.email || 'unknown@example.com',
+      patientName,
+      patientEmail,
       reportName: reportName || `${diseaseType} Scan - ${scanArea}`,
       reportType: 'Skin Analysis',
-      diseaseType,
+      diseaseType: diseaseType,
       skinCondition: skinCondition || 'Analysis Complete',
-      confidence: confidence || 0,
-      scanArea,
-      scanStatus: scanStatus || 'Monitor',
+      confidence: confidence ? parseFloat(String(confidence)) : 0,
+      scanArea: scanArea,
+      scanStatus: finalScanStatus,
       imagePath: imagePath || '',
-      description: `${diseaseType} scan on ${scanArea}`,
-      uploadedAt: new Date(),
+      allPredictions: allPredictions || [],
+      description: `${diseaseType} scan on ${scanArea}. ${skinCondition ? `Result: ${skinCondition}` : ''}`,
+      uploadedAt: timestamp ? new Date(timestamp) : new Date(),
     });
 
-    await newScan.save();
+    console.log('[Save Scan] Report object created, attempting to save to database...');
+    
+    const savedScan = await newScan.save();
+    
+    console.log('[Save Scan] ✅ SUCCESS - Scan saved to database:', {
+      _id: savedScan._id,
+      patientId,
+      diseaseType,
+      scanArea,
+      skinCondition,
+      confidence
+    });
+
     res.status(201).json({ 
       success: true, 
       message: 'Scan saved successfully',
-      scan: newScan 
+      scan: savedScan 
     });
   } catch (err) {
-    console.error('Error saving scan:', err);
-    res.status(500).json({ success: false, message: 'Failed to save scan' });
+    console.error('[Save Scan] ❌ ERROR occurred:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    const errorStack = err instanceof Error ? err.stack : '';
+    
+    console.error('[Save Scan] Full error details:', {
+      type: err?.constructor?.name,
+      message: errorMessage,
+      stack: errorStack,
+      code: (err as any)?.code,
+      errorsIfValidation: (err as any)?.errors ? Object.keys((err as any)?.errors) : undefined
+    });
+    
+    // If it's a mongoose validation error, provide detailed info
+    if (err instanceof Error && 'errors' in err && typeof (err as any).errors === 'object') {
+      const validationErrors = Object.entries((err as any).errors).map(([key, value]: [string, any]) => ({
+        field: key,
+        message: value?.message
+      }));
+      console.error('[Save Scan] Validation errors:', validationErrors);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: validationErrors
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to save scan',
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+    });
   }
 });
 

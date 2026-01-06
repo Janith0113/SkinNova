@@ -38,6 +38,20 @@ export default function SkinCancerDetection() {
                 setLoading(true);
                 setError(null);
 
+                // Test backend connection
+                try {
+                    const healthCheck = await fetch('http://localhost:4000/api/health', {
+                        method: 'GET'
+                    });
+                    if (!healthCheck.ok) {
+                        console.warn('Backend health check failed:', healthCheck.status);
+                    } else {
+                        console.log('✅ Backend is running');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Could not reach backend at http://localhost:4000');
+                }
+
                 const loadedModel = await tmImage.load(MODEL_CONFIG.modelURL, MODEL_CONFIG.metadataURL);
                 setModel(loadedModel);
                 console.log("Skin Cancer Model loaded successfully");
@@ -113,6 +127,13 @@ export default function SkinCancerDetection() {
         try {
             setSavingResult(true);
             const token = localStorage.getItem("token");
+            
+            if (!token) {
+                alert("Error: No authentication token found. Please log in again.");
+                setSavingResult(false);
+                return;
+            }
+
             const sortedPredictions = [...predictions].sort((a, b) => b.probability - a.probability);
             const topPrediction = sortedPredictions[0];
 
@@ -126,26 +147,18 @@ export default function SkinCancerDetection() {
                 scanStatus = confidence > 0.8 ? "Stable" : "Monitor";
             }
 
-            // Generate scan area description based on detection
-            let scanArea = "General";
-            if (topPrediction.className.toLowerCase().includes("melanoma")) {
-                scanArea = "Suspicious Lesion";
-            } else if (topPrediction.className.toLowerCase().includes("not melanoma")) {
-                scanArea = "Benign Lesion";
-            }
-
             const scanData = {
                 diseaseType: "skinCancer",
                 skinCondition: topPrediction.className,
                 confidence: topPrediction.probability,
-                scanArea: scanArea,
+                scanArea: "General",
                 scanStatus: scanStatus,
                 reportName: `Skin Cancer Scan - ${new Date().toLocaleDateString()}`,
-                allPredictions: predictions, // Save all predictions for detailed analysis
-                timestamp: new Date().toISOString()
+                allPredictions: predictions // Save all predictions for detailed analysis
             };
 
-            console.log("Sending scan data to backend:", scanData);
+            console.log("Sending scan data:", scanData);
+            console.log("Token preview:", token?.substring(0, 20) + "...");
 
             const response = await fetch("http://localhost:4000/api/analysis/save-scan", {
                 method: "POST",
@@ -156,25 +169,26 @@ export default function SkinCancerDetection() {
                 body: JSON.stringify(scanData)
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error("Backend error response:", errorData);
-                throw new Error(errorData.error || errorData.message || "Failed to save scan result");
-            }
+            console.log("Response status:", response.status);
+            console.log("Response headers:", Object.fromEntries(response.headers.entries()));
 
             const responseData = await response.json();
-            console.log("Scan saved successfully:", responseData);
+            console.log("Response from server:", responseData);
 
-            // Show success and redirect with disease parameter
+            if (!response.ok) {
+                const errorMessage = responseData?.message || responseData?.error || `HTTP ${response.status}: Failed to save scan result`;
+                throw new Error(errorMessage);
+            }
+
+            // Show success and redirect
             alert("✅ Skin Cancer scan saved successfully! Redirecting to dashboard...");
             setTimeout(() => {
-                // Refresh the page and set the disease to skin cancer
-                window.location.href = "/patient/dashboard?disease=skinCancer";
+                router.push("/patient/dashboard?disease=skinCancer");
             }, 1000);
         } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : "Unknown error occurred";
             console.error("Error saving scan:", err);
-            const errorMessage = err instanceof Error ? err.message : "Failed to save scan result";
-            alert(`Failed to save scan: ${errorMessage}. You can still view your results.`);
+            alert(`Failed to save scan result: ${errorMsg}. You can still view your results.`);
         } finally {
             setSavingResult(false);
         }

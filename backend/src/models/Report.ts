@@ -16,6 +16,7 @@ export interface IReport extends Document {
   scanArea?: string // Body area scanned (e.g., "Elbows", "Knees")
   scanStatus?: 'Stable' | 'Improving' | 'Monitor' | 'Needs review' | 'Healed' | 'Under treatment'
   imagePath?: string // Path to the scanned image
+  allPredictions?: Array<{ className: string; probability: number }> // All ML model predictions
   uploadedAt: Date
   updatedAt: Date
 }
@@ -37,6 +38,7 @@ const ReportSchema = new Schema<IReport>(
     scanArea: { type: String },
     scanStatus: { type: String, enum: ['Stable', 'Improving', 'Monitor', 'Needs review', 'Healed', 'Under treatment'], default: 'Monitor' },
     imagePath: { type: String },
+    allPredictions: [{ className: String, probability: Number }],
     uploadedAt: { type: Date, default: () => new Date() },
   },
   { timestamps: true }
