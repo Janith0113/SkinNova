@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { tineaModel } from './tineaModelClient';
 
 interface TineaResult {
@@ -201,6 +202,7 @@ const DOISHA_INFO = {
 };
 
 export default function TinePage() {
+  const router = useRouter();
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -665,6 +667,12 @@ export default function TinePage() {
                         <li>• Get personalized health recommendations based on your data</li>
                       </ul>
                     </div>
+                    <button
+                      onClick={() => router.push('/smart-devices')}
+                      className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg"
+                    >
+                      Connect Your Device Now →
+                    </button>
                   </div>
                 </div>
 
