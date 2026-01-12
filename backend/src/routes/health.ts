@@ -1,12 +1,12 @@
 import { Router, Request, Response } from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
 import HealthData from '../models/HealthData';
 import DeviceConnection from '../models/DeviceConnection';
 
 const router = Router();
 
 // Get all connected devices for a user
-router.get('/devices', authenticateToken, async (req: Request, res: Response) => {
+router.get('/devices', requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     
@@ -27,7 +27,7 @@ router.get('/devices', authenticateToken, async (req: Request, res: Response) =>
 });
 
 // Connect a new device
-router.post('/devices/connect', authenticateToken, async (req: Request, res: Response) => {
+router.post('/devices/connect', requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const {
@@ -83,7 +83,7 @@ router.post('/devices/connect', authenticateToken, async (req: Request, res: Res
 });
 
 // Disconnect a device
-router.post('/devices/:deviceId/disconnect', authenticateToken, async (req: Request, res: Response) => {
+router.post('/devices/:deviceId/disconnect', requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const { deviceId } = req.params;
@@ -115,7 +115,7 @@ router.post('/devices/:deviceId/disconnect', authenticateToken, async (req: Requ
 });
 
 // Sync health data from device
-router.post('/sync', authenticateToken, async (req: Request, res: Response) => {
+router.post('/sync', requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const { deviceId, healthData } = req.body;
@@ -187,7 +187,7 @@ router.post('/sync', authenticateToken, async (req: Request, res: Response) => {
 });
 
 // Get health data for a user
-router.get('/data', authenticateToken, async (req: Request, res: Response) => {
+router.get('/data', requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const {
@@ -244,7 +244,7 @@ router.get('/data', authenticateToken, async (req: Request, res: Response) => {
 });
 
 // Get latest health metrics summary
-router.get('/latest', authenticateToken, async (req: Request, res: Response) => {
+router.get('/latest', requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     
@@ -315,7 +315,7 @@ router.get('/latest', authenticateToken, async (req: Request, res: Response) => 
 });
 
 // Get health trends and analytics
-router.get('/analytics', authenticateToken, async (req: Request, res: Response) => {
+router.get('/analytics', requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const { period = '7d' } = req.query;

@@ -30,6 +30,9 @@ export default function SmartDevicesPage() {
   const [loading, setLoading] = useState(true);
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [selectedDeviceType, setSelectedDeviceType] = useState('');
+  const [bluetoothDevice, setBluetoothDevice] = useState<BluetoothDevice | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<string>('');
 
   useEffect(() => {
     fetchDevices();
@@ -62,10 +65,61 @@ export default function SmartDevicesPage() {
 
   const connectDevice = async (deviceType: string) => {
     try {
-      const token = localStorage.getItem('token');
+      setIsConnecting(true);
+      setConnectionStatus('Requesting Bluetooth access...');
       
-      // Generate a unique device ID (in real app, this would come from the actual device)
-      const deviceId = `${deviceType}-${Date.now()}`;
+      // Check if Web Bluetooth is supported
+      if (!navigator.bluetooth) {
+        alert('Web Bluetooth is not supported in this browser. Please use Chrome, Edge, or Opera.');
+        setIsConnecting(false);
+        return;
+      }
+
+      // Define Bluetooth service UUIDs based on device type
+      const serviceUUIDs: Record<string, string[]> = {
+        'apple-watch': ['heart_rate', 'battery_service', 'device_information'],
+        'samsung-watch': ['heart_rate', 'battery_service', 'health_thermometer'],
+        'wear-os': ['heart_rate', 'battery_service', 'cycling_power']
+      };
+
+      setConnectionStatus('Scanning for devices...');
+      
+      // Request Bluetooth device
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [
+          { services: serviceUUIDs[deviceType] || ['heart_rate'] }
+        ],
+        optionalServices: ['battery_service', 'device_information', 'health_thermometer']
+      });
+
+      setConnectionStatus(`Connecting to ${device.name}...`);
+      setBluetoothDevice(device);
+
+      // Connect to GATT Server
+      const server = await device.gatt?.connect();
+      
+      if (!server) {
+        throw new Error('Failed to connect to GATT server');
+      }
+
+      setConnectionStatus('Reading device information...');
+      
+      // Get device information
+      let deviceModel = 'Unknown Model';
+      let deviceId = device.id || `${deviceType}-${Date.now()}`;
+      
+      try {
+        const deviceInfoService = await server.getPrimaryService('device_information');
+        const modelCharacteristic = await deviceInfoService.getCharacteristic('model_number_string');
+        const modelValue = await modelCharacteristic.readValue();
+        deviceModel = new TextDecoder().decode(modelValue);
+      } catch (e) {
+        console.log('Could not read device model, using default');
+      }
+
+      setConnectionStatus('Saving device connection...');
+      
+      const token = localStorage.getItem('token');
       
       const response = await fetch('http://localhost:4000/api/health/devices/connect', {
         method: 'POST',
@@ -76,9 +130,10 @@ export default function SmartDevicesPage() {
         body: JSON.stringify({
           deviceType,
           deviceId,
-          deviceName: deviceType === 'apple-watch' ? 'Apple Watch' : 
+          deviceName: device.name || (deviceType === 'apple-watch' ? 'Apple Watch' : 
                      deviceType === 'samsung-watch' ? 'Samsung Galaxy Watch' : 
-                     deviceType === 'wear-os' ? 'Wear OS Device' : 'Smartwatch',
+                     deviceType === 'wear-os' ? 'Wear OS Device' : 'Smartwatch'),
+          deviceModel,
           permissions: {
             heartRate: true,
             steps: true,
@@ -98,22 +153,59 @@ export default function SmartDevicesPage() {
       const data = await response.json();
       if (data.success) {
         setShowConnectModal(false);
+        setConnectionStatus('Connected successfully!');
         fetchDevices();
         
-        // Start syncing health data
-        syncHealthData(data.device.deviceId, deviceType);
+        // Start reading health data from Bluetooth device
+        startBluetoothDataSync(server, data.device.deviceId, deviceType);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error connecting device:', error);
+      if (error.name === 'NotFoundError') {
+        setConnectionStatus('No device selected');
+      } else if (error.name === 'SecurityError') {
+        setConnectionStatus('Bluetooth access denied');
+      } else {
+        setConnectionStatus(`Connection failed: ${error.message}`);
+      }
+      setTimeout(() => setConnectionStatus(''), 3000);
+    } finally {
+      setIsConnecting(false);
     }
   };
 
-  const syncHealthData = async (deviceId: string, deviceType: string) => {
+  const startBluetoothDataSync = async (server: BluetoothRemoteGATTServer, deviceId: string, deviceType: string) => {
+    try {
+      // Try to get heart rate service
+      const heartRateService = await server.getPrimaryService('heart_rate');
+      const heartRateCharacteristic = await heartRateService.getCharacteristic('heart_rate_measurement');
+      
+      // Listen for heart rate measurements
+      heartRateCharacteristic.addEventListener('characteristicvaluechanged', (event: any) => {
+        const value = event.target.value;
+        const heartRate = value.getUint8(1);
+        
+        // Sync this data to backend
+        syncHealthData(deviceId, deviceType, { heartRate });
+      });
+      
+      await heartRateCharacteristic.startNotifications();
+      
+      // Initial sync with sample data
+      syncHealthData(deviceId, deviceType);
+    } catch (error) {
+      console.error('Error starting Bluetooth data sync:', error);
+      // Fall back to simulated data
+      syncHealthData(deviceId, deviceType);
+    }
+  };
+
+  const syncHealthData = async (deviceId: string, deviceType: string, realtimeData?: any) => {
     try {
       const token = localStorage.getItem('token');
       
-      // Simulate health data (in real app, this would come from the actual device)
-      const healthData = {
+      // Use real-time data if available, otherwise simulate
+      const healthData = realtimeData || {
         heartRate: Math.floor(Math.random() * 30) + 60,
         steps: Math.floor(Math.random() * 10000) + 5000,
         bodyTemperature: Math.random() * 2 + 36.5,
@@ -145,6 +237,12 @@ export default function SmartDevicesPage() {
 
   const disconnectDevice = async (deviceId: string) => {
     try {
+      // Disconnect Bluetooth device if connected
+      if (bluetoothDevice?.gatt?.connected) {
+        bluetoothDevice.gatt.disconnect();
+        setBluetoothDevice(null);
+      }
+      
       const token = localStorage.getItem('token');
       
       const response = await fetch(`http://localhost:4000/api/health/devices/${deviceId}/disconnect`, {
@@ -202,6 +300,18 @@ export default function SmartDevicesPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Connection Status Banner */}
+        {connectionStatus && (
+          <div className={`mb-6 p-4 rounded-lg ${isConnecting ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+            <div className="flex items-center gap-3">
+              {isConnecting && (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              )}
+              <p className="font-semibold">{connectionStatus}</p>
+            </div>
+          </div>
+        )}
+
         {/* Connected Devices */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Connected Devices</h2>
@@ -282,9 +392,17 @@ export default function SmartDevicesPage() {
               
               <button
                 onClick={() => connectDevice('apple-watch')}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all"
+                disabled={isConnecting}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Connect Apple Watch
+                {isConnecting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Connecting...
+                  </>
+                ) : (
+                  <>🔗 Connect Apple Watch</>
+                )}
               </button>
             </div>
 
@@ -303,9 +421,17 @@ export default function SmartDevicesPage() {
               
               <button
                 onClick={() => connectDevice('samsung-watch')}
-                className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-all"
+                disabled={isConnecting}
+                className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Connect Samsung Watch
+                {isConnecting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Connecting...
+                  </>
+                ) : (
+                  <>🔗 Connect Samsung Watch</>
+                )}
               </button>
             </div>
 
@@ -324,9 +450,17 @@ export default function SmartDevicesPage() {
               
               <button
                 onClick={() => connectDevice('wear-os')}
-                className="w-full bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-all"
+                disabled={isConnecting}
+                className="w-full bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Connect Wear OS
+                {isConnecting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Connecting...
+                  </>
+                ) : (
+                  <>🔗 Connect Wear OS</>
+                )}
               </button>
             </div>
           </div>
