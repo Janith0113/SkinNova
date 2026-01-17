@@ -24,15 +24,35 @@ interface Device {
   };
 }
 
+interface ScannedDevice {
+  id: string;
+  name: string;
+  rssi?: number;
+  device: BluetoothDevice;
+}
+
+interface DoshaAnalysis {
+  type: 'Vata' | 'Pitta' | 'Kapha' | 'Vata-Pitta' | 'Pitta-Kapha' | 'Vata-Kapha';
+  heartRate: number;
+  description: string;
+  recommendations: string[];
+}
+
 export default function SmartDevicesPage() {
   const router = useRouter();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConnectModal, setShowConnectModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
   const [selectedDeviceType, setSelectedDeviceType] = useState('');
+  const [scannedDevices, setScannedDevices] = useState<ScannedDevice[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
   const [bluetoothDevice, setBluetoothDevice] = useState<BluetoothDevice | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string>('');
+  const [currentHeartRate, setCurrentHeartRate] = useState<number | null>(null);
+  const [doshaAnalysis, setDoshaAnalysis] = useState<DoshaAnalysis | null>(null);
+  const [showDoshaModal, setShowDoshaModal] = useState(false);
 
   useEffect(() => {
     fetchDevices();
@@ -63,6 +83,125 @@ export default function SmartDevicesPage() {
     }
   };
 
+  const scanBluetoothDevices = async (deviceType: string) => {
+    try {
+      setIsScanning(true);
+      setScannedDevices([]);
+      setSelectedDeviceType(deviceType);
+      setShowScanModal(true);
+      
+      // Check if Web Bluetooth is supported
+      if (!navigator.bluetooth) {
+        alert('Web Bluetooth is not supported in this browser. Please use Chrome, Edge, or Opera on desktop or Android.');
+        setIsScanning(false);
+        return;
+      }
+
+      setConnectionStatus('Scanning for Bluetooth devices...');
+      
+      // Request Bluetooth device with heart rate service
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [
+          { services: ['heart_rate'] }
+        ],
+        optionalServices: [
+          'battery_service',
+          'device_information',
+          'health_thermometer',
+          'blood_pressure',
+          'cycling_power'
+        ]
+      });
+
+      // Add scanned device to list
+      const scannedDevice: ScannedDevice = {
+        id: device.id,
+        name: device.name || 'Unknown Device',
+        device: device
+      };
+
+      setScannedDevices([scannedDevice]);
+      setConnectionStatus(`Found: ${scannedDevice.name}`);
+      
+    } catch (error: any) {
+      console.error('Error scanning devices:', error);
+      if (error.name === 'NotFoundError') {
+        setConnectionStatus('No devices found. Make sure your smartwatch Bluetooth is on and in pairing mode.');
+      } else if (error.name === 'SecurityError') {
+        setConnectionStatus('Bluetooth access denied. Please allow Bluetooth access.');
+      } else {
+        setConnectionStatus(`Scan failed: ${error.message}`);
+      }
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const calculateDoshaType = (heartRate: number): DoshaAnalysis => {
+    let type: DoshaAnalysis['type'];
+    let description: string;
+    let recommendations: string[];
+
+    if (heartRate >= 75) {
+      type = 'Vata';
+      description = 'Vata dominant - Higher heart rate indicates active, energetic constitution';
+      recommendations = [
+        '🧘 Practice calming meditation and yoga',
+        '🌿 Consume warm, grounding foods',
+        '💧 Stay well hydrated',
+        '😴 Maintain regular sleep schedule',
+        '🌾 Use sesame oil for massage'
+      ];
+    } else if (heartRate >= 65 && heartRate < 75) {
+      type = 'Vata-Pitta';
+      description = 'Vata-Pitta balance - Moderately elevated heart rate shows mixed constitution';
+      recommendations = [
+        '🌱 Balance cooling and warming foods',
+        '🧘 Regular exercise with rest periods',
+        '💚 Include leafy greens in diet',
+        '🌊 Practice breathing exercises',
+        '⚖️ Maintain work-life balance'
+      ];
+    } else if (heartRate >= 60 && heartRate < 65) {
+      type = 'Pitta';
+      description = 'Pitta dominant - Moderate heart rate indicates balanced, focused constitution';
+      recommendations = [
+        '🥗 Eat cooling, fresh foods',
+        '🏊 Engage in moderate exercise',
+        '🧊 Avoid excessive heat',
+        '🌙 Practice evening relaxation',
+        '🥥 Use coconut oil externally'
+      ];
+    } else if (heartRate >= 55 && heartRate < 60) {
+      type = 'Pitta-Kapha';
+      description = 'Pitta-Kapha balance - Moderately low heart rate shows grounded energy';
+      recommendations = [
+        '🏃 Regular physical activity',
+        '🌶️ Include warming spices',
+        '🥗 Light, nutritious meals',
+        '☀️ Morning exercise routine',
+        '🌿 Herbal teas for digestion'
+      ];
+    } else {
+      type = 'Kapha';
+      description = 'Kapha dominant - Lower heart rate indicates calm, stable constitution';
+      recommendations = [
+        '🏃 Vigorous daily exercise',
+        '🌶️ Spicy, warming foods',
+        '☀️ Wake up early, stay active',
+        '🧹 Avoid heavy, oily foods',
+        '🌿 Dry brushing and massage'
+      ];
+    }
+
+    return {
+      type,
+      heartRate,
+      description,
+      recommendations
+    };
+  };
+
   const connectDevice = async (deviceType: string) => {
     try {
       setIsConnecting(true);
@@ -75,19 +214,12 @@ export default function SmartDevicesPage() {
         return;
       }
 
-      // Define Bluetooth service UUIDs based on device type
-      const serviceUUIDs: Record<string, string[]> = {
-        'apple-watch': ['heart_rate', 'battery_service', 'device_information'],
-        'samsung-watch': ['heart_rate', 'battery_service', 'health_thermometer'],
-        'wear-os': ['heart_rate', 'battery_service', 'cycling_power']
-      };
-
       setConnectionStatus('Scanning for devices...');
       
       // Request Bluetooth device
       const device = await navigator.bluetooth.requestDevice({
         filters: [
-          { services: serviceUUIDs[deviceType] || ['heart_rate'] }
+          { services: ['heart_rate'] }
         ],
         optionalServices: ['battery_service', 'device_information', 'health_thermometer']
       });
@@ -153,22 +285,101 @@ export default function SmartDevicesPage() {
       const data = await response.json();
       if (data.success) {
         setShowConnectModal(false);
-        setConnectionStatus('Connected successfully!');
+        setShowScanModal(false);
+        setConnectionStatus('Connected successfully! Reading heart rate...');
         fetchDevices();
         
         // Start reading health data from Bluetooth device
         startBluetoothDataSync(server, data.device.deviceId, deviceType);
       }
-    } catch (error: any) {
+      } catch (error: any) {
       console.error('Error connecting device:', error);
       if (error.name === 'NotFoundError') {
-        setConnectionStatus('No device selected');
+        setConnectionStatus('⚠️ No device selected. Make sure your smartwatch is in pairing mode and Bluetooth is enabled.');
       } else if (error.name === 'SecurityError') {
         setConnectionStatus('Bluetooth access denied');
       } else {
         setConnectionStatus(`Connection failed: ${error.message}`);
       }
-      setTimeout(() => setConnectionStatus(''), 3000);
+      setTimeout(() => setConnectionStatus(''), 5000);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const connectToScannedDevice = async (scannedDevice: ScannedDevice) => {
+    try {
+      setIsConnecting(true);
+      setConnectionStatus(`Connecting to ${scannedDevice.name}...`);
+      
+      const device = scannedDevice.device;
+      setBluetoothDevice(device);
+
+      // Connect to GATT Server
+      const server = await device.gatt?.connect();
+      
+      if (!server) {
+        throw new Error('Failed to connect to GATT server');
+      }
+
+      setConnectionStatus('Reading device information...');
+      
+      // Get device information
+      let deviceModel = 'Unknown Model';
+      let deviceId = device.id || `${selectedDeviceType}-${Date.now()}`;
+      
+      try {
+        const deviceInfoService = await server.getPrimaryService('device_information');
+        const modelCharacteristic = await deviceInfoService.getCharacteristic('model_number_string');
+        const modelValue = await modelCharacteristic.readValue();
+        deviceModel = new TextDecoder().decode(modelValue);
+      } catch (e) {
+        console.log('Could not read device model, using default');
+      }
+
+      setConnectionStatus('Saving device connection...');
+      
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('http://localhost:4000/api/health/devices/connect', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          deviceType: selectedDeviceType,
+          deviceId,
+          deviceName: device.name || 'Smartwatch',
+          deviceModel,
+          permissions: {
+            heartRate: true,
+            steps: true,
+            sleep: true,
+            temperature: true,
+            stress: true,
+            ecg: true,
+            bloodPressure: true,
+            spO2: true,
+            activity: true,
+            hydration: true
+          },
+          syncFrequency: 'hourly'
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setShowScanModal(false);
+        setConnectionStatus('Connected successfully! Reading heart rate...');
+        fetchDevices();
+        
+        // Start reading health data from Bluetooth device
+        startBluetoothDataSync(server, data.device.deviceId, selectedDeviceType);
+      }
+    } catch (error: any) {
+      console.error('Error connecting to device:', error);
+      setConnectionStatus(`Connection failed: ${error.message}`);
     } finally {
       setIsConnecting(false);
     }
@@ -176,6 +387,8 @@ export default function SmartDevicesPage() {
 
   const startBluetoothDataSync = async (server: BluetoothRemoteGATTServer, deviceId: string, deviceType: string) => {
     try {
+      setConnectionStatus('Starting heart rate monitoring...');
+      
       // Try to get heart rate service
       const heartRateService = await server.getPrimaryService('heart_rate');
       const heartRateCharacteristic = await heartRateService.getCharacteristic('heart_rate_measurement');
@@ -183,20 +396,48 @@ export default function SmartDevicesPage() {
       // Listen for heart rate measurements
       heartRateCharacteristic.addEventListener('characteristicvaluechanged', (event: any) => {
         const value = event.target.value;
-        const heartRate = value.getUint8(1);
+        const flags = value.getUint8(0);
+        const rate16Bits = flags & 0x1;
+        let heartRate;
+        
+        if (rate16Bits) {
+          heartRate = value.getUint16(1, true);
+        } else {
+          heartRate = value.getUint8(1);
+        }
+        
+        console.log('Heart rate:', heartRate);
+        setCurrentHeartRate(heartRate);
+        
+        // Calculate dosha type
+        const dosha = calculateDoshaType(heartRate);
+        setDoshaAnalysis(dosha);
+        setShowDoshaModal(true);
         
         // Sync this data to backend
         syncHealthData(deviceId, deviceType, { heartRate });
       });
       
       await heartRateCharacteristic.startNotifications();
+      setConnectionStatus('✅ Connected! Monitoring heart rate...');
       
       // Initial sync with sample data
-      syncHealthData(deviceId, deviceType);
+      setTimeout(() => setConnectionStatus(''), 3000);
     } catch (error) {
       console.error('Error starting Bluetooth data sync:', error);
+      setConnectionStatus('⚠️ Could not read heart rate. Using simulated data for demo.');
+      
       // Fall back to simulated data
-      syncHealthData(deviceId, deviceType);
+      const simulatedHeartRate = Math.floor(Math.random() * 30) + 60;
+      setCurrentHeartRate(simulatedHeartRate);
+      
+      const dosha = calculateDoshaType(simulatedHeartRate);
+      setDoshaAnalysis(dosha);
+      setShowDoshaModal(true);
+      
+      syncHealthData(deviceId, deviceType, { heartRate: simulatedHeartRate });
+      
+      setTimeout(() => setConnectionStatus(''), 3000);
     }
   };
 
@@ -290,16 +531,54 @@ export default function SmartDevicesPage() {
               </h1>
             </div>
             <button
-              onClick={() => setShowConnectModal(true)}
+              onClick={() => scanBluetoothDevices('smartwatch')}
               className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg"
             >
-              + Connect Device
+              🔍 Scan & Connect Device
             </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Current Heart Rate & Dosha Display */}
+        {currentHeartRate && doshaAnalysis && (
+          <div className="mb-6 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl p-6 text-white shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold mb-2">💓 Current Heart Rate</h3>
+                <p className="text-5xl font-bold mb-2">{currentHeartRate} BPM</p>
+                <p className="text-xl font-semibold">Dosha Type: {doshaAnalysis.type}</p>
+                <p className="text-purple-100 mt-2">{doshaAnalysis.description}</p>
+              </div>
+              <button
+                onClick={() => setShowDoshaModal(true)}
+                className="bg-white text-purple-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all"
+              >
+                View Full Analysis →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Important Info Banner */}
+        <div className="mb-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="text-5xl">💡</div>
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold mb-2">How to Connect Your Smartwatch</h3>
+              <p className="text-green-100 mb-3">Follow these steps to connect your device and get Dosha analysis:</p>
+              <ul className="text-green-50 space-y-1 text-sm">
+                <li>✅ <strong>Step 1:</strong> Turn on Bluetooth on your smartwatch and phone/computer</li>
+                <li>✅ <strong>Step 2:</strong> Click "🔍 Scan & Connect Device" button above</li>
+                <li>✅ <strong>Step 3:</strong> Select your smartwatch from the browser dialog</li>
+                <li>✅ <strong>Step 4:</strong> Your heart rate will be monitored automatically</li>
+                <li>✅ <strong>Step 5:</strong> Get instant Dosha type analysis based on your heart rate!</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         {/* Connection Status Banner */}
         {connectionStatus && (
           <div className={`mb-6 p-4 rounded-lg ${isConnecting ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
@@ -391,7 +670,7 @@ export default function SmartDevicesPage() {
               </div>
               
               <button
-                onClick={() => connectDevice('apple-watch')}
+                onClick={() => scanBluetoothDevices('apple-watch')}
                 disabled={isConnecting}
                 className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
@@ -401,7 +680,7 @@ export default function SmartDevicesPage() {
                     Connecting...
                   </>
                 ) : (
-                  <>🔗 Connect Apple Watch</>
+                  <>🔗 Scan & Connect</>
                 )}
               </button>
             </div>
@@ -420,7 +699,7 @@ export default function SmartDevicesPage() {
               </div>
               
               <button
-                onClick={() => connectDevice('samsung-watch')}
+                onClick={() => scanBluetoothDevices('samsung-watch')}
                 disabled={isConnecting}
                 className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
@@ -430,7 +709,7 @@ export default function SmartDevicesPage() {
                     Connecting...
                   </>
                 ) : (
-                  <>🔗 Connect Samsung Watch</>
+                  <>🔗 Scan & Connect</>
                 )}
               </button>
             </div>
@@ -449,7 +728,7 @@ export default function SmartDevicesPage() {
               </div>
               
               <button
-                onClick={() => connectDevice('wear-os')}
+                onClick={() => scanBluetoothDevices('wear-os')}
                 disabled={isConnecting}
                 className="w-full bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
@@ -459,7 +738,7 @@ export default function SmartDevicesPage() {
                     Connecting...
                   </>
                 ) : (
-                  <>🔗 Connect Wear OS</>
+                  <>🔗 Scan & Connect</>
                 )}
               </button>
             </div>
@@ -478,6 +757,142 @@ export default function SmartDevicesPage() {
           </button>
         </div>
       </div>
+
+      {/* Scan Modal */}
+      {showScanModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl font-bold text-gray-900">🔍 Scan Bluetooth Devices</h2>
+              <button
+                onClick={() => {
+                  setShowScanModal(false);
+                  setScannedDevices([]);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            {isScanning ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-xl font-semibold text-gray-700">Scanning for devices...</p>
+                <p className="text-gray-500 mt-2">Please select your device from the browser dialog</p>
+              </div>
+            ) : scannedDevices.length > 0 ? (
+              <div>
+                <p className="text-gray-600 mb-4">Found {scannedDevices.length} device(s). Click to connect:</p>
+                <div className="space-y-3">
+                  {scannedDevices.map((device) => (
+                    <div
+                      key={device.id}
+                      className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border-2 border-blue-300 hover:border-blue-500 cursor-pointer transition-all"
+                      onClick={() => connectToScannedDevice(device)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900 mb-1">⌚ {device.name}</h3>
+                          <p className="text-gray-600 text-sm">Device ID: {device.id}</p>
+                          {device.rssi && <p className="text-gray-500 text-xs">Signal: {device.rssi} dBm</p>}
+                        </div>
+                        <button
+                          className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all"
+                          disabled={isConnecting}
+                        >
+                          {isConnecting ? 'Connecting...' : 'Connect'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">📱</div>
+                <p className="text-gray-600 mb-4">No devices found yet</p>
+                <button
+                  onClick={() => scanBluetoothDevices(selectedDeviceType)}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all"
+                >
+                  Start Scanning
+                </button>
+              </div>
+            )}
+
+            <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+              <p className="text-sm text-yellow-800">
+                <strong>💡 Tip:</strong> Make sure your smartwatch is in pairing mode and Bluetooth is enabled. 
+                When the browser dialog appears, select your device and click "Pair".
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dosha Analysis Modal */}
+      {showDoshaModal && doshaAnalysis && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl font-bold text-gray-900">🧘 Your Dosha Analysis</h2>
+              <button
+                onClick={() => setShowDoshaModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-6 bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-6">
+              <div className="text-center">
+                <p className="text-gray-600 mb-2">Current Heart Rate</p>
+                <p className="text-6xl font-bold text-purple-600 mb-4">{doshaAnalysis.heartRate} BPM</p>
+                <div className="inline-block bg-purple-600 text-white px-8 py-3 rounded-full text-2xl font-bold">
+                  {doshaAnalysis.type}
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-3">📋 Description</h3>
+              <p className="text-gray-700 leading-relaxed">{doshaAnalysis.description}</p>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-3">💡 Recommendations for You</h3>
+              <div className="space-y-3">
+                {doshaAnalysis.recommendations.map((rec, index) => (
+                  <div key={index} className="flex items-start gap-3 bg-green-50 p-4 rounded-lg">
+                    <span className="text-2xl">✓</span>
+                    <p className="text-gray-700 flex-1">{rec}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <h4 className="font-bold text-blue-900 mb-2">📚 About Doshas & Heart Rate</h4>
+              <p className="text-sm text-blue-800">
+                In Ayurveda, your dosha type represents your unique constitution. Heart rate is one indicator:
+              </p>
+              <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                <li>• <strong>Vata</strong> (75+ bpm): Active, energetic, creative</li>
+                <li>• <strong>Pitta</strong> (60-74 bpm): Focused, determined, warm</li>
+                <li>• <strong>Kapha</strong> (below 60 bpm): Calm, stable, grounded</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => setShowDoshaModal(false)}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-bold hover:from-purple-700 hover:to-pink-700 transition-all"
+            >
+              Close Analysis
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
