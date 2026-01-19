@@ -53,6 +53,9 @@ export default function SmartDevicesPage() {
   const [currentHeartRate, setCurrentHeartRate] = useState<number | null>(null);
   const [doshaAnalysis, setDoshaAnalysis] = useState<DoshaAnalysis | null>(null);
   const [showDoshaModal, setShowDoshaModal] = useState(false);
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
+  const [liveDataLog, setLiveDataLog] = useState<Array<{timestamp: string, heartRate: number}>>([]);
 
   useEffect(() => {
     fetchDevices();
@@ -388,12 +391,13 @@ export default function SmartDevicesPage() {
   const startBluetoothDataSync = async (server: BluetoothRemoteGATTServer, deviceId: string, deviceType: string) => {
     try {
       setConnectionStatus('Starting heart rate monitoring...');
+      setIsMonitoring(true);
       
       // Try to get heart rate service
       const heartRateService = await server.getPrimaryService('heart_rate');
       const heartRateCharacteristic = await heartRateService.getCharacteristic('heart_rate_measurement');
       
-      // Listen for heart rate measurements
+      // Listen for heart rate measurements (CONTINUOUS LIVE DATA)
       heartRateCharacteristic.addEventListener('characteristicvaluechanged', (event: any) => {
         const value = event.target.value;
         const flags = value.getUint8(0);
@@ -406,36 +410,80 @@ export default function SmartDevicesPage() {
           heartRate = value.getUint8(1);
         }
         
-        console.log('Heart rate:', heartRate);
+        const timestamp = new Date().toLocaleTimeString();
+        console.log(`[${timestamp}] Live Heart Rate: ${heartRate} BPM`);
+        
+        // Update current heart rate
         setCurrentHeartRate(heartRate);
+        
+        // Add to live data log
+        setLiveDataLog(prev => {
+          const newLog = [...prev, { timestamp, heartRate }];
+          // Keep only last 20 readings
+          return newLog.slice(-20);
+        });
         
         // Calculate dosha type
         const dosha = calculateDoshaType(heartRate);
         setDoshaAnalysis(dosha);
-        setShowDoshaModal(true);
+        
+        // Auto-show modal on first reading
+        if (liveDataLog.length === 0) {
+          setShowDoshaModal(true);
+        }
         
         // Sync this data to backend
         syncHealthData(deviceId, deviceType, { heartRate });
       });
       
       await heartRateCharacteristic.startNotifications();
-      setConnectionStatus('✅ Connected! Monitoring heart rate...');
+      setConnectionStatus('✅ Connected! Receiving live heart rate data...');
       
-      // Initial sync with sample data
+      // Try to get battery level
+      try {
+        const batteryService = await server.getPrimaryService('battery_service');
+        const batteryCharacteristic = await batteryService.getCharacteristic('battery_level');
+        const batteryValue = await batteryCharacteristic.readValue();
+        const battery = batteryValue.getUint8(0);
+        setBatteryLevel(battery);
+        console.log('Battery level:', battery + '%');
+      } catch (e) {
+        console.log('Could not read battery level');
+      }
+      
+      // Handle disconnection
+      server.device.addEventListener('gattserverdisconnected', () => {
+        console.log('Device disconnected');
+        setIsMonitoring(false);
+        setConnectionStatus('⚠️ Device disconnected');
+        setTimeout(() => setConnectionStatus(''), 5000);
+      });
+      
       setTimeout(() => setConnectionStatus(''), 3000);
     } catch (error) {
       console.error('Error starting Bluetooth data sync:', error);
       setConnectionStatus('⚠️ Could not read heart rate. Using simulated data for demo.');
+      setIsMonitoring(false);
       
-      // Fall back to simulated data
-      const simulatedHeartRate = Math.floor(Math.random() * 30) + 60;
-      setCurrentHeartRate(simulatedHeartRate);
+      // Fall back to simulated data with continuous updates
+      let simulationInterval = setInterval(() => {
+        const simulatedHeartRate = Math.floor(Math.random() * 30) + 60;
+        const timestamp = new Date().toLocaleTimeString();
+        
+        setCurrentHeartRate(simulatedHeartRate);
+        setLiveDataLog(prev => {
+          const newLog = [...prev, { timestamp, heartRate: simulatedHeartRate }];
+          return newLog.slice(-20);
+        });
+        
+        const dosha = calculateDoshaType(simulatedHeartRate);
+        setDoshaAnalysis(dosha);
+        
+        syncHealthData(deviceId, deviceType, { heartRate: simulatedHeartRate });
+      }, 2000); // Update every 2 seconds
       
-      const dosha = calculateDoshaType(simulatedHeartRate);
-      setDoshaAnalysis(dosha);
-      setShowDoshaModal(true);
-      
-      syncHealthData(deviceId, deviceType, { heartRate: simulatedHeartRate });
+      // Show modal on first simulated reading
+      setTimeout(() => setShowDoshaModal(true), 1000);
       
       setTimeout(() => setConnectionStatus(''), 3000);
     }
@@ -541,6 +589,43 @@ export default function SmartDevicesPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Live Monitoring Indicator */}
+        {isMonitoring && (
+          <div className="mb-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg animate-pulse">
+            <div className="flex items-center gap-4">
+              <div className="w-4 h-4 bg-white rounded-full animate-ping"></div>
+              <div>
+                <h3 className="text-xl font-bold">🔴 Live Monitoring Active</h3>
+                <p className="text-green-100">Receiving real-time data from your smartwatch</p>
+              </div>
+              {batteryLevel && (
+                <div className="ml-auto text-right">
+                  <p className="text-sm text-green-100">Device Battery</p>
+                  <p className="text-2xl font-bold">{batteryLevel}%</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Live Data Log */}
+        {liveDataLog.length > 0 && (
+          <div className="mb-6 bg-white rounded-xl p-6 shadow-lg">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">📊 Live Heart Rate Data Stream</h3>
+            <div className="bg-gray-50 rounded-lg p-4 max-h-40 overflow-y-auto">
+              <div className="space-y-2">
+                {liveDataLog.slice().reverse().map((log, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">{log.timestamp}</span>
+                    <span className="font-bold text-red-600">{log.heartRate} BPM</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Showing last {liveDataLog.length} readings • Updates in real-time</p>
+          </div>
+        )}
+
         {/* Current Heart Rate & Dosha Display */}
         {currentHeartRate && doshaAnalysis && (
           <div className="mb-6 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl p-6 text-white shadow-lg">
