@@ -126,15 +126,26 @@ export default function SkinCancerDetection() {
                 scanStatus = confidence > 0.8 ? "Stable" : "Monitor";
             }
 
+            // Generate scan area description based on detection
+            let scanArea = "General";
+            if (topPrediction.className.toLowerCase().includes("melanoma")) {
+                scanArea = "Suspicious Lesion";
+            } else if (topPrediction.className.toLowerCase().includes("not melanoma")) {
+                scanArea = "Benign Lesion";
+            }
+
             const scanData = {
                 diseaseType: "skinCancer",
                 skinCondition: topPrediction.className,
                 confidence: topPrediction.probability,
-                scanArea: "General",
+                scanArea: scanArea,
                 scanStatus: scanStatus,
                 reportName: `Skin Cancer Scan - ${new Date().toLocaleDateString()}`,
-                allPredictions: predictions // Save all predictions for detailed analysis
+                allPredictions: predictions, // Save all predictions for detailed analysis
+                timestamp: new Date().toISOString()
             };
+
+            console.log("Sending scan data to backend:", scanData);
 
             const response = await fetch("http://localhost:4000/api/analysis/save-scan", {
                 method: "POST",
@@ -146,17 +157,24 @@ export default function SkinCancerDetection() {
             });
 
             if (!response.ok) {
-                throw new Error("Failed to save scan result");
+                const errorData = await response.json().catch(() => ({}));
+                console.error("Backend error response:", errorData);
+                throw new Error(errorData.error || errorData.message || "Failed to save scan result");
             }
 
-            // Show success and redirect
+            const responseData = await response.json();
+            console.log("Scan saved successfully:", responseData);
+
+            // Show success and redirect with disease parameter
             alert("✅ Skin Cancer scan saved successfully! Redirecting to dashboard...");
             setTimeout(() => {
-                router.push("/patient/dashboard?disease=skinCancer");
+                // Refresh the page and set the disease to skin cancer
+                window.location.href = "/patient/dashboard?disease=skinCancer";
             }, 1000);
         } catch (err) {
             console.error("Error saving scan:", err);
-            alert("Failed to save scan result. You can still view your results.");
+            const errorMessage = err instanceof Error ? err.message : "Failed to save scan result";
+            alert(`Failed to save scan: ${errorMessage}. You can still view your results.`);
         } finally {
             setSavingResult(false);
         }
