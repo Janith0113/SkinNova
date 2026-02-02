@@ -1,151 +1,100 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Cloud, CloudRain, Wind, Droplets, AlertCircle, TrendingUp, Shield, Zap } from "lucide-react";
+import { Wind, Droplets, AlertCircle, TrendingUp, Shield, Zap, Lightbulb } from "lucide-react";
 
-interface WeatherData {
-  temperature: number;
-  humidity: number;
-  condition: string;
-  location: string;
-  feelsLike: number;
-  windSpeed: number;
+interface RiskFactor {
+  label: string;
+  value: number;
+  impact: string;
+  explanation: string;
+  recommendation: string;
 }
 
 interface RiskAnalysis {
   score: number;
   level: "Low" | "Moderate" | "High" | "Very High";
   color: string;
+  factors: RiskFactor[];
   suggestions: string[];
-  factors: { label: string; impact: string; value: number }[];
+  trend: string;
+  explainableInsights: {
+    topRisks: string[];
+    protectiveFactors: string[];
+    holisticAssessment: string;
+  };
+}
+
+interface ApiResponse {
+  success: boolean;
+  location: string;
+  weather: {
+    temperature: number;
+    humidity: number;
+    feelsLike: number;
+    windSpeed: number;
+    condition: string;
+    temperatureTrend: string;
+  };
+  riskAnalysis: RiskAnalysis;
 }
 
 export default function PsoriasisRiskAnalysis() {
-  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [weatherData, setWeatherData] = useState<ApiResponse['weather'] | null>(null);
+  const [location, setLocation] = useState<string>("");
   const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [expandedFactor, setExpandedFactor] = useState<number | null>(null);
 
-  // Fetch weather data
+  // Fetch weather data from backend API
   const fetchWeatherData = async (latitude: number, longitude: number) => {
     try {
-      // Using Open-Meteo API (free, no key required)
-      const weatherResponse = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature&temperature_unit=celsius`
+      const response = await fetch(
+        `http://localhost:4000/api/psoriasis/weather-risk?latitude=${latitude}&longitude=${longitude}`
       );
-      const weatherJson = await weatherResponse.json();
-      const current = weatherJson.current;
-
-      // Reverse geocode to get location name
-      let locationName = "Your Location";
-      try {
-        const geoResponse = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-        );
-        const geoJson = await geoResponse.json();
-        locationName = geoJson.address?.city || geoJson.address?.town || "Your Location";
-      } catch (e) {
-        // Keep default location name
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch weather data');
       }
 
-      const weather: WeatherData = {
-        temperature: current.temperature_2m,
-        humidity: current.relative_humidity_2m,
-        condition: getWeatherCondition(current.weather_code),
-        location: locationName,
-        feelsLike: current.apparent_temperature,
-        windSpeed: current.wind_speed_10m,
-      };
-
-      setWeatherData(weather);
-      calculateRiskAnalysis(weather);
+      const data: ApiResponse = await response.json();
+      setWeatherData(data.weather);
+      setLocation(data.location);
+      setRiskAnalysis({
+        score: data.riskAnalysis.score,
+        level: data.riskAnalysis.level,
+        color: getColorGradient(data.riskAnalysis.level),
+        factors: data.riskAnalysis.factors,
+        suggestions: data.riskAnalysis.suggestions,
+        trend: data.riskAnalysis.explainableInsights ? 
+          `${data.weather.temperatureTrend} - ${data.riskAnalysis.trend}` : 
+          data.riskAnalysis.trend,
+        explainableInsights: data.riskAnalysis.explainableInsights,
+      });
       setLastUpdate(new Date());
       setError(null);
     } catch (err) {
+      console.error('Error fetching weather data:', err);
       setError("Unable to fetch weather data. Please check your location permissions.");
+    } finally {
       setLoading(false);
     }
   };
 
-  // Get weather condition from WMO code
-  const getWeatherCondition = (code: number): string => {
-    if (code === 0 || code === 1) return "Clear";
-    if (code === 2) return "Partly Cloudy";
-    if (code === 3) return "Overcast";
-    if (code === 45 || code === 48) return "Foggy";
-    if (code >= 51 && code <= 67) return "Drizzle";
-    if (code >= 71 && code <= 85) return "Snow";
-    if (code >= 80 && code <= 82) return "Rain Showers";
-    if (code === 85 || code === 86) return "Snow Showers";
-    if (code >= 90 && code <= 99) return "Thunderstorm";
-    return "Unknown";
-  };
-
-  // Calculate risk score based on environmental factors
-  const calculateRiskAnalysis = (weather: WeatherData) => {
-    let riskScore = 0;
-    const factors: { label: string; impact: string; value: number }[] = [];
-
-    // Temperature factor (Psoriasis often triggered by cold)
-    const tempImpact = weather.temperature < 10 ? 30 : weather.temperature < 15 ? 20 : 0;
-    riskScore += tempImpact;
-    factors.push({
-      label: "Temperature",
-      impact: weather.temperature < 10 ? "High Risk" : weather.temperature < 15 ? "Moderate" : "Low",
-      value: tempImpact,
-    });
-
-    // Humidity factor (Very low humidity worsens psoriasis)
-    const humidityImpact = weather.humidity < 30 ? 35 : weather.humidity < 40 ? 20 : weather.humidity > 80 ? 10 : 0;
-    riskScore += humidityImpact;
-    factors.push({
-      label: "Humidity",
-      impact: weather.humidity < 30 ? "Critical" : weather.humidity < 40 ? "Moderate" : weather.humidity > 80 ? "Increased" : "Optimal",
-      value: humidityImpact,
-    });
-
-    // Determine risk level
-    let level: "Low" | "Moderate" | "High" | "Very High";
-    let color: string;
-    if (riskScore >= 80) {
-      level = "Very High";
-      color = "from-red-600 to-red-500";
-    } else if (riskScore >= 60) {
-      level = "High";
-      color = "from-orange-600 to-orange-500";
-    } else if (riskScore >= 40) {
-      level = "Moderate";
-      color = "from-yellow-600 to-yellow-500";
-    } else {
-      level = "Low";
-      color = "from-green-600 to-green-500";
+  // Helper function to get color gradient based on risk level
+  const getColorGradient = (level: string): string => {
+    switch (level) {
+      case 'Very High':
+        return 'from-red-600 to-red-500';
+      case 'High':
+        return 'from-orange-600 to-orange-500';
+      case 'Moderate':
+        return 'from-yellow-600 to-yellow-500';
+      default:
+        return 'from-green-600 to-green-500';
     }
-
-    // Generate suggestions
-    const suggestions: string[] = [];
-    if (weather.humidity < 30) {
-      suggestions.push("🌊 Use a humidifier to increase indoor humidity");
-      suggestions.push("💧 Apply heavy moisturizer immediately after showering");
-    }
-    if (weather.temperature < 15) {
-      suggestions.push("🧥 Keep your skin covered and warm");
-      suggestions.push("♨️ Use lukewarm water for bathing (not hot)");
-    }
-    if (suggestions.length === 0) {
-      suggestions.push("✅ Conditions are favorable - maintain your skincare routine");
-      suggestions.push("🌳 Safe to go outside, remember to hydrate");
-      suggestions.push("😊 Monitor your skin and enjoy the day responsibly");
-    }
-
-    setRiskAnalysis({
-      score: riskScore,
-      level,
-      color,
-      suggestions,
-      factors,
-    });
-    setLoading(false);
   };
 
   // Get user location and fetch weather
@@ -192,12 +141,12 @@ export default function PsoriasisRiskAnalysis() {
         {/* Header */}
         <div className="mb-12">
           <div className="flex items-center gap-4 mb-4">
-            <div className="text-5xl">🌡️</div>
+            <div className="text-5xl">�️</div>
             <div>
               <h1 className="text-4xl sm:text-5xl font-bold text-gray-900">
                 Psoriasis Risk Analysis
               </h1>
-              <p className="text-gray-600 mt-2">Real-time weather impact assessment</p>
+              <p className="text-gray-600 mt-2">Real-time environmental impact assessment with explainable AI</p>
             </div>
           </div>
         </div>
@@ -206,7 +155,7 @@ export default function PsoriasisRiskAnalysis() {
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
-              <p className="text-gray-700 font-semibold">Fetching weather data...</p>
+              <p className="text-gray-700 font-semibold">Fetching real-time weather data...</p>
             </div>
           </div>
         )}
@@ -225,12 +174,12 @@ export default function PsoriasisRiskAnalysis() {
           <>
             {/* Current Weather Card */}
             <div className="bg-white rounded-3xl p-8 shadow-lg mb-8 border-2 border-blue-200">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Current Weather</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">📍 Current Environmental Conditions</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Location */}
                 <div className="bg-gradient-to-br from-blue-100 to-blue-50 rounded-2xl p-6 text-center">
                   <p className="text-gray-600 text-sm font-semibold mb-2">Location</p>
-                  <p className="text-2xl font-bold text-blue-900">{weatherData.location}</p>
+                  <p className="text-2xl font-bold text-blue-900">{location}</p>
                 </div>
 
                 {/* Temperature */}
@@ -247,8 +196,16 @@ export default function PsoriasisRiskAnalysis() {
                   <p className="text-gray-600 text-sm font-semibold mb-2">Humidity</p>
                   <p className="text-3xl font-bold text-cyan-900">{weatherData.humidity}%</p>
                 </div>
+
+                {/* Wind & Trend */}
+                <div className="bg-gradient-to-br from-indigo-100 to-indigo-50 rounded-2xl p-6 text-center">
+                  <Wind className="mx-auto mb-2 text-indigo-600" size={32} />
+                  <p className="text-gray-600 text-sm font-semibold mb-2">Wind Speed</p>
+                  <p className="text-3xl font-bold text-indigo-900">{weatherData.windSpeed} km/h</p>
+                  <p className="text-xs text-indigo-700 mt-2">{weatherData.temperatureTrend}</p>
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-4">Last updated: {lastUpdate.toLocaleTimeString()}</p>
+              <p className="text-xs text-gray-500 mt-6 text-center">Last updated: {lastUpdate.toLocaleTimeString()} | Data from Open-Meteo API</p>
             </div>
 
             {/* Risk Score Card */}
@@ -256,7 +213,7 @@ export default function PsoriasisRiskAnalysis() {
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <h2 className="text-3xl font-bold mb-2">Overall Risk Assessment</h2>
-                  <p className="text-white/90">Based on current weather conditions</p>
+                  <p className="text-white/90">Based on current environmental conditions</p>
                 </div>
                 <Shield size={48} className="flex-shrink-0" />
               </div>
@@ -271,69 +228,129 @@ export default function PsoriasisRiskAnalysis() {
                   </div>
                 </div>
 
-                {/* Risk Level Description */}
+                {/* Holistic Assessment */}
                 <div className="flex flex-col justify-center">
                   <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6">
-                    <p className="font-semibold text-lg mb-3">Risk Interpretation:</p>
-                    {riskAnalysis.level === "Very High" && (
-                      <p className="text-white/95">
-                        ⚠️ Current conditions are highly unfavorable for your skin. Consider staying indoors and intensifying your skincare routine.
-                      </p>
-                    )}
-                    {riskAnalysis.level === "High" && (
-                      <p className="text-white/95">
-                        ⚠️ Current conditions may trigger psoriasis flare-ups. Take extra precautions with your skincare.
-                      </p>
-                    )}
-                    {riskAnalysis.level === "Moderate" && (
-                      <p className="text-white/95">
-                        ⚡ Conditions are somewhat challenging. Maintain your regular skincare routine with extra care.
-                      </p>
-                    )}
-                    {riskAnalysis.level === "Low" && (
-                      <p className="text-white/95">
-                        ✅ Conditions are favorable for your skin. Continue your regular skincare routine.
-                      </p>
-                    )}
+                    <p className="font-semibold text-lg mb-3 flex items-center gap-2">
+                      <Lightbulb size={20} />
+                      AI Insight:
+                    </p>
+                    <p className="text-white/95 leading-relaxed">
+                      {riskAnalysis.explainableInsights.holisticAssessment}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Risk Factors */}
+            {/* Key Insights - Explainable AI */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {/* Top Risks */}
+              <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-red-200">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <AlertCircle className="text-red-500" />
+                  Top Risk Factors
+                </h3>
+                {riskAnalysis.explainableInsights.topRisks.length > 0 ? (
+                  <ul className="space-y-3">
+                    {riskAnalysis.explainableInsights.topRisks.map((risk, idx) => (
+                      <li key={idx} className="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                        <span className="text-red-600 font-bold">⚠️</span>
+                        <span className="text-gray-700">{risk}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-600">No significant risk factors detected.</p>
+                )}
+              </div>
+
+              {/* Protective Factors */}
+              <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-green-200">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Shield className="text-green-500" />
+                  Protective Factors
+                </h3>
+                {riskAnalysis.explainableInsights.protectiveFactors.length > 0 ? (
+                  <ul className="space-y-3">
+                    {riskAnalysis.explainableInsights.protectiveFactors.map((factor, idx) => (
+                      <li key={idx} className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                        <span className="text-green-600 font-bold">✓</span>
+                        <span className="text-gray-700">{factor}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-600">Monitor current conditions.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Risk Factors - Detailed Explainable Analysis */}
             <div className="bg-white rounded-3xl p-8 shadow-lg mb-8 border-2 border-purple-200">
               <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                 <TrendingUp className="text-purple-600" />
-                Contributing Factors
+                Detailed Factor Analysis
               </h2>
               <div className="space-y-4">
                 {riskAnalysis.factors.map((factor, idx) => (
-                  <div key={idx} className="flex items-center gap-6 p-5 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-bold text-gray-900 text-lg">{factor.label}</h3>
-                        <span className={`px-4 py-2 rounded-full font-semibold text-sm ${
-                          factor.impact === "Critical" ? "bg-red-200 text-red-900" :
-                          factor.impact === "High Risk" ? "bg-orange-200 text-orange-900" :
-                          factor.impact === "High" ? "bg-orange-200 text-orange-900" :
-                          factor.impact === "Moderate" ? "bg-yellow-200 text-yellow-900" :
-                          factor.impact === "Increased" ? "bg-yellow-100 text-yellow-900" :
-                          "bg-green-200 text-green-900"
-                        }`}>
-                          {factor.impact}
+                  <div key={idx}>
+                    {/* Collapsible Factor Card */}
+                    <button
+                      onClick={() => setExpandedFactor(expandedFactor === idx ? null : idx)}
+                      className="w-full text-left p-5 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200 hover:border-purple-400 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-bold text-gray-900 text-lg">{factor.label}</h3>
+                            <span className={`px-4 py-2 rounded-full font-semibold text-sm ${
+                              factor.impact === 'Critical' ? 'bg-red-200 text-red-900' :
+                              factor.impact === 'High Risk' ? 'bg-orange-200 text-orange-900' :
+                              factor.impact === 'Moderate' ? 'bg-yellow-200 text-yellow-900' :
+                              factor.impact === 'Increased' ? 'bg-yellow-100 text-yellow-900' :
+                              'bg-green-200 text-green-900'
+                            }`}>
+                              {factor.impact}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full transition-all ${
+                                factor.value > 30 ? 'bg-red-500' :
+                                factor.value > 15 ? 'bg-yellow-500' :
+                                'bg-green-500'
+                              }`}
+                              style={{ width: `${Math.min(factor.value, 45)}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        <span className="ml-4 text-2xl transition-transform" style={{
+                          transform: expandedFactor === idx ? 'rotate(180deg)' : 'rotate(0deg)'
+                        }}>
+                          ▼
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all ${
-                            factor.value > 20 ? "bg-red-500" :
-                            factor.value > 10 ? "bg-yellow-500" :
-                            "bg-green-500"
-                          }`}
-                          style={{ width: `${(factor.value / 35) * 100}%` }}
-                        ></div>
+                    </button>
+
+                    {/* Expanded Details */}
+                    {expandedFactor === idx && (
+                      <div className="mt-2 p-5 bg-white rounded-2xl border-2 border-purple-100 animate-fadeIn">
+                        <div className="space-y-4">
+                          <div>
+                            <p className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                              <Lightbulb size={18} className="text-amber-500" />
+                              Why This Matters:
+                            </p>
+                            <p className="text-gray-700 leading-relaxed">{factor.explanation}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 mb-2">💡 Recommendation:</p>
+                            <p className="text-gray-700 leading-relaxed">{factor.recommendation}</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -343,17 +360,17 @@ export default function PsoriasisRiskAnalysis() {
             <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-green-200">
               <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                 <Zap className="text-green-600" />
-                Personalized Recommendations
+                Personalized Action Plan
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {riskAnalysis.suggestions.map((suggestion, idx) => (
+                {riskAnalysis.factors.flatMap((factor, idx) => (
                   <div
                     key={idx}
                     className="flex items-start gap-4 p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 hover:shadow-md transition-shadow"
                   >
-                    <span className="text-2xl flex-shrink-0">{suggestion.split(" ")[0]}</span>
+                    <span className="text-2xl flex-shrink-0">{factor.recommendation.split(" ")[0]}</span>
                     <p className="text-gray-700 leading-relaxed font-medium">
-                      {suggestion.substring(2)}
+                      {factor.recommendation.substring(2)}
                     </p>
                   </div>
                 ))}
@@ -378,6 +395,22 @@ export default function PsoriasisRiskAnalysis() {
           </>
         )}
       </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            max-height: 0;
+          }
+          to {
+            opacity: 1;
+            max-height: 500px;
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
