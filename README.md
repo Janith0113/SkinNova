@@ -2,7 +2,7 @@
 
 ## AI-Driven Framework for Diagnosing Psoriasis, Tinea, Leprosy & Skin Cancer with Explainable Multimodal Analysis
 
-This project develops an integrated AI system combining computer vision, sensor analytics, and multimodal data fusion to diagnose and manage four major dermatological conditions. By leveraging image analysis, environmental data, clinical metadata, and laboratory reports with explainable AI techniques (Grad-CAM, SHAP), the system provides clinicians with interpretable diagnostics and personalized treatment guidance.
+This project develops an integrated AI system combining computer vision, sensor analytics, and multimodal data fusion to diagnose and manage four major dermatological conditions, which are psoriasis, tinea, leprosy and skin cancer. By leveraging image analysis, environmental data and clinical metadata,  with explainable AI techniques, the system provides clinicians with interpretable diagnostics and personalized treatment guidance.
 ​
 
 The unified framework addresses limitations of single-modality systems through four specialized components, each incorporating novel multimodal fusion and explainability tailored to clinical workflows.
@@ -10,19 +10,24 @@ The unified framework addresses limitations of single-modality systems through f
 ---
 ## Main Diagram
 <p>
-<img src="https://github.com/Thiwanka49/Ceyloncoffee-Research/blob/main/Untitled%20Diagram.drawio.png" alt="Main diagram" width="1200"">
+<img src="https://github.com/Janith0113/SkinNova/blob/main/WhatsApp%20Image%202026-01-05%20at%203.13.40%20PM.jpeg" alt="Main diagram" width="1200"">
 </p>
 
 ---
+## 📌 Project Components Overview
+---
+
+
 ## 1️⃣ Psoriasis Detection & Environmental Monitoring
+
 ### Owner: Gunarathne.J (IT22166760)
 
 ### 🔍 Key Components
 AI image classification for psoriasis severity
 
-Smartphone sensor integration (temp, humidity, UV)
+Smartphone sensor integration (temp, humidity)
 
-Flare-up prediction & natural treatment recommendations
+Flare-up prediction & natural risk level recommendations
 
 ### 🎯 Objectives
 Real-time psoriasis detection with environmental context
@@ -30,13 +35,15 @@ Real-time psoriasis detection with environmental context
 Personalized treatment based on phototype & conditions
 
 Predictive analytics for flare-up prevention
+
 ​
+
 
 ## 2️⃣ Tinea Detection with Ayurvedic Integration
 ### Owner: Gunawardhana.D.N.M.P (IT22629876)
 
 ### 🔍 Key Components
-Tinea classification (dry/wet types)
+Tinea classification
 
 Smartwatch dosha detection (HR, HRV)
 
@@ -48,6 +55,7 @@ Automated tinea recognition from images
 Dosha-based holistic treatment planning
 
 Privacy-aware federated learning architecture
+
 ​
 
 ## 3️⃣ Leprosy Diagnosis via Multimodal Fusion
@@ -56,34 +64,37 @@ Privacy-aware federated learning architecture
 ### 🔍 Key Components
 AI image classification for Leprosy
 
-Slit-skin smear analysis automation
+Personalized Lifestyle & Self-Care Guidance Engine
 
-Clinician-ready explainable reports
+Probability-based risk scores
 
 ### 🎯 Objectives
-Early-stage leprosy detection
+To develop an accurate and robust image-based model for early leprosy risk identification.
 
-Automated lab report interpretation
+To support early screening and triage, not clinical diagnosis of leprosy.
 
-Grad-CAM heatmaps + key lab value extraction
+To enable seamless integration with doctor referral and patient guidance modules.
+
 ​
 
 ## 4️⃣ Skin Cancer Detection & Risk Stratification
+
 ### Owner: Kulasekara.K.M.D (IT22313270)
 
 ### 🔍 Key Components
-Dermoscopic image analysis (CNN/ViT)
+Dermoscopic image analysis using CNN / Vision Transformer (ViT) models
 
 Multimodal fusion with patient metadata
 
 Dual explainability (Grad-CAM + SHAP)
 
 ### 🎯 Objectives
-Detect Melanoma, BCC, SCC with risk scores
+Detect Melanoma  risk scores
 
-Personalized prevention recommendations
+Generate risk scores to support early screening and clinical decision-making
 
-Clinical-grade interpretability reports
+Provide clinically interpretable and explainable AI outputs for dermatologist trust
+
 
 ## Technologies Used
 
@@ -93,7 +104,9 @@ Clinical-grade interpretability reports
 📱 Mobile Sensors (temp, humidity)
 ⚕️ Clinical Decision Support Systems
 
+
 ## 📈 Why This Project Matters
+
 ### Current dermatological AI systems suffer from:
 
 Single-modality limitations (image-only)
@@ -106,12 +119,21 @@ Underrepresentation of tropical diseases (tinea, leprosy)
 
 This system provides: Clinical-grade explainability + multimodal fusion + region-specific disease focus
 
+
+
 ## 👥 Group Details
 | Name                 | Components      	    |      Email	                |  GitHub Profile	                               | Status
 | -------------        | -------------------- |  ------------------------- |  ----------------------------------------------| ----------------------
 | Bambarandage.T.B.M.S | IT22006370           |  IT22006370@my.sliit.lk    | [@Malithi](https://github.com/malithi01)       |  ⭐Leader
-| Kulasekara.K.M.D     | IT22313270           |  IT22313270@my.sliit.lk    | [@Dishani](https://github.com/Thiwanka49)      |   👨‍💻Member
+| Kulasekara.K.M.D     | IT22313270           |  IT22313270@my.sliit.lk    | [@Dishani](https://github.com/dish1307)        |   👨‍💻Member
 | Gunarathne.J         | IT22166760           |  IT22166760@my.sliit.lk    | [@Janith](https://github.com/Janith0113)       |   👨‍💻Member
 | Gunawardhana.D.N.M.P | IT22629876           |  IT22629876@my.sliit.lk    | [@Nipun](https://github.com/PrasadG2000314)    |   👨‍💻Member
+
+
+
+
+<p>
+<img src="https://github.com/Janith0113/SkinNova/blob/main/WhatsApp%20Image%202026-01-05%20at%203.26.56%20PM.jpeg" alt="Main diagram" width="1200"">
+</p>
 
 
