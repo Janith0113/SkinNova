@@ -788,28 +788,6 @@ export default function PatientDashboard() {
     }
   };
 
-  const handleAskDoctor = () => {
-    // Find approved appointments with doctors
-    const approvedAppointments = appointments.filter(
-      (apt: any) => apt.status === "approved"
-    );
-
-    if (approvedAppointments.length === 0) {
-      alert("You don't have any appointments with a doctor. Please book an appointment first.");
-      return;
-    }
-
-    // Get the most recently booked appointment
-    const mostRecentAppointment = approvedAppointments[
-      approvedAppointments.length - 1
-    ];
-
-    // Navigate to direct chat with the doctor
-    router.push(
-      `/direct-chat?patientId=${user._id || user.id || user.userId}&doctorId=${mostRecentAppointment.doctorId}`
-    );
-  };
-
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100">
@@ -1074,7 +1052,15 @@ export default function PatientDashboard() {
                 View my previous reports
               </button>
               <button 
-                onClick={handleAskDoctor}
+                onClick={() => {
+                  const diseaseRoutes: Record<DiseaseKey, string> = {
+                    psoriasis: "/psoriasis/risk-analysis",
+                    tinea: "/tinea",
+                    leprosy: "/leprosy",
+                    skinCancer: "/skin-cancer"
+                  };
+                  router.push(diseaseRoutes[selectedDisease]);
+                }}
                 className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:shadow-lg hover:scale-105 transition-all"
               >
                 Ask a doctor about {cfg.label.toLowerCase()}
