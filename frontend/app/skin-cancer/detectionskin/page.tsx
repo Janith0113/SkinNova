@@ -6,11 +6,12 @@ import Spinner from "@/components/Spinner";
 import Results from "@/components/Results";
 import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
+import SkinCancerChatbot from "@/components/SkinCancerChatbot";
 
-// Model configuration
+// Model configuration for skin cancer detection
 const MODEL_CONFIG = {
-  detectEndpoint: "/api//new-detection", 
-
+  modelURL: "/models/skincancer-model/public/model/model.json",
+  metadataURL: "/models/skincancer-model/public/model/metadata.json",
 };
 
 interface Prediction {
@@ -18,8 +19,8 @@ interface Prediction {
   probability: number;
 }
 
-export default function LeprosyDetection() {
-  const [model, setModel] = useState<tmImage.CustomMobileNet | null>(null);
+export default function SkinCancerDetection() {
+  const [model, setModel] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -35,7 +36,7 @@ export default function LeprosyDetection() {
         setLoading(true);
         setError(null);
 
-        const loadedModel = await tmImage.load(MODEL_CONFIG.detectEndpoint);
+        const loadedModel = await tmImage.load(MODEL_CONFIG.modelURL, MODEL_CONFIG.metadataURL);
         setModel(loadedModel);
       } catch (err) {
         const message =
@@ -73,7 +74,7 @@ export default function LeprosyDetection() {
 
       const predictions = await model.predict(imageRef.current);
       setPredictions(
-        predictions.map((p) => ({
+        predictions.map((p: Prediction) => ({
           className: p.className,
           probability: p.probability,
         }))
@@ -108,7 +109,7 @@ export default function LeprosyDetection() {
       <nav className="relative z-20 border-b border-gray-300 bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link href="/psoriasis" className="inline-flex items-center gap-2 text-purple-700 hover:text-purple-800 font-bold transition-colors text-sm sm:text-base">
+            <Link href="/skin-cancer" className="inline-flex items-center gap-2 text-purple-700 hover:text-purple-800 font-bold transition-colors text-sm sm:text-base">
               ← Back
             </Link>
             <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-700 to-indigo-700 bg-clip-text text-transparent">
@@ -128,10 +129,10 @@ export default function LeprosyDetection() {
               <span className="text-5xl sm:text-6xl">🔍</span>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 text-gray-900 leading-tight">
-              Psoriasis Detection
+              Skin Cancer Detection
             </h1>
             <p className="text-gray-700 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-medium">
-              Advanced AI-powered analysis to detect psoriasis from your skin images with high accuracy
+              Advanced AI-powered analysis to detect signs of skin cancer (Melanoma) from your images with high accuracy
             </p>
           </div>
 
@@ -261,7 +262,7 @@ export default function LeprosyDetection() {
                     <div className="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-300 shadow-md">
                       <span className="text-6xl mb-4">👆</span>
                       <p className="text-gray-900 font-bold text-center text-lg">Ready to Analyze</p>
-                      <p className="text-gray-700 text-center mt-2">Click the button below to detect psoriasis</p>
+                      <p className="text-gray-700 text-center mt-2">Click the button below to detect skin cancer</p>
                     </div>
                   )}
                 </div>
@@ -294,6 +295,8 @@ export default function LeprosyDetection() {
           )}
         </div>
       </div>
+
+      {predictions && <SkinCancerChatbot predictions={predictions} />}
 
       <style>{`
                 @keyframes blob {
