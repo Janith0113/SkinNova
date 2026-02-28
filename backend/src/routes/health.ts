@@ -5,6 +5,45 @@ import DeviceConnection from '../models/DeviceConnection';
 
 const router = Router();
 
+// BLE real-time data stream — REST fallback when Socket.IO is not connected
+router.post('/ble-stream', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const {
+      heartRate,
+      rrIntervals,
+      contactDetected,
+      deviceName,
+      deviceId,
+      recordedAt,
+      dataSource,
+    } = req.body;
+
+    if (!heartRate || !deviceId) {
+      return res.status(400).json({ success: false, message: 'heartRate and deviceId are required' });
+    }
+
+    const record = new HealthData({
+      userId,
+      deviceId,
+      deviceName:      deviceName || 'BLE Wearable',
+      deviceType:      'Wearable',
+      dataSource:      dataSource || 'BLE-HeartRate',
+      heartRate:       Number(heartRate),
+      rrIntervals:     rrIntervals || [],
+      contactDetected: contactDetected ?? null,
+      recordedAt:      recordedAt ? new Date(recordedAt) : new Date(),
+    });
+
+    await record.save();
+
+    res.json({ success: true, message: 'BLE data saved', id: record._id });
+  } catch (error: any) {
+    console.error('Error saving BLE stream data:', error);
+    res.status(500).json({ success: false, message: 'Failed to save BLE data', error: error.message });
+  }
+});
+
 // Get all connected devices for a user
 router.get('/devices', requireAuth, async (req: Request, res: Response) => {
   try {

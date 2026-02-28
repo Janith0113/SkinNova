@@ -4,6 +4,8 @@ dotenv.config()
 import express from 'express'
 import cors from 'cors'
 import path from 'path'
+import http from 'http'
+import { Server as SocketIOServer } from 'socket.io'
 import { connectDb } from './db'
 import authRoutes from './routes/auth'
 import adminRoutes from './routes/admin'
@@ -23,7 +25,51 @@ import healthRoutes from './routes/health'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
+const httpServer = http.createServer(app)
 const port = process.env.PORT || 4000
+
+// ─── Socket.IO ────────────────────────────────────────────────────────────
+const io = new SocketIOServer(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+  transports: ['websocket', 'polling'],
+})
+
+io.on('connection', (socket) => {
+  console.log(`[Socket.IO] Client connected: ${socket.id}`)
+
+  /**
+   * ble-health-data – receives real-time BLE metrics from the frontend.
+   * Shape: { heartRate, rrIntervals, contactDetected, deviceName, deviceId, recordedAt, dataSource }
+   */
+  socket.on('ble-health-data', async (payload: any) => {
+    try {
+      const HealthData = (await import('./models/HealthData')).default
+      const record = new HealthData({
+        deviceName:      payload.deviceName,
+        deviceId:        payload.deviceId,
+        heartRate:       payload.heartRate,
+        rrIntervals:     payload.rrIntervals,
+        contactDetected: payload.contactDetected,
+        recordedAt:      payload.recordedAt ? new Date(payload.recordedAt) : new Date(),
+        dataSource:      payload.dataSource || 'BLE-HeartRate',
+        deviceType:      'Wearable',
+      })
+      await record.save()
+      // Acknowledge the sender
+      socket.emit('ble-ack', { saved: true, id: record._id, heartRate: payload.heartRate })
+    } catch (err: any) {
+      console.error('[Socket.IO] ble-health-data save error:', err.message)
+      socket.emit('ble-ack', { saved: false, error: err.message })
+    }
+  })
+
+  socket.on('disconnect', () => {
+    console.log(`[Socket.IO] Client disconnected: ${socket.id}`)
+  })
+})
 
 // Enhanced CORS configuration
 app.use(cors({
@@ -111,8 +157,9 @@ async function start() {
     console.error('Error ensuring admin user:', err)
   }
   
-  app.listen(port, () => {
+  httpServer.listen(port, () => {
     console.log(`Backend listening on http://localhost:${port}`)
+    console.log(`Socket.IO ready on ws://localhost:${port}`)
   })
 }
 
