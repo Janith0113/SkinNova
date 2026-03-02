@@ -788,9 +788,9 @@ export default function DoshaAssessmentPage() {
                 <span className="font-bold">Risk Level: {DOSHA_INFO[primaryDosha].tineaRisk.risk}</span>
               </p>
               <p className="text-white/80">{DOSHA_INFO[primaryDosha].tineaRisk.description}</p>
-              <Link href="/tinea">
+              <Link href="/tinea-full-details">
                 <button className="mt-6 w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-bold hover:shadow-xl transition-all">
-                  Check for Tinea →
+                  View Full Tinea Details →
                 </button>
               </Link>
             </div>

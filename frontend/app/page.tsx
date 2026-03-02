@@ -106,7 +106,7 @@ export default function DashboardPage() {
               Classic ring‑shaped, itchy patches caused by fungi that love warm, moist skin folds, feet, and scalp. Spread by contact, but very treatable when caught early.
             </p>
             <button
-              onClick={() => (window.location.href = "/tinea")}
+              onClick={() => (window.location.href = "/tinea-full-details")}
               className="w-full mt-auto inline-flex justify-center items-center rounded-2xl bg-white text-xs font-semibold text-amber-800 py-2.5 shadow hover:bg-amber-50 transition-colors"
             >
               Open Tinea workspace
