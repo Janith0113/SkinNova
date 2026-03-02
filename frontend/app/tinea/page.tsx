@@ -621,61 +621,6 @@ export default function TinePage() {
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">🔍 Tinea AI Detection</h1>
                 <p className="text-gray-700 text-lg mb-8">Upload or capture an image for instant AI-powered analysis</p>
 
-                {/* Smart Device Connector - Smartwatch Only */}
-                <div className="mb-8 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-2xl p-6 border-2 border-blue-300">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    ⌚ Smartwatch Health Data Integration
-                  </h3>
-                  <p className="text-gray-700 mb-4">Connect your smartwatch to monitor health metrics and skin condition patterns:</p>
-                  <div className="space-y-4">
-                    <div className="bg-white/70 hover:bg-white rounded-xl transition-all p-6 hover:shadow-lg border-2 border-blue-200">
-                      <div className="flex items-start gap-4">
-                        <div className="text-5xl">⌚</div>
-                        <div className="flex-1">
-                          <p className="font-bold text-lg text-gray-900">Apple Watch</p>
-                          <p className="text-gray-600 text-sm mt-1">Real-time heart rate, body temperature, and stress monitoring</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Heart Rate</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Temperature</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Sleep Data</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Stress Level</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-white/70 hover:bg-white rounded-xl transition-all p-6 hover:shadow-lg border-2 border-blue-200">
-                      <div className="flex items-start gap-4">
-                        <div className="text-5xl">⌚</div>
-                        <div className="flex-1">
-                          <p className="font-bold text-lg text-gray-900">Wear OS & Samsung Watch</p>
-                          <p className="text-gray-600 text-sm mt-1">Compatible with all Wear OS and Samsung Galaxy Watch devices</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Activity Tracking</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Hydration</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">ECG Data</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">SpO2</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-r from-green-100 to-blue-100 rounded-xl p-4 border-2 border-green-300">
-                      <p className="font-semibold text-green-900 mb-2">📊 Data Benefits:</p>
-                      <ul className="text-sm text-green-800 space-y-1">
-                        <li>• Track skin condition improvements over time</li>
-                        <li>• Correlate infection patterns with stress levels</li>
-                        <li>• Monitor temperature changes during treatment</li>
-                        <li>• Get personalized health recommendations based on your data</li>
-                      </ul>
-                    </div>
-                    <button
-                      onClick={() => router.push('/smart-devices')}
-                      className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg"
-                    >
-                      Connect Your Device Now →
-                    </button>
-                  </div>
-                </div>
-
             {!result ? (
               <div className="space-y-8">
                 {/* Image Preview Area */}
