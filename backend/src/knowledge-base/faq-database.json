@@ -1,0 +1,159 @@
+{
+  "title": "Leprosy Care Assistant - FAQ Database",
+  "version": "1.0",
+  "last_updated": "2024-03-02",
+  "source": "WHO, CDC, ILA",
+  "confidence": "very-high",
+  "faqs": [
+    {
+      "id": "1",
+      "question": "What is leprosy?",
+      "answer": "Leprosy is an infectious disease caused by the bacterium Mycobacterium leprae. It primarily affects the skin and nerves. With proper diagnosis and treatment, leprosy is completely curable. The disease is less contagious than many people believe - about 95% of people are naturally immune to it.",
+      "category": "General"
+    },
+    {
+      "id": "2",
+      "question": "How is leprosy diagnosed?",
+      "answer": "Leprosy is diagnosed through clinical examination and laboratory tests. The main diagnostic test is a slit-skin smear, where your doctor scrapes skin from several areas (usually earlobes and lesions) and examines it under a microscope for bacteria. Your doctor will also examine your skin lesions and test for loss of sensation. A skin biopsy may be done in uncertain cases.",
+      "category": "Diagnosis"
+    },
+    {
+      "id": "3",
+      "question": "How is leprosy treated?",
+      "answer": "Leprosy is treated with Multi-Drug Therapy (MDT). For paucibacillary (localized) forms: 6 months of treatment with Rifampicin, Ofloxacin, and Minocycline. For multibacillary (disseminated) forms: 12 months of the same medications. You take monthly supervised doses at health facilities and daily doses at home. You become non-infectious within 2-3 weeks of starting treatment.",
+      "category": "Treatment"
+    },
+    {
+      "id": "4",
+      "question": "How long does leprosy treatment take?",
+      "answer": "Treatment duration depends on the type: Paucibacillary forms take 6 months. Multibacillary forms take 12 months. Both require consistent medication adherence. Completing the full course is essential for cure and to prevent drug resistance. Many patients show improvement within months, but completing the entire course is crucial.",
+      "category": "Treatment"
+    },
+    {
+      "id": "5",
+      "question": "Will I become non-infectious with treatment?",
+      "answer": "Yes! You become non-infectious within 2-3 weeks of starting MDT. This means you can return to work, school, and normal social activities after this period. Family members and contacts don't need to isolate from you. However, completing the full treatment course is essential to achieve complete cure.",
+      "category": "Treatment"
+    },
+    {
+      "id": "6",
+      "question": "Is leprosy curable?",
+      "answer": "Yes, leprosy is completely curable with appropriate MDT. With modern treatment, cure rates exceed 95% when patients complete the full therapy. Early detection and treatment lead to better outcomes and prevent complications. The key is starting treatment early and completing all doses as prescribed.",
+      "category": "Prognosis"
+    },
+    {
+      "id": "7",
+      "question": "Can leprosy spread to others?",
+      "answer": "Untreated leprosy is mildly contagious through respiratory droplets, but transmission requires close, prolonged contact. You become non-infectious within 2-3 weeks of starting treatment. Family members don't automatically develop leprosy - most people have natural immunity. Contact tracing is standard practice, but risk is generally low once treatment begins.",
+      "category": "Prevention"
+    },
+    {
+      "id": "8",
+      "question": "What are the types of leprosy?",
+      "answer": "Leprosy has different forms based on immune response: Tuberculoid (TT) - few lesions, strong immunity. Lepromatous (LL) - many lesions, weak immunity. Borderline forms (BT, BB, BL) - somewhere in between. Indeterminate (IL) - very early form, often heals on its own. Your type determines treatment duration (6 vs 12 months) and complications risk.",
+      "category": "Classification"
+    },
+    {
+      "id": "9",
+      "question": "What should I eat during leprosy treatment?",
+      "answer": "Eat a balanced, nutritious diet to support healing: Include protein-rich foods (chicken, fish, beans, eggs) for skin repair. Eat plenty of fruits and vegetables for vitamins and minerals. Stay hydrated - drink 2-3 liters of water daily. Include whole grains and healthy fats. Avoid excessive processed foods and sugar. Good nutrition strengthens your immune system and helps treatment work better.",
+      "category": "Lifestyle"
+    },
+    {
+      "id": "10",
+      "question": "Can I exercise with leprosy?",
+      "answer": "Yes! Light to moderate exercise is beneficial during treatment. Safe activities include: walking, swimming, yoga, stretching, and gentle strength training. Avoid high-impact sports and activities that might injure affected areas. Start slowly and gradually increase intensity as tolerated. Always consult your doctor about appropriate activities for your situation.",
+      "category": "Lifestyle"
+    },
+    {
+      "id": "11",
+      "question": "What if I notice new patches?",
+      "answer": "New patches should be reported to your healthcare provider immediately. Take clear photos noting the location and date. Do not delay seeking medical attention as early detection is crucial. New patches might indicate treatment progression or possible complications (reactions), both of which require medical evaluation. Your doctor may adjust your treatment plan if needed.",
+      "category": "Symptoms"
+    },
+    {
+      "id": "12",
+      "question": "What should I do about skin care?",
+      "answer": "Daily skin care is important: Gently cleanse affected areas with mild soap. Keep skin moisturized with appropriate lotions. Protect from sun exposure (use SPF 30+ sunscreen). Check for new patches regularly. Apply prescribed medications as directed. Wear loose clothing over affected areas. Avoid scratching or picking at lesions. Consistent care prevents complications and supports healing.",
+      "category": "Care"
+    },
+    {
+      "id": "13",
+      "question": "What are leprosy reactions?",
+      "answer": "Leprosy reactions are complications that can occur during or after treatment. Type 1 reactions involve inflammation of lesions and nerves (neuritis). Type 2 reactions involve tender nodules, fever, and systemic symptoms. Both are treatable with corticosteroids. Report any unusual symptoms to your doctor immediately. With proper management, most reactions resolve well.",
+      "category": "Complications"
+    },
+    {
+      "id": "14",
+      "question": "What should I do if I have eye problems?",
+      "answer": "If leprosy affects your eyes, extra care is needed: Wear protective glasses during outdoor activities. Use lubricating eye drops regularly if eyes are dry. Perform blinking exercises. Avoid eye strain. Report any redness, pain, or vision changes immediately. See an ophthalmologist if recommended. Regular eye monitoring prevents serious complications.",
+      "category": "Complications"
+    },
+    {
+      "id": "15",
+      "question": "How often should I visit my doctor?",
+      "answer": "Initially, monthly visits are common during treatment. Always keep scheduled appointments and report any new symptoms immediately. Bring notes about any changes you've noticed. After treatment completion, annual follow-up visits for 5 years are recommended. Regular monitoring ensures good treatment outcomes and catches any issues early.",
+      "category": "Medical"
+    },
+    {
+      "id": "16",
+      "question": "What about my family and contacts?",
+      "answer": "Your close contacts (family members living with you) should be examined by a healthcare provider to check for signs of leprosy. They don't need to avoid you once you start treatment. Most contacts are naturally immune and won't develop leprosy. Your healthcare provider will advise on prophylaxis (preventive treatment) if needed. Regular monitoring of contacts is standard practice.",
+      "category": "Prevention"
+    },
+    {
+      "id": "17",
+      "question": "Can I work or go to school with leprosy?",
+      "answer": "Yes! You can work and attend school once you've started treatment. You become non-infectious within 2-3 weeks of starting MDT. There's no need for isolation after you start treatment. Continue your normal activities - work, school, social gatherings. Just remember to take your medications on schedule and keep doctor appointments.",
+      "category": "Lifestyle"
+    },
+    {
+      "id": "18",
+      "question": "What if I miss a dose of medication?",
+      "answer": "Try not to miss doses - medication adherence is crucial for cure. If you miss a dose: Take it as soon as you remember. Don't double up on the next dose. Continue with your regular schedule. Missing multiple doses can reduce treatment effectiveness and increase complications risk. Set reminders or use pill organizers to help remember doses.",
+      "category": "Treatment"
+    },
+    {
+      "id": "19",
+      "question": "What are leprosy disability grades?",
+      "answer": "WHO has a disability grading scale: Grade 0 = No disability, no sensory loss. Grade 1 = Some sensory loss or minor deformity. Grade 2 = Visible deformity or ulceration. Early detection and treatment prevent disabilities. If you already have disability, rehabilitation and adaptive strategies can help maintain function and quality of life.",
+      "category": "Disabilities"
+    },
+    {
+      "id": "20",
+      "question": "What about pregnancy and leprosy treatment?",
+      "answer": "If you're pregnant or planning pregnancy, inform your doctor. Rifampicin is generally safe, but some other MDT drugs should be avoided. Your doctor will adjust your treatment plan as needed. Regular monitoring throughout pregnancy is important. Do not stop MDT without consulting your doctor. With proper medical supervision, successful treatment and healthy pregnancies are possible.",
+      "category": "Special"
+    },
+    {
+      "id": "21",
+      "question": "What side effects might I experience?",
+      "answer": "Most patients tolerate MDT well. Possible side effects include: Rifampicin may cause orange discoloration of body fluids (normal, harmless). Ofloxacin might cause stomach upset (take with food). Minocycline can cause skin pigmentation or photosensitivity. Report any concerning side effects to your doctor immediately. Most side effects are manageable and don't require stopping treatment.",
+      "category": "Side Effects"
+    },
+    {
+      "id": "22",
+      "question": "What about stigma and discrimination?",
+      "answer": "Leprosy carries historical stigma, but education helps address misconceptions. Key facts: Leprosy is spreadable only from untreated cases, and becomes non-infectious quickly with treatment. Most people are naturally immune. Early diagnosis and cure are possible. You have the right to education, employment, and social participation. Seek support from health workers and patient groups if facing discrimination.",
+      "category": "Psychosocial"
+    },
+    {
+      "id": "23",
+      "question": "Is it okay to wash my leprosy wound with water?",
+      "answer": "Yes, absolutely! You can wash your leprosy lesions and affected areas with clean water. Regular gentle cleansing is actually recommended for wound care: Use mild soap and clean water to gently cleanse affected areas. Pat dry gently with a clean towel - don't rub. Keep the area clean and dry to prevent secondary infections. Wash your hands before and after cleaning lesions. After diagnosis and starting treatment, leprosy lesions can safely make contact with water. The disease does not spread through water contact. Focus on gentle, daily hygiene to prevent complications.",
+      "category": "Wound Care"
+    },
+    {
+      "id": "24",
+      "question": "What are the best foods for leprosy patients?",
+      "answer": "Nutritious foods support healing and immune function during leprosy treatment. Best foods include: Proteins: chicken, fish, eggs, beans, lentils, peas (essential for skin and nerve repair). Vegetables: spinach, broccoli, carrots, sweet potatoes, tomatoes (vitamin C and antioxidants). Fruits: oranges, mangoes, berries, papaya (vitamins and minerals). Whole grains: brown rice, wheat, oats, quinoa (energy and fiber). Healthy fats: coconut oil, olive oil, nuts, seeds (reduce inflammation). Dairy: milk, yogurt, cheese (calcium and protein). Include turmeric and ginger (anti-inflammatory properties). Stay hydrated with 2-3 liters of water daily.",
+      "category": "Nutrition"
+    },
+    {
+      "id": "25",
+      "question": "What foods should I avoid with leprosy?",
+      "answer": "Avoid foods that weaken immunity and slow healing: Processed foods: fast food, packaged snacks, sugary drinks (high sodium, low nutrition). Refined sugars: candy, desserts, sweetened beverages (spike inflammation). Alcohol: reduces immunity and can interact with medications like Rifampicin. Excessive salt: can increase swelling and inflammation. Spicy food: while safe, excessive amounts may irritate sensitive skin. Trans fats: fried foods and margarine (increase inflammation). Energy drinks and caffeine: can interfere with medication absorption and sleep. Instead, focus on whole, unprocessed foods. If you have medication side effects, consult your doctor about specific foods to avoid or emphasize.",
+      "category": "Nutrition"
+    }
+  ]
+}

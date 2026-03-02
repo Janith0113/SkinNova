@@ -1,0 +1,206 @@
+{
+  "title": "Leprosy Classification - Training Data",
+  "version": "1.0",
+  "last_updated": "2024-03-02",
+  "source": "WHO, ILA, CDC",
+  "confidence": "very-high",
+  "classifications": [
+    {
+      "id": "IL",
+      "name": "Indeterminate Leprosy",
+      "code": "IL",
+      "clinical_description": "The earliest form of leprosy with undefined characteristics. Often heals spontaneously or progresses to other forms.",
+      "diagnostic_criteria": {
+        "lesions": "1-5 poorly defined macules",
+        "borders": "Indistinct",
+        "sensory_loss": "Absent or indeterminate",
+        "nerve_thickening": "Rare",
+        "slit_skin_smear": "Negative",
+        "bacterial_index": "0",
+        "biopsy": "Nonspecific inflammatory infiltrate"
+      },
+      "clinical_features": [
+        "Hypopigmented patches or macules",
+        "Poorly demarcated borders",
+        "Loss of sensation may be absent",
+        "No nerve involvement usually",
+        "Bacteria cannot be demonstrated"
+      ],
+      "progression": {
+        "heal_spontaneously": "75% of cases",
+        "progress_to_tt": "10-20% within 2-3 years",
+        "progress_to_ll": "Rare",
+        "healing_probability": "High with early treatment"
+      },
+      "treatment": {
+        "if_persistent": "6-month paucibacillary MDT",
+        "monitoring": "If untreated, monitor for 2-3 years",
+        "follow_up": "Annual observation"
+      },
+      "prognosis": "Excellent - most commonly self-healing",
+      "sources": [
+        "https://www.who.int/health-topics/leprosy",
+        "https://www.cdc.gov/leprosy/diagnosis/",
+        "https://www.ilepsyassociation.org/"
+      ]
+    },
+    {
+      "id": "TT",
+      "name": "Tuberculoid Leprosy",
+      "code": "TT",
+      "clinical_description": "Strong cell-mediated immunity with few bacilli and few lesions. Good prognosis but commonly associated with neuritis.",
+      "diagnostic_criteria": {
+        "lesions": "1-5 well-defined lesions",
+        "borders": "Sharp, clear demarcation",
+        "sensory_loss": "Marked and early",
+        "nerve_thickening": "Frequent and severe",
+        "slit_skin_smear": "Negative (occasionally 1-2 AFB)",
+        "bacterial_index": "0-1",
+        "biopsy": "Epithelioid cells with Langhans giant cells, caseation"
+      },
+      "clinical_features": [
+        "Few, well-demarcated lesions",
+        "Sharp borders with erythema",
+        "Anesthetic plaques",
+        "Asymmetric distribution",
+        "Marked sensory loss within lesions",
+        "Early and severe nerve involvement",
+        "Dry, scaly appearance"
+      ],
+      "classification": "Paucibacillary",
+      "immunology": {
+        "cell_mediated_immunity": "Strong",
+        "bacillary_load": "Low (0-2 AFB)",
+        "immune_response": "TH1 dominant"
+      },
+      "complications": {
+        "neuritis": "Frequent (50-80%)",
+        "reactions": "Type 1 reactions possible",
+        "eye_involvement": "Less common than LL"
+      },
+      "treatment": {
+        "regimen": "6-month paucibacillary MDT",
+        "drugs": ["Rifampicin", "Ofloxacin", "Minocycline"],
+        "duration": "6 months"
+      },
+      "prognosis": "Good - high cure rate",
+      "disability_prevention": "Early nerve damage assessment critical",
+      "sources": [
+        "https://www.who.int/health-topics/leprosy",
+        "https://www.cdc.gov/leprosy/diagnosis/"
+      ]
+    },
+    {
+      "id": "LL",
+      "name": "Lepromatous Leprosy",
+      "code": "LL",
+      "clinical_description": "Weak cell-mediated immunity with numerous bacilli and extensive lesions. Highly infectious if untreated. Serious complications possible.",
+      "diagnostic_criteria": {
+        "lesions": "Numerous, ill-defined, disseminated",
+        "borders": "Indistinct, symmetric",
+        "sensory_loss": "Absent or minimal initially",
+        "nerve_thickening": "Late onset",
+        "slit_skin_smear": "Positive (6+ AFB - highly bacilliferous)",
+        "bacterial_index": "5-6 (maximum)",
+        "biopsy": "Heavy infiltration with foamy macrophages, few organized structures"
+      },
+      "clinical_features": [
+        "Numerous macules, patches, plaques",
+        "Symmetric distribution",
+        "Ill-defined borders",
+        "Shiny appearance",
+        "Eyebrow and eyelash loss (madarosis)",
+        "Saddle nose deformity",
+        "Early systemic dissemination",
+        "Nodular lesions possible"
+      ],
+      "classification": "Multibacillary",
+      "immunology": {
+        "cell_mediated_immunity": "Severely impaired",
+        "bacillary_load": "Very high (5-6 AFB per site)",
+        "immune_response": "TH2 dominant, minimal CMI"
+      },
+      "contagion": {
+        "status": "Highly infectious if untreated",
+        "transmission": "Respiratory droplets",
+        "becomes_non_infectious": "2-3 weeks after treatment start",
+        "infectivity_period": "Months to years if untreated"
+      },
+      "complications": {
+        "type_2_reactions": "Common (10-50% during/after treatment)",
+        "eye_involvement": "Frequent",
+        "systemic_involvement": "Possible",
+        "disability": "High if reactions occur"
+      },
+      "treatment": {
+        "regimen": "12-month multibacillary MDT",
+        "drugs": ["Rifampicin", "Ofloxacin", "Minocycline"],
+        "duration": "12 months",
+        "becomes_non_infectious": "Within 2-3 weeks of starting treatment"
+      },
+      "prognosis": "Good with adherence - excellent cure rates despite high bacillary load",
+      "disability_risk": "Moderate if reactions occur",
+      "sources": [
+        "https://www.who.int/health-topics/leprosy",
+        "https://www.cdc.gov/leprosy/diagnosis/",
+        "https://www.ilepsyassociation.org/"
+      ]
+    }
+  ],
+  "interpretation_guide": {
+    "lesion_count": {
+      "1-5": "Typically paucibacillary",
+      "6+": "Typically multibacillary"
+    },
+    "sensory_loss": {
+      "marked_early": "TT",
+      "variable": "BT, BB, BL",
+      "absent_or_late": "LL"
+    },
+    "nerve_involvement": {
+      "frequent_severe": "TT (assymetric)",
+      "frequent_moderate": "BB",
+      "variable": "BL",
+      "late_onset": "LL"
+    },
+    "bacterial_index": {
+      "0": "TT, BT (paucibacillary)",
+      "1-2": "BT",
+      "2-4": "BB",
+      "4-5": "BL",
+      "5-6": "LL (multibacillary)"
+    }
+  },
+  "faq_training": [
+    {
+      "question": "What's the difference between tuberculoid and lepromatous leprosy?",
+      "answer": "Tuberculoid (TT) has few lesions with strong immune response, while lepromatous (LL) has many lesions with weak immunity. TT patients have marked sensory loss early, while LL patients develop it late. TT is less contagious and has better prognosis, but both are curable with MDT.",
+      "source": "WHO Classification System"
+    },
+    {
+      "question": "Why is my leprosy classified as borderline?",
+      "answer": "Borderline forms (BT, BB, BL) are intermediate between tuberculoid and lepromatous. They often show unstable immunity that can shift toward TT or LL. This means your doctor may need more careful monitoring, especially for reactions.",
+      "source": "ILA Standards"
+    },
+    {
+      "question": "What does 'paucibacillary' mean?",
+      "answer": "Paucibacillary means 'few bacilli.' These forms (TT, BT) have low bacterial loads and are less contagious. Treatment is typically 6 months.",
+      "source": "WHO Terminology"
+    },
+    {
+      "question": "What does 'multibacillary' mean?",
+      "answer": "Multibacillary means 'many bacilli.' These forms (BL, LL, and sometimes BB) have higher bacterial loads and require longer treatment (12 months) to completely clear the bacteria.",
+      "source": "WHO Terminology"
+    }
+  ],
+  "validation_rules": {
+    "must_have": [
+      "clinical_description",
+      "diagnostic_criteria",
+      "treatment",
+      "sources"
+    ],
+    "confidence_threshold": "very-high for patient-facing content",
+    "update_frequency": "Annually or when WHO/CDC updates"
+  }
+}
