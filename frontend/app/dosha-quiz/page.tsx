@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import GradCAMVisualization from '@/components/GradCAMVisualization';
 
 interface Question {
   id: number;
@@ -414,6 +415,8 @@ export default function DoshaAssessmentPage() {
     pitta: 0,
     kapha: 0,
   });
+  const [xaiData, setXaiData] = useState<any>(null);
+  const [loadingXAI, setLoadingXAI] = useState(false);
 
   const handleAnswer = (dosha: 'vata' | 'pitta' | 'kapha') => {
     const newAnswers = [...answers, dosha];
@@ -435,6 +438,46 @@ export default function DoshaAssessmentPage() {
     };
     setDoshaScores(scores);
     setShowResults(true);
+    
+    // Compute XAI/GradCAM data
+    computeXAI(answers, scores);
+  };
+
+  const computeXAI = async (answers: ('vata' | 'pitta' | 'kapha')[], scores: Record<'vata' | 'pitta' | 'kapha', number>) => {
+    try {
+      setLoadingXAI(true);
+      const primaryDosha = Object.entries(scores).reduce((a, b) => (a[1] > b[1] ? a : b))[0] as 'vata' | 'pitta' | 'kapha';
+      
+      // Map answers to question data
+      const answerData = answers.map((dosha, idx) => ({
+        questionId: idx + 1,
+        question: questions[idx].question,
+        selectedAnswer: questions[idx].options.find(opt => opt.dosha === dosha)?.text || '',
+        dosha: dosha,
+      }));
+
+      const response = await fetch('/api/xai/compute-xai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          answers: answerData,
+          primaryDosha: primaryDosha,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setXaiData(data.data);
+      } else {
+        console.error('Failed to compute XAI');
+      }
+    } catch (error) {
+      console.error('Error computing XAI:', error);
+    } finally {
+      setLoadingXAI(false);
+    }
   };
 
   const getPrimaryDosha = () => {
@@ -448,6 +491,7 @@ export default function DoshaAssessmentPage() {
     setShowResults(false);
     setActiveTab('info');
     setDoshaScores({ vata: 0, pitta: 0, kapha: 0 });
+    setXaiData(null);
   };
 
   const progress = ((currentQuestion + 1) / questions.length) * 100;
@@ -668,6 +712,22 @@ export default function DoshaAssessmentPage() {
                 ))}
               </div>
             </div>
+
+            {/* XAI/GradCAM Visualization */}
+            {loadingXAI && (
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-8 shadow-2xl flex flex-col items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mb-4"></div>
+                <p className="text-white font-semibold">Computing AI Explanations...</p>
+              </div>
+            )}
+
+            {xaiData && !loadingXAI && (
+              <GradCAMVisualization 
+                doshaType={primaryDosha}
+                gradcamData={xaiData.results}
+                totalScore={xaiData.overallConfidence}
+              />
+            )}
 
             {/* Characteristics */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-8 shadow-2xl">

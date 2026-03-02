@@ -22,6 +22,7 @@ import detectionRoutes from './routes/detection'
 import profileRoutes from './routes/profile'
 import leprosyRoutes from './routes/leprosy'
 import healthRoutes from './routes/health'
+import xaiDoshaRoutes from './routes/xai-dosha'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
@@ -113,6 +114,7 @@ app.use('/api/analysis', newDetectionRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/leprosy', leprosyRoutes)
 app.use('/api/health', healthRoutes)
+app.use('/api/xai', xaiDoshaRoutes)
 
 async function start() {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://Skin123:Skin123%23@cluster0.ycpp8kz.mongodb.net/?appName=Cluster0'
