@@ -1,0 +1,165 @@
+{
+  "title": "Leprosy Reactions Management - Training Data",
+  "version": "1.0",
+  "last_updated": "2024-03-02",
+  "source": "CDC, WHO, ILA",
+  "confidence": "very-high",
+  "type1_reaction": {
+    "name": "Type 1 Reaction (Reversal Reaction)",
+    "pathogenesis": "Cell-mediated immune dysregulation",
+    "timing": [
+      "Can occur during treatment",
+      "Usually within 1 year after treatment completion",
+      "Rare after 1 year"
+    ],
+    "frequency": "25-55% of BT, BB, BL patients",
+    "signs_symptoms": {
+      "acute": [
+        "Sudden inflammation of existing lesions",
+        "Edema and color change of lesions",
+        "New lesions may appear",
+        "Neuritis (nerve inflammation)"
+      ],
+      "neuritis_signs": [
+        "Nerve tenderness on palpation",
+        "Pain along nerve distribution",
+        "Weakness in muscle groups supplied by affected nerve",
+        "Sensory loss progression"
+      ],
+      "emergency_signs": [
+        "Severe eye inflammation with vision changes",
+        "Severe neuritis with paralysis risk",
+        "Systemic toxicity"
+      ]
+    },
+    "diagnosis": {
+      "clinical": "Based on history and examination findings",
+      "no_slit_skin_smear_change": "May still show same or similar bacillary index",
+      "biopsy": "Shows inflammatory infiltrate"
+    },
+    "treatment": {
+      "corticosteroids": {
+        "first_line": "Prednisolone",
+        "initial_dose": "0.5-1.0 mg/kg daily",
+        "taper": "Reduce gradually over 2-3 months",
+        "duration": "3-12 months (individualized)",
+        "monitoring": "Weekly initially, then monthly for efficacy and side effects"
+      },
+      "duration": "Continue MDT during treatment of reaction",
+      "outcomes": "70-80% resolve with appropriate therapy"
+    },
+    "monitoring": [
+      "Monthly neuritis assessments",
+      "Ophthalmology review if eye involvement",
+      "Functional status checks",
+      "Corticosteroid side effect monitoring"
+    ],
+    "action_required": "URGENT - Contact doctor immediately if suspected"
+  },
+  "type2_reaction": {
+    "name": "Type 2 Reaction (Erythema Nodosum Leprosum - ENL)",
+    "pathogenesis": "Immune complex (Type III) deposition",
+    "timing": [
+      "Usually during treatment (especially first 1-2 years)",
+      "Can occur up to 10 years after treatment completion"
+    ],
+    "risk_groups": "More common in BL and LL patients (10-50% occurrence)",
+    "frequency": "Up to 50% of BL and LL patients",
+    "signs_symptoms": {
+      "acute": [
+        "Tender subcutaneous nodules",
+        "Fever (often high)",
+        "Generalized malaise",
+        "Constitutional symptoms (fatigue, body aches)"
+      ],
+      "systemic_involvement": [
+        "Iridocyclitis (eye inflammation)",
+        "Neuritis",
+        "Arthritis or arthralgias (joint pain)",
+        "Lymphadenopathy",
+        "Hepatosplenomegaly"
+      ],
+      "severe_complications": [
+        "Permanent blindness if not treated",
+        "Testicular atrophy",
+        "Glomerulonephritis"
+      ]
+    },
+    "diagnosis": {
+      "clinical": "Clinical presentation + timing",
+      "no_smear_change": "Bacillary index unchanged",
+      "histology": "Neutrophilic infiltrate"
+    },
+    "treatment_strategies": {
+      "mild": {
+        "approach": "Aspirin and observation",
+        "duration": "Watch for progression"
+      },
+      "moderate": {
+        "corticosteroids": {
+          "dose": "Prednisolone 0.5 mg/kg daily",
+          "taper": "Gradual reduction",
+          "duration": "2-6 weeks"
+        }
+      },
+      "severe": {
+        "corticosteroids": "Prednisolone 0.5 mg/kg daily",
+        "thalidomide": {
+          "dose": "100-300mg daily",
+          "duration": "Variable, can be long-term",
+          "warning": "TERATOGENIC - contraindicated in pregnancy",
+          "monitoring": "Strict pregnancy prevention program (REMS in USA)"
+        }
+      }
+    },
+    "outcome": [
+      "Recurrent episodes are common (10-20% recurrence)",
+      "Can occur even after treatment completion",
+      "Requires long-term management planning"
+    ],
+    "monitoring": [
+      "Clinical assessment at each MDT visit",
+      "Ophthalmology referral if eye symptoms",
+      "Regular inflammatory marker checks",
+      "Pregnancy testing if thalidomide considered"
+    ],
+    "action_required": "URGENT - Seek medical attention immediately"
+  },
+  "reaction_management_flow": {
+    "suspicion": {
+      "action": "Immediate medical evaluation required",
+      "assessment": [
+        "Detailed history of symptom onset and timeline",
+        "Complete physical examination",
+        "Comprehensive nerve assessment",
+        "Ophthalmological examination"
+      ]
+    },
+    "diagnosis": {
+      "type1": "Lesion inflammation + neuritis during/after treatment",
+      "type2": "Nodules + fever + systemic symptoms during treatment"
+    },
+    "treatment": {
+      "type1": "Corticosteroids, continue MDT",
+      "type2": "Corticosteroids ± Thalidomide, continue MDT"
+    },
+    "monitoring_duration": "Months to years depending on severity",
+    "endpoint": "Resolution or stabilization of symptoms"
+  },
+  "emergency_consultation": {
+    "seek_immediate_medical_attention": [
+      "Severe eye inflammation with vision loss or inability to close eye",
+      "Severe or rapidly worsening neuritis",
+      "Inability to move fingers or toes (paralysis)",
+      "Suspected testicular involvement (swelling, pain)",
+      "Severe systemic symptoms (high fever, jaundice, confusion)"
+    ]
+  },
+  "prevention_tips": [
+    "Consistent MDT adherence reduces complication risk",
+    "Regular doctor visits aid early detection",
+    "Report new symptoms immediately",
+    "Don't ignore warning signs",
+    "Follow-up care is essential even after treatment"
+  ]
+}

@@ -1,0 +1,309 @@
+{
+  "title": "Leprosy Treatment Protocols - Training Data",
+  "version": "1.0",
+  "last_updated": "2024-03-02",
+  "source": "WHO, CDC",
+  "confidence": "very-high",
+  "protocols": [
+    {
+      "id": "pb_6month",
+      "classification": "Paucibacillary (PB)",
+      "duration_months": 6,
+      "total_supervised_doses": 6,
+      "total_unsupervised_doses": 180,
+      "description": "First-line treatment for TT, BT, and IL leprosy types",
+      "overview": "This is the standard 6-month regimen for patients with low bacterial loads. Once-monthly supervised doses are crucial for ensuring treatment adherence. Patients become clinically and bacteriologically effective within 6 months.",
+      "medications": {
+        "rifampicin": {
+          "form": "Capsule",
+          "dose_supervised": "600mg",
+          "frequency_supervised": "Once monthly",
+          "total_supervised_doses": 6,
+          "total_dose": "3600mg",
+          "color_warning": "May turn urine, tears, saliva orange - this is normal and harmless",
+          "interactions": "Reduces effectiveness of contraceptive pills",
+          "sideEffects": [
+            "Orange discoloration of body fluids (normal)",
+            "Hepatitis (rare, monitor LFTs)",
+            "Thrombocytopenia (rare)"
+          ]
+        },
+        "ofloxacin": {
+          "form": "Tablet",
+          "dose": "400mg",
+          "frequency": "Once daily, self-administered",
+          "total_days": 180,
+          "total_dose": "72000mg",
+          "timing": "Take with food to reduce stomach upset",
+          "sideEffects": [
+            "Gastrointestinal upset (nausea, diarrhea)",
+            "Tendinitis (report joint pain)",
+            "Photosensitivity (use sunscreen)",
+            "Headache"
+          ],
+          "precautions": "Avoid in pregnancy"
+        },
+        "minocycline": {
+          "form": "Capsule",
+          "dose": "100mg",
+          "frequency": "Once daily, self-administered",
+          "total_days": 180,
+          "total_dose": "18000mg",
+          "timing": "Take with food, upright position for 30 min",
+          "sideEffects": [
+            "Blue-black pigmentation of skin (reversible)",
+            "Photosensitivity (avoid sun)",
+            "Liver toxicity (rare)",
+            "Vertigo (rare)"
+          ],
+          "precautions": "Avoid in pregnancy"
+        }
+      },
+      "administration_schedule": {
+        "supervised_component": {
+          "frequency": "Once monthly",
+          "drugs": ["Rifampicin 600mg"],
+          "total_doses": 6,
+          "location": "Health facility",
+          "duration": "6 months",
+          "example_dates": [
+            "Month 1: One dose day 1",
+            "Month 2: One dose day 32",
+            "Month 3: One dose day 62",
+            "Month 4: One dose day 93",
+            "Month 5: One dose day 123",
+            "Month 6: One dose day 154"
+          ]
+        },
+        "self_administered_component": {
+          "frequency": "Daily",
+          "drugs": ["Ofloxacin 400mg", "Minocycline 100mg"],
+          "total_days": 180,
+          "location": "At home",
+          "adherence_tips": [
+            "Take at same time each day",
+            "Use blister packs (clearly marked)",
+            "Set phone reminders",
+            "Keep medication list"
+          ]
+        }
+      },
+      "monitoring": {
+        "baseline": {
+          "when": "Before starting treatment",
+          "assessments": [
+            "Complete history and physical",
+            "Slit-skin smear (SSS) from 6 sites",
+            "Calculate Bacterial Index",
+            "WHO disability assessment",
+            "Check for existing reactions",
+            "Baseline liver and kidney function tests",
+            "Baseline blood count"
+          ]
+        },
+        "month_3": {
+          "when": "At 3 months",
+          "assessments": [
+            "Clinical examination",
+            "Adherence assessment",
+            "Side effect review",
+            "Compliance counseling"
+          ]
+        },
+        "month_6": {
+          "when": "At end of treatment (6 months)",
+          "assessments": [
+            "Final clinical assessment",
+            "Slit-skin smear (SSS)",
+            "Disability reassessment",
+            "Completion certificate"
+          ]
+        },
+        "post_treatment": {
+          "expected_outcomes": {
+            "clinical_healing": "Usually complete by week 12",
+            "skin_lesions": "Flatten, become hypopigmented",
+            "bacteria_in_lesions": "Become non-viable"
+          },
+          "follow_up_schedule": [
+            "3 months after completion",
+            "6 months after completion",
+            "Annually for 5 years (total 5 year surveillance)"
+          ]
+        }
+      },
+      "side_effects_management": {
+        "gastrointestinal": {
+          "problem": "Nausea, diarrhea, abdominal pain",
+          "cause": "Ofloxacin sensitivity",
+          "solution": "Take with food, anti-emetics if severe"
+        },
+        "hepatotoxicity": {
+          "problem": "Jaundice, dark urine",
+          "cause": "Drug reaction (rare)",
+          "solution": "Get LFTs. If abnormal, consult doctor immediately"
+        },
+        "photosensitivity": {
+          "problem": "Severe sunburn",
+          "cause": "Minocycline/Ofloxacin",
+          "solution": "Use SPF 30+ sunscreen, avoid sun 10am-3pm"
+        },
+        "pigmentation": {
+          "problem": "Blue-black skin pigmentation",
+          "cause": "Minocycline (cosmetic)",
+          "solution": "This is harmless and usually reversible over months"
+        }
+      },
+      "success_metrics": {
+        "clinical_cure": "Skin lesions flatten, lose erythema",
+        "bacteriological_cure": "Bacteria become non-viable within 6 months",
+        "relapse_prevention": "99% cure rate with full adherence",
+        "treatment_completion": "All 6 months completed as prescribed"
+      },
+      "sources": [
+        "https://www.who.int/teams/public-health-surveillance-and-response/dpc/ntds/leprosy-elimination/multi-drug-therapy",
+        "https://www.cdc.gov/leprosy/diagnosis/treatment-guidelines.html"
+      ]
+    },
+    {
+      "id": "mb_12month",
+      "classification": "Multibacillary (MB)",
+      "duration_months": 12,
+      "total_supervised_doses": 12,
+      "total_unsupervised_doses": 360,
+      "description": "Standard treatment for BL, LL, and BB leprosy types",
+      "overview": "This 12-month regimen treats patients with high bacterial loads. The extended duration ensures complete bacillary clearance. Patients become non-infectious within 2-3 weeks of starting treatment.",
+      "medications_same_as_pb": true,
+      "medications": {
+        "rifampicin": {
+          "form": "Capsule",
+          "dose_supervised": "600mg",
+          "frequency_supervised": "Once monthly",
+          "total_supervised_doses": 12,
+          "total_dose": "7200mg",
+          "notes": "Extended supervision due to high bacillary load"
+        },
+        "ofloxacin": {
+          "form": "Tablet",
+          "dose": "400mg",
+          "frequency": "Once daily (both supervised and self-administered)",
+          "total_days": 360,
+          "total_dose": "144000mg"
+        },
+        "minocycline": {
+          "form": "Capsule",
+          "dose": "100mg",
+          "frequency": "Once daily (both supervised and self-administered)",
+          "total_days": 360,
+          "total_dose": "36000mg"
+        }
+      },
+      "administration_schedule": {
+        "supervised_component": {
+          "frequency": "Once monthly",
+          "drugs": ["Rifampicin 600mg", "Ofloxacin 400mg (single dose)", "Minocycline 100mg (single dose)"],
+          "total_doses": 12,
+          "duration": "12 months"
+        },
+        "self_administered_component": {
+          "frequency": "Daily",
+          "drugs": ["Ofloxacin 400mg", "Minocycline 100mg"],
+          "total_days": 360,
+          "location": "At home"
+        }
+      },
+      "monitoring": {
+        "baseline": "Same as PB",
+        "month_3": "Clinical assessment, compliance check",
+        "month_6": {
+          "when": "At 6 months (mid-treatment)",
+          "assessments": [
+            "Clinical assessment",
+            "Slit-skin smear (SSS) - should show reduced bacteria",
+            "Compliance review",
+            "Continue MDT"
+          ]
+        },
+        "month_12": {
+          "when": "At treatment completion",
+          "assessments": [
+            "Final clinical assessment",
+            "Slit-skin smear (SSS)",
+            "Bacterial Index recalculation",
+            "Disability reassessment"
+          ]
+        },
+        "post_treatment": {
+          "follow_up": "Annual for 5 years",
+          "monitoring_for": [
+            "Relapse (rare but possible)",
+            "Reactions (can occur even after treatment)",
+            "Disability progression"
+          ]
+        }
+      },
+      "key_differences_from_pb": [
+        "12 months instead of 6 months",
+        "All three drugs supervised monthly (vs just Rifampicin in PB)",
+        "Higher total bacterial exposure managed",
+        "Higher risk of Type 2 reactions during treatment",
+        "Post-treatment surveillance critical"
+      ],
+      "when_becomes_non_infectious": {
+        "timeline": "2-3 weeks after treatment start",
+        "implication": "Can return to normal activities, school, work",
+        "contacts": "No special isolation needed after becoming non-infectious",
+        "family": "Continue normal contact - transmission risk eliminated"
+      },
+      "success_metrics": {
+        "clinical_response": "Lesions flatten by month 3-6",
+        "bacterial_clearance": "Usually complete by month 12",
+        "cure_rate": "95%+ with full adherence",
+        "relapse_rate": "< 1% with adequate treatment"
+      },
+      "sources": [
+        "https://www.who.int/teams/public-health-surveillance-and-response/dpc/ntds/leprosy-elimination/multi-drug-therapy",
+        "https://www.cdc.gov/leprosy/diagnosis/treatment-guidelines.html"
+      ]
+    }
+  ],
+  "alternative_regimens": {
+    "note": "WHO recommends above regimens. Alternatives exist for specific situations.",
+    "available_if": [
+      "Allergy to one drug",
+      "Drug interactions",
+      "Specific pregnancy situations",
+      "Regional variations"
+    ],
+    "consult_for_alternatives": "Always consult WHO or CDC if standard regimen not suitable"
+  },
+  "treatment_outcome_definitions": {
+    "cured": "Completed full MDT course + clinically released from treatment",
+    "clinically_effective": "Skin lesions flatten, become non-inflamed (typically by month 6)",
+    "bacteriologically_cured": "Bacteria become non-viable (typically by month 12 for MB, month 6 for PB)",
+    "non_infectious": "Released from infectivity (2-3 weeks after treatment start)",
+    "relapse": "Return of signs/symptoms after being released from treatment (rare)"
+  },
+  "treatment_adherence": {
+    "importance": "Critical for cure and preventing drug resistance",
+    "supervision_purpose": "Monthly supervised doses ensure at least minimum contact",
+    "self_administered_importance": "150-180 daily doses completed as prescribed",
+    "adherence_support": [
+      "Blister packs with clear dates",
+      "SMS/phone reminders",
+      "Family involvement",
+      "Counseling on importance",
+      "Regular clinic visits"
+    ]
+  },
+  "validation_rules": {
+    "must_haves": [
+      "medications with dosages",
+      "administration schedule",
+      "monitoring requirements",
+      "sources"
+    ],
+    "confidence_threshold": "very-high for patient education",
+    "update_trigger": "When WHO or CDC updates guidelines"
+  }
+}
