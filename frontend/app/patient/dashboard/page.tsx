@@ -1063,7 +1063,7 @@ export default function PatientDashboard() {
                 }}
                 className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:shadow-lg hover:scale-105 transition-all"
               >
-                Ask a doctor about {cfg.label.toLowerCase()}
+                {selectedDisease === 'psoriasis' ? 'Psoriasis risk analysis' : `Ask a doctor about ${cfg.label.toLowerCase()}`}
               </button>
             </div>
 
