@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import SelfCheckGuide from "@/app/components/skin-cancer/SelfCheckGuide";
 
 type DiseaseKey = "psoriasis" | "tinea" | "leprosy" | "skinCancer";
 
@@ -286,6 +287,7 @@ export default function PatientDashboard() {
   const [loadingScans, setLoadingScans] = useState(false);
   // Symptom checker states
   const [showSymptomChecker, setShowSymptomChecker] = useState(false);
+  const [showSelfCheck, setShowSelfCheck] = useState(false);
   const [currentSymptomQuestion, setCurrentSymptomQuestion] = useState(0);
   const [symptomScores, setSymptomScores] = useState<Record<DiseaseKey, number>>({
     psoriasis: 0,
@@ -913,10 +915,10 @@ export default function PatientDashboard() {
                   🎯 Predict Risk
                 </button>
                 <button
-                  onClick={() => router.push("/skin-cancer")}
+                  onClick={() => setShowSelfCheck(true)}
                   className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-green-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-blue-400"
                 >
-                  📚 Learn More
+                  🕵️ Self Check Guide
                 </button>
               </>
             )}
@@ -1597,6 +1599,8 @@ export default function PatientDashboard() {
             </div>
           </div>
         )}
+        
+        <SelfCheckGuide isOpen={showSelfCheck} onClose={() => setShowSelfCheck(false)} />
       </div>
     </div>
   );
