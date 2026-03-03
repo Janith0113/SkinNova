@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/auth'
 import SymptomLog from '../models/SymptomLog'
 import LeprosyAssistantChat from '../models/LeprosyAssistantChat'
 import LeprosyUserProfile from '../models/LeprosyUserProfile'
+import leprosyKnowledgeService from '../services/leprosyKnowledgeService'
 
 const router = express.Router()
 
@@ -150,7 +151,7 @@ router.get('/latest-symptom-log', requireAuth, async (req: any, res: any) => {
   }
 })
 
-// AI Chat with leprosy assistant
+// AI Chat with leprosy assistant - ENHANCED WITH KNOWLEDGE BASE
 router.post('/chat/leprosy-assistant', requireAuth, async (req: any, res: any) => {
   try {
     const { message, userId, context } = req.body
@@ -179,14 +180,23 @@ router.post('/chat/leprosy-assistant', requireAuth, async (req: any, res: any) =
       timestamp: new Date()
     })
 
-    // Generate assistant response based on keywords, context, and user profile
-    const reply = generateAssistantResponse(message, userProfile)
+    // Search knowledge base for relevant information
+    const searchResults = leprosyKnowledgeService.searchKnowledge(message)
+    
+    // Generate enhanced assistant response with citations
+    const { reply, sources, disclaimer } = generateEnhancedAssistantResponse(
+      message,
+      userProfile,
+      searchResults
+    )
 
-    // Add assistant message to history
+    // Add assistant message to history with sources
     chatHistory.messages.push({
       text: reply,
       sender: 'assistant',
-      timestamp: new Date()
+      timestamp: new Date(),
+      sources: sources,
+      disclaimer: disclaimer
     })
 
     // Keep only last 100 messages to avoid memory issues
@@ -199,7 +209,10 @@ router.post('/chat/leprosy-assistant', requireAuth, async (req: any, res: any) =
     res.json({
       success: true,
       reply,
-      context
+      sources,
+      disclaimer,
+      context,
+      hasKnowledgeBaseCitation: searchResults.length > 0
     })
   } catch (error) {
     console.error('Error in leprosy assistant chat:', error)
@@ -241,7 +254,200 @@ router.delete('/chat-history', requireAuth, async (req: any, res: any) => {
   }
 })
 
-// Generate assistant response based on message content and user profile
+// Get knowledge base statistics and info
+router.get('/knowledge-base-info', async (req: any, res: any) => {
+  try {
+    const stats = leprosyKnowledgeService.getStatistics()
+
+    res.json({
+      success: true,
+      stats,
+      message: 'Knowledge base loaded with verified WHO, CDC, and ILA data'
+    })
+  } catch (error) {
+    console.error('Error fetching knowledge base info:', error)
+    res.status(500).json({ error: 'Failed to fetch knowledge base info' })
+  }
+})
+
+// Search knowledge base directly
+router.post('/search-knowledge', async (req: any, res: any) => {
+  try {
+    const { query } = req.body
+
+    if (!query) {
+      return res.status(400).json({ error: 'Search query required' })
+    }
+
+    const results = leprosyKnowledgeService.searchKnowledge(query)
+
+    res.json({
+      success: true,
+      results,
+      count: results.length
+    })
+  } catch (error) {
+    console.error('Error searching knowledge base:', error)
+    res.status(500).json({ error: 'Failed to search knowledge base' })
+  }
+})
+
+// Enhanced response generation with knowledge base integration
+function generateEnhancedAssistantResponse(
+  message: string,
+  userProfile: any,
+  searchResults: any[]
+) {
+  const lowerMessage = message.toLowerCase()
+  let reply = ''
+  let sources: any[] = []
+  let disclaimer = 'This information is based on WHO, CDC, and ILA guidelines. Always consult your healthcare provider for personalized advice.'
+
+  // If knowledge base has relevant results, use them first
+  if (searchResults.length > 0) {
+    const primaryResult = searchResults[0]
+    
+    // Default sources for all responses
+    const defaultSources = [
+      { name: 'World Health Organization', url: 'https://www.who.int/health-topics/leprosy', organization: 'WHO' },
+      { name: 'CDC Leprosy Information', url: 'https://www.cdc.gov/leprosy/', organization: 'CDC' },
+      { name: 'CDC Treatment Guidelines', url: 'https://www.cdc.gov/leprosy/diagnosis/treatment-guidelines.html', organization: 'CDC' }
+    ]
+    
+    sources = defaultSources
+
+    // Build response based on category
+    if (primaryResult.category === 'disease_classification') {
+      const classification = leprosyKnowledgeService.getClassificationDetails(primaryResult.id)
+      if (classification) {
+        reply = leprosyKnowledgeService.formatClassificationResponse(classification)
+        sources = leprosyKnowledgeService.getTrustedSources('leprosy-classification')
+      } else {
+        reply = primaryResult.content
+      }
+    } else if (primaryResult.category === 'treatment_protocols') {
+      // Determine if asking about PB or MB
+      const classType = lowerMessage.includes('paucibacillary') || lowerMessage.includes('pb') || lowerMessage.includes('6 month') ? 'PB' : 'MB'
+      const protocol = leprosyKnowledgeService.getTreatmentProtocol(classType)
+      if (protocol) {
+        reply = leprosyKnowledgeService.formatTreatmentResponse(protocol)
+      } else {
+        reply = `Treatment for ${classType}: ${primaryResult.clinicalReference || 'refer to CDC/WHO guidelines'}`
+      }
+      sources = [
+        { name: 'WHO MDT Guidelines', url: 'https://www.who.int/teams/public-health-surveillance-and-response/dpc/ntds/leprosy-elimination/multi-drug-therapy', organization: 'WHO' },
+        { name: 'CDC Treatment Guidelines', url: 'https://www.cdc.gov/leprosy/diagnosis/treatment-guidelines.html', organization: 'CDC' }
+      ]
+    } else if (primaryResult.category === 'reactions_management') {
+      if (lowerMessage.includes('type 1') || lowerMessage.includes('reversal')) {
+        reply = formatType1ReactionResponse()
+      } else if (lowerMessage.includes('type 2') || lowerMessage.includes('enl')) {
+        reply = formatType2ReactionResponse()
+      } else {
+        reply = 'Information about leprosy reactions. Both Type 1 and Type 2 reactions are treatable but require immediate medical attention. Please consult your healthcare provider.'
+      }
+      sources = [
+        { name: 'CDC Reactions Guide', url: 'https://www.cdc.gov/leprosy/complications/reactions.html', organization: 'CDC' },
+        { name: 'WHO Guidelines', url: 'https://www.who.int/health-topics/leprosy', organization: 'WHO' }
+      ]
+    } else if (primaryResult.category === 'faq') {
+      reply = primaryResult.content
+      sources = defaultSources
+    } else {
+      reply = primaryResult.content
+    }
+  } else {
+    // Fall back to original personalized responses
+    reply = generateAssistantResponse(message, userProfile)
+    
+    // Provide default sources even for fallback responses
+    sources = [
+      { name: 'World Health Organization', url: 'https://www.who.int/health-topics/leprosy', organization: 'WHO' },
+      { name: 'CDC Leprosy Information', url: 'https://www.cdc.gov/leprosy/', organization: 'CDC' }
+    ]
+  }
+
+  return {
+    reply,
+    sources,
+    disclaimer
+  }
+}
+
+/**
+ * Format Type 1 Reaction response
+ */
+function formatType1ReactionResponse(): string {
+  return `**Type 1 Reaction (Reversal Reaction)**
+
+This is a cell-mediated immune response that can occur during or shortly after treatment.
+
+**⚠️ Warning Signs (Get medical help immediately):**
+- Sudden inflammation or swelling of existing lesions
+- Nerve inflammation (neuritis) - tenderness, pain, weakness
+- New patches appearing
+- Sensory loss progression
+- Loss of muscle function
+
+**What to Do:**
+1. Contact your healthcare provider immediately
+2. Do NOT stop taking your MDT medications
+3. Seek urgent care if experiencing severe symptoms
+4. Bring notes about when symptoms started
+
+**Treatment:**
+- Corticosteroids (prednisolone) prescribed by your doctor
+- Continue MDT throughout reaction management
+- Regular monitoring for 3-12 months
+
+**Important:** Type 1 reactions are treatable. Early medical attention prevents permanent damage. Do not panic, but do seek help promptly.
+
+📌 **Sources:**
+- [CDC Reactions Guide](https://www.cdc.gov/leprosy/complications/reactions.html)
+- [WHO Official Guidelines](https://www.who.int/health-topics/leprosy)`
+}
+
+/**
+ * Format Type 2 Reaction response
+ */
+function formatType2ReactionResponse(): string {
+  return `**Type 2 Reaction (Erythema Nodosum Leprosum - ENL)**
+
+This is an immune complex reaction requiring prompt medical attention.
+
+**⚠️ Warning Signs (Seek medical attention immediately):**
+- Tender nodules (bumps) under the skin
+- High fever (often 39°C+)
+- Extreme fatigue and body aches
+- Eye inflammation with vision changes
+- Nerve pain or weakness
+- Swollen joints
+
+**What to Do:**
+1. Seek medical attention immediately
+2. Continue taking your MDT medications
+3. Do not self-treat - requires doctor oversight
+4. Have someone help if you're very ill
+
+**Treatment:**
+- Corticosteroids (prednisolone) - prescribed by doctor
+- Possible Thalidomide use (under strict medical supervision)
+- Continue MDT throughout
+
+**Critical Information:**
+- Thalidomide is teratogenic (causes birth defects) - pregnancy prevention essential
+- Type 2 reactions can recur even after treatment ends
+- Long-term management may be needed
+- Regular monitoring is crucial
+
+**Important:** Type 2 reactions are serious but treatable. Get medical help immediately. With proper treatment, outcomes are good.
+
+📌 **Sources:**
+- [CDC Complications Guide](https://www.cdc.gov/leprosy/complications/reactions.html)
+- [WHO Treatment Guidelines](https://www.who.int/health-topics/leprosy)`
+}
+
+// Original response generation with personalization (fallback)
 function generateAssistantResponse(message: string, userProfile: any): string {
   const lowerMessage = message.toLowerCase()
   let personalizationContext = ''

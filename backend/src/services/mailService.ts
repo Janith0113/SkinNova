@@ -130,5 +130,58 @@ export async function sendAppointmentEmail(email: string, name: string, subject:
   }
 }
 
+// Send contact message reply email
+export async function sendContactReplyEmail(
+  userEmail: string,
+  userName: string,
+  subject: string,
+  originalMessage: string,
+  reply: string,
+  repliedBy: string
+) {
+  try {
+    console.log(`Sending contact reply email to: ${userEmail}`)
+
+    const mailOptions = {
+      from: process.env.MAIL_FROM || process.env.GMAIL_USER || 'noreply@skinnova.com',
+      to: userEmail,
+      subject: `Re: ${subject} - SkinNova Response`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333; border-bottom: 3px solid #4F46E5; padding-bottom: 10px;">We've Replied to Your Message</h2>
+          
+          <p style="color: #666; font-size: 16px;">Hi ${userName},</p>
+          
+          <p style="color: #666; font-size: 16px;">Thank you for reaching out to SkinNova. We've reviewed your message and have a response for you below:</p>
+          
+          <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4F46E5;">
+            <h3 style="color: #333; margin-top: 0;">Our Reply:</h3>
+            <p style="color: #333; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;">${reply}</p>
+            <p style="color: #999; font-size: 14px; margin-bottom: 0;"><strong>From:</strong> ${repliedBy}</p>
+          </div>
+          
+          <div style="background-color: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+            <h4 style="color: #0369a1; margin-top: 0;">Your Original Message:</h4>
+            <p style="color: #064e3b; font-size: 13px; font-style: italic; margin: 5px 0;"><strong>Subject:</strong> ${subject}</p>
+            <p style="color: #333; font-size: 13px; white-space: pre-wrap; word-wrap: break-word;">${originalMessage}</p>
+          </div>
+          
+          <p style="color: #666; font-size: 14px;">If you have any follow-up questions, feel free to contact us again.</p>
+          
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #999; font-size: 12px; text-align: center;">© 2025 SkinNova. All rights reserved.</p>
+        </div>
+      `
+    }
+    
+    const info = await transporter.sendMail(mailOptions)
+    console.log(`Contact reply email sent: ${info.messageId}`)
+    return true
+  } catch (err: any) {
+    console.error('Error sending contact reply email:', err.message)
+    return false
+  }
+}
+
 export default transporter
 

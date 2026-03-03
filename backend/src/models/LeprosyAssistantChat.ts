@@ -7,6 +7,12 @@ interface ILeprosyAssistantChat extends Document {
     text: string
     sender: 'user' | 'assistant'
     timestamp: Date
+    sources?: {
+      name: string
+      url?: string
+      organization?: string
+    }[]
+    disclaimer?: string
   }[]
   createdAt: Date
   updatedAt: Date
@@ -34,7 +40,15 @@ const LeprosyAssistantChatSchema = new Schema<ILeprosyAssistantChat>(
         timestamp: {
           type: Date,
           default: Date.now
-        }
+        },
+        sources: [
+          {
+            name: String,
+            url: String,
+            organization: String
+          }
+        ],
+        disclaimer: String
       }
     ]
   },

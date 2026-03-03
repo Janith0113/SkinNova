@@ -54,6 +54,8 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [contactMessages, setContactMessages] = useState<any[]>([]);
+  const [contactStats, setContactStats] = useState({ total: 0, unread: 0, read: 0, replied: 0 });
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     totalPatients: 0,
@@ -109,6 +111,8 @@ export default function AdminDashboard() {
     if (user && user.role === "admin") {
       fetchAllUsers();
       fetchActivities();
+      fetchContactStats();
+      fetchContactMessages();
     }
   }, [user]);
 
@@ -180,6 +184,57 @@ export default function AdminDashboard() {
       setActivities(data.activities || []);
     } catch (err) {
       console.error("Error fetching activities:", err);
+    }
+  };
+
+  const fetchContactStats = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch("http://localhost:4000/api/contact/stats/overview", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch contact stats");
+      }
+
+      const data = await response.json();
+      setContactStats({
+        total: data.data?.total || 0,
+        unread: data.data?.unread || 0,
+        read: data.data?.read || 0,
+        replied: data.data?.replied || 0,
+      });
+    } catch (err) {
+      console.error("Error fetching contact stats:", err);
+    }
+  };
+
+  const fetchContactMessages = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch("http://localhost:4000/api/contact?limit=5&sort=-createdAt", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch contact messages");
+      }
+
+      const data = await response.json();
+      setContactMessages(data.data || []);
+    } catch (err) {
+      console.error("Error fetching contact messages:", err);
     }
   };
 
@@ -663,17 +718,6 @@ export default function AdminDashboard() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => {
-                  fetchAllUsers();
-                  fetchActivities();
-                }}
-                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 font-medium flex items-center gap-2"
-              >
-                <span>🔄</span> Refresh
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -874,13 +918,7 @@ export default function AdminDashboard() {
                   <h2 className="text-xl font-bold text-gray-800">
                     All Registered Users
                   </h2>
-                  <button
-                    onClick={fetchAllUsers}
-                    disabled={loading}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-sm font-medium disabled:opacity-50"
-                  >
-                    {loading ? "Refreshing..." : "Refresh"}
-                  </button>
+
                 </div>
 
                 {loading ? (
@@ -1663,9 +1701,9 @@ export default function AdminDashboard() {
                 )}
               </div>
             )}
-          </div>
 
-          {/* Sidebar */}
+
+          </div>
           <div className="space-y-6">
             {/* System Status */}
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
@@ -1735,6 +1773,15 @@ export default function AdminDashboard() {
                   </button>
                 ))}
               </div>
+              
+              {/* Messages Button */}
+              <button
+                onClick={() => router.push("/admin/contact-messages")}
+                className="w-full bg-white text-gray-900 p-4 rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex flex-col items-center justify-center space-y-2 mt-4 font-medium border-2 border-gray-200 hover:border-gray-400"
+              >
+                <span className="text-2xl">📧</span>
+                <span>View Contact Messages</span>
+              </button>
             </div>
 
             {/* Quick Stats */}
