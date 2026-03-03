@@ -53,10 +53,20 @@ export default function RiskAnalysisComponent() {
   const fetchLatestAssessment = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/leprosy/risk-assessment/latest', {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      const userId = user.id || user._id || user.userId
+      
+      if (!userId) {
+        setError('User ID not found. Please log in again.')
+        setLoading(false)
+        return
+      }
+
+      const response = await fetch(`http://localhost:4000/api/leprosy/risk-assessment/latest?userId=${userId}`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       })
 
@@ -81,11 +91,22 @@ export default function RiskAnalysisComponent() {
   const calculateRiskScore = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/leprosy/risk-assessment', {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      const userId = user.id || user._id || user.userId
+      
+      if (!userId) {
+        setError('User ID not found. Please log in again.')
+        setLoading(false)
+        return
+      }
+
+      const response = await fetch('http://localhost:4000/api/leprosy/risk-assessment', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ userId })
       })
 
       if (!response.ok) {

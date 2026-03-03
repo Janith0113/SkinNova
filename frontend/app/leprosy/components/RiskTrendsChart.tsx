@@ -21,10 +21,18 @@ export default function RiskTrendsChart() {
   const fetchTrends = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/leprosy/risk-assessment/trends?timeframe=${timeframe}`, {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      const userId = user.id || user._id || user.userId
+      
+      if (!userId) {
+        return
+      }
+
+      const response = await fetch(`http://localhost:4000/api/leprosy/risk-assessment/trends?userId=${userId}&timeframe=${timeframe}`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       })
 
