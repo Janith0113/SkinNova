@@ -7,6 +7,7 @@ import Spinner from "@/components/Spinner";
 import Results from "@/components/Results";
 import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
+import SkinCancerChatbot from "@/components/SkinCancerChatbot";
 
 // Model configuration for skin cancer detection
 const MODEL_CONFIG = {
@@ -206,24 +207,24 @@ export default function SkinCancerDetection() {
             </nav>
 
             {/* Main Content */}
-            <div className="relative z-10 min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 sm:p-6 lg:p-8">
-                <div className="w-full max-w-6xl">
+            <div className="relative z-10 min-h-[calc(100vh-4rem)] flex flex-col items-center justify-start p-4 sm:p-6 lg:p-8 pb-32">
+                <div className="w-full max-w-6xl space-y-12 lg:pr-64 transition-all duration-300">
                     {/* Header Section */}
                     <div className="text-center mb-12 sm:mb-16">
                         <div className="inline-block mb-6 p-4 bg-gradient-to-br from-green-500 to-cyan-500 rounded-2xl border-2 border-white shadow-lg">
                             <span className="text-5xl sm:text-6xl">🔬</span>
                         </div>
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 text-gray-900 leading-tight">
+                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 text-slate-900 leading-tight tracking-tight">
                             Skin Cancer Detection
                         </h1>
-                        <p className="text-gray-700 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-medium">
-                            Advanced AI-powered analysis to detect melanoma and other skin lesions with high accuracy
+                        <p className="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-medium">
+                            Professional AI-powered dermatological analysis to detect potential melanoma risks
                         </p>
                     </div>
 
                     {/* Model Status */}
-                    <div className="mb-10">
-                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-8 sm:p-10 border border-gray-200 shadow-xl hover:shadow-2xl transition-all duration-300">
+                    <div className="mb-10 w-full">
+                        <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 sm:p-10 border border-emerald-100 shadow-xl shadow-emerald-100/50 hover:shadow-2xl transition-all duration-300">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 {/* Task Card */}
                                 <div className="group relative">
@@ -314,7 +315,7 @@ export default function SkinCancerDetection() {
                         </div>
                     ) : (
                         // Preview and Analysis Section
-                        <div className="space-y-8">
+                        <div className="space-y-8 pb-32">
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 {/* Image Preview */}
                                 <div className="lg:col-span-1">
@@ -394,6 +395,43 @@ export default function SkinCancerDetection() {
                     )}
                 </div>
             </div>
+
+            <SkinCancerChatbot predictions={predictions} />
+
+            <style>{`
+                @keyframes blob {
+                  0%, 100% { transform: translate(0, 0) scale(1); }
+                  33% { transform: translate(30px, -50px) scale(1.1); }
+                  66% { transform: translate(-20px, 20px) scale(0.9); }
+                }
+                
+                .animate-blob {
+                  animation: blob 7s infinite;
+                }
+                
+                .animation-delay-2000 {
+                  animation-delay: 2s;
+                }
+                
+                .animation-delay-4000 {
+                  animation-delay: 4s;
+                }
+                
+                @keyframes fadeIn {
+                  from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(0);
+                  }
+                }
+                
+                .animate-fadeIn {
+                  animation: fadeIn 0.5s ease-out;
+                }
+            `}</style>
         </main>
     );
 }
