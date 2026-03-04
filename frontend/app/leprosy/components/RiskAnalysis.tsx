@@ -7,6 +7,7 @@ import RiskComponentBreakdown from './RiskComponentBreakdown'
 import RiskTrendsChart from './RiskTrendsChart'
 import CriticalFactorsPanel from './CriticalFactorsPanel'
 import RecommendationsPanel from './RecommendationsPanel'
+import XAIExplanation from './XAIExplanation'
 
 interface RiskAssessment {
   overallRiskScore: number
@@ -44,7 +45,7 @@ export default function RiskAnalysisComponent() {
   const [assessment, setAssessment] = useState<RiskAssessment | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'breakdown' | 'trends' | 'predictions'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'breakdown' | 'trends' | 'predictions' | 'xai'>('overview')
 
   useEffect(() => {
     fetchLatestAssessment()
@@ -257,10 +258,35 @@ export default function RiskAnalysisComponent() {
         </div>
       </div>
 
+      {/* Recalculate Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={calculateRiskScore}
+          disabled={loading}
+          className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${
+            loading
+              ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800'
+          }`}
+        >
+          {loading ? (
+            <>
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              Recalculating...
+            </>
+          ) : (
+            <>
+              <TrendingUp className="w-4 h-4" />
+              Recalculate Assessment
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <div className="flex gap-8">
-          {(['overview', 'breakdown', 'trends', 'predictions'] as const).map(tab => (
+          {(['overview', 'breakdown', 'trends', 'predictions', 'xai'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -270,7 +296,7 @@ export default function RiskAnalysisComponent() {
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'xai' ? 'AI Explanation' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
@@ -316,6 +342,9 @@ export default function RiskAnalysisComponent() {
             </div>
           </div>
         )}
+
+        {/* XAI Tab */}
+        {activeTab === 'xai' && <XAIExplanation />}
       </div>
 
       {/* Recommendations */}
