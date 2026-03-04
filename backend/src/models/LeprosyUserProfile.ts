@@ -9,7 +9,7 @@ interface ILeprosyUserProfile extends Document {
     height?: number
   }
   medical: {
-    leprosyType?: 'tuberculoid' | 'borderline' | 'lepromatous' | 'unknown'
+    leprosyType?: 'tuberculoid' | 'borderline' | 'lepromatous' | 'multibacillary' | 'paucibacillary' | 'unknown'
     treatmentDuration?: number // in months
     treatmentStatus?: 'ongoing' | 'completed' | 'not-started'
     currentMedications?: string[]
@@ -17,21 +17,53 @@ interface ILeprosyUserProfile extends Document {
     comorbidities?: string[]
   }
   leprosy: {
-    affectedAreas?: string[] // e.g., "left arm", "face", "feet"
+    affectedAreas?: string[]
     nerveInvolvement?: boolean
     eyeInvolvement?: boolean
     disabilities?: string[]
     treatmentResponse?: 'excellent' | 'good' | 'moderate' | 'poor' | 'unknown'
   }
+  treatmentAdherence?: {
+    medicationCompliancePercent?: number
+    missedDosesLastMonth?: number
+    missedAppointmentsLastMonth?: number
+    treatmentInterruptions?: Array<{
+      date: Date
+      durationDays: number
+      reason: string
+    }>
+    lastAdherenceAssessmentDate?: Date
+  }
+  clinicalAssessments?: {
+    whoDisabilityGrade?: number // 0, 1, or 2
+    lastNerveExaminationDate?: Date
+    lastEyeExaminationDate?: Date
+    lastSkinExaminationDate?: Date
+    nerveThickenings?: Array<{
+      location: string
+      severity: 'mild' | 'moderate' | 'severe'
+    }>
+    eyeStatus?: 'normal' | 'mild' | 'moderate' | 'severe'
+  }
+  riskFactors?: {
+    hivStatus?: 'positive' | 'negative' | 'unknown'
+    tbCoinfection?: boolean
+    diabetes?: boolean
+    malnutrition?: boolean
+    other?: string[]
+  }
   lifestyle: {
     occupation?: string
     physicalActivity?: 'sedentary' | 'light' | 'moderate' | 'vigorous'
-    dietType?: 'vegetarian' | 'non-vegetarian' | 'vegan'
+    dietQuality?: 'poor' | 'moderate' | 'good'
     sleepHours?: number
     smokingStatus?: 'never' | 'former' | 'current'
+    stressLevel?: 'low' | 'moderate' | 'high'
+    treatmentAccess?: 'good' | 'limited' | 'poor'
+    hygiene_conditions?: 'poor' | 'moderate' | 'good'
   }
-  goals?: string[] // Treatment goals
-  notes?: string // Additional patient notes
+  goals?: string[]
+  notes?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -53,7 +85,7 @@ const LeprosyUserProfileSchema = new Schema<ILeprosyUserProfile>(
     medical: {
       leprosyType: {
         type: String,
-        enum: ['tuberculoid', 'borderline', 'lepromatous', 'unknown']
+        enum: ['tuberculoid', 'borderline', 'lepromatous', 'multibacillary', 'paucibacillary', 'unknown']
       },
       treatmentDuration: { type: Number, min: 0 },
       treatmentStatus: {
@@ -74,20 +106,75 @@ const LeprosyUserProfileSchema = new Schema<ILeprosyUserProfile>(
         enum: ['excellent', 'good', 'moderate', 'poor', 'unknown']
       }
     },
+    treatmentAdherence: {
+      medicationCompliancePercent: { type: Number, min: 0, max: 100 },
+      missedDosesLastMonth: { type: Number, min: 0 },
+      missedAppointmentsLastMonth: { type: Number, min: 0 },
+      treatmentInterruptions: [
+        {
+          date: Date,
+          durationDays: Number,
+          reason: String
+        }
+      ],
+      lastAdherenceAssessmentDate: Date
+    },
+    clinicalAssessments: {
+      whoDisabilityGrade: { type: Number, enum: [0, 1, 2] },
+      lastNerveExaminationDate: Date,
+      lastEyeExaminationDate: Date,
+      lastSkinExaminationDate: Date,
+      nerveThickenings: [
+        {
+          location: String,
+          severity: { type: String, enum: ['mild', 'moderate', 'severe'] }
+        }
+      ],
+      eyeStatus: {
+        type: String,
+        enum: ['normal', 'mild', 'moderate', 'severe']
+      }
+    },
+    riskFactors: {
+      hivStatus: {
+        type: String,
+        enum: ['positive', 'negative', 'unknown']
+      },
+      tbCoinfection: { type: Boolean, default: false },
+      diabetes: { type: Boolean, default: false },
+      malnutrition: { type: Boolean, default: false },
+      other: [String]
+    },
     lifestyle: {
       occupation: String,
       physicalActivity: {
         type: String,
         enum: ['sedentary', 'light', 'moderate', 'vigorous']
       },
-      dietType: {
+      dietQuality: {
         type: String,
-        enum: ['vegetarian', 'non-vegetarian', 'vegan']
+        enum: ['poor', 'moderate', 'good'],
+        default: 'moderate'
       },
-      sleepHours: { type: Number, min: 0, max: 24 },
+      sleepHours: { type: Number, min: 0, max: 24, default: 7 },
       smokingStatus: {
         type: String,
         enum: ['never', 'former', 'current']
+      },
+      stressLevel: {
+        type: String,
+        enum: ['low', 'moderate', 'high'],
+        default: 'moderate'
+      },
+      treatmentAccess: {
+        type: String,
+        enum: ['good', 'limited', 'poor'],
+        default: 'good'
+      },
+      hygiene_conditions: {
+        type: String,
+        enum: ['poor', 'moderate', 'good'],
+        default: 'moderate'
       }
     },
     goals: [String],
@@ -98,4 +185,7 @@ const LeprosyUserProfileSchema = new Schema<ILeprosyUserProfile>(
   }
 )
 
-export default mongoose.model<ILeprosyUserProfile>('LeprosyUserProfile', LeprosyUserProfileSchema)
+export default mongoose.model<ILeprosyUserProfile>(
+  'LeprosyUserProfile',
+  LeprosyUserProfileSchema
+)

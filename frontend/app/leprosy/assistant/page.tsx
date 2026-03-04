@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Calendar, HelpCircle, Pill, Activity, ArrowLeft, User, Plus, X, ExternalLink, History } from 'lucide-react';
+import { Heart, MessageCircle, Calendar, HelpCircle, Pill, Activity, ArrowLeft, User, Plus, X, ExternalLink, History, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import RiskAnalysisComponent from '../components/RiskAnalysis';
 
 interface Message {
   id: string;
@@ -160,7 +161,7 @@ const DEFAULT_SCHEDULE: ScheduleItem[] = [
 
 export default function LeprosyAssistantPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'chat' | 'symptoms' | 'schedule' | 'qa' | 'profile'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'symptoms' | 'schedule' | 'qa' | 'profile' | 'risk-analysis'>('chat');
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -201,7 +202,7 @@ export default function LeprosyAssistantPage() {
       leprosyType: '',
       treatmentDuration: undefined as number | undefined,
       treatmentStatus: 'ongoing',
-      medications: [] as string[],
+      currentMedications: [] as string[],
       allergies: [] as string[],
       comorbidities: [] as string[]
     },
@@ -215,7 +216,7 @@ export default function LeprosyAssistantPage() {
     lifestyle: {
       occupation: '',
       physicalActivity: 'moderate',
-      dietType: 'non-veg',
+      dietQuality: 'moderate',
       sleepHours: 7,
       smokingStatus: 'never'
     },
@@ -390,6 +391,14 @@ export default function LeprosyAssistantPage() {
     
     try {
       const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user.id || user._id || user.userId;
+
+      if (!userId) {
+        setProfileMessage('✗ User ID not found. Please log in again.');
+        setProfileLoading(false);
+        return;
+      }
       
       const response = await fetch('http://localhost:4000/api/leprosy/profile', {
         method: 'POST',
@@ -397,7 +406,10 @@ export default function LeprosyAssistantPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(profile)
+        body: JSON.stringify({
+          userId: userId,
+          ...profile
+        })
       });
 
       if (response.ok) {
@@ -405,7 +417,7 @@ export default function LeprosyAssistantPage() {
         setTimeout(() => setProfileMessage(''), 3000);
       } else {
         const error = await response.json();
-        setProfileMessage('✗ Failed to save profile: ' + (error.message || 'Unknown error'));
+        setProfileMessage('✗ Failed to save profile: ' + (error.error || error.message || 'Unknown error'));
       }
     } catch (error) {
       setProfileMessage('✗ Error saving profile. Please try again.');
@@ -419,6 +431,21 @@ export default function LeprosyAssistantPage() {
     try {
       const token = localStorage.getItem('token');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user.id || user._id || user.userId;
+
+      if (!token) {
+        alert('Error: Not logged in. Please log in first.');
+        console.error('No token found in localStorage');
+        return;
+      }
+
+      if (!userId) {
+        alert('Error: User ID not found. Please log in again.');
+        console.error('No user ID found in localStorage', { user });
+        return;
+      }
+
+      console.log('Submitting symptoms for user:', userId);
 
       const response = await fetch('http://localhost:4000/api/leprosy/symptom-log', {
         method: 'POST',
@@ -427,7 +454,7 @@ export default function LeprosyAssistantPage() {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          userId: user.id,
+          userId: userId,
           symptoms: {
             skinPatches: symptoms.skinPatches,
             numbness: symptoms.numbness,
@@ -441,7 +468,11 @@ export default function LeprosyAssistantPage() {
         })
       });
 
+      console.log('Response status:', response.status, response.statusText);
+
       if (response.ok) {
+        const data = await response.json();
+        console.log('Symptoms logged successfully:', data);
         alert('Symptoms logged successfully!');
         setSymptoms({ skinPatches: false, numbness: false, weakness: false, eyeIssues: false, painfulNerves: false, other: '' });
         setSymptomNotes('');
@@ -454,15 +485,19 @@ export default function LeprosyAssistantPage() {
         });
         
         if (logsResponse.ok) {
-          const data = await logsResponse.json();
-          if (data.logs) {
-            setSymptomLogs(data.logs);
+          const logsData = await logsResponse.json();
+          if (logsData.logs) {
+            setSymptomLogs(logsData.logs);
           }
         }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Server error:', response.status, errorData);
+        alert(`Error: ${errorData.error || 'Failed to log symptoms (Status: ' + response.status + ')'}`);
       }
     } catch (error) {
-      console.error('Error submitting symptoms:', error);
-      alert('Failed to log symptoms. Please try again.');
+      console.error('Network/Fetch error submitting symptoms:', error);
+      alert(`Failed to log symptoms: ${error instanceof Error ? error.message : 'Network error - is the backend running on port 5000?'}`);
     }
   };
 
@@ -548,6 +583,17 @@ export default function LeprosyAssistantPage() {
           >
             <User className="w-5 h-5" />
             Profile
+          </button>
+          <button
+            onClick={() => setActiveTab('risk-analysis')}
+            className={`flex items-center gap-2 px-4 py-3 font-semibold border-b-2 transition-all ${
+              activeTab === 'risk-analysis'
+                ? 'border-red-600 text-red-600'
+                : 'border-transparent text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <AlertTriangle className="w-5 h-5" />
+            Risk Analysis
           </button>
         </div>
 
@@ -961,9 +1007,10 @@ export default function LeprosyAssistantPage() {
                     className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
                   >
                     <option value="">Select Leprosy Type</option>
-                    <option value="tuberculoid">Tuberculoid</option>
-                    <option value="borderline">Borderline</option>
-                    <option value="lepromatous">Lepromatous</option>
+                    <option value="multibacillary">Multibacillary</option>
+                    <option value="paucibacillary">Paucibacillary</option>
+                    {/* <option value="borderline">Borderline</option> */}
+                    {/* <option value="lepromatous">Lepromatous</option> */}
                     <option value="unknown">Unknown</option>
                   </select>
 
@@ -995,7 +1042,7 @@ export default function LeprosyAssistantPage() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Current Medications</label>
                     <div className="space-y-2 mb-3">
-                      {profile.medical.medications.map((med, idx) => (
+                      {profile.medical.currentMedications.map((med, idx) => (
                         <div key={idx} className="flex items-center gap-2 bg-red-50 p-2 rounded-2xl">
                           <span className="flex-1 text-sm">{med}</span>
                           <button
@@ -1003,7 +1050,7 @@ export default function LeprosyAssistantPage() {
                               ...profile,
                               medical: {
                                 ...profile.medical,
-                                medications: profile.medical.medications.filter((_, i) => i !== idx)
+                                currentMedications: profile.medical.currentMedications.filter((_, i) => i !== idx)
                               }
                             })}
                             className="text-red-600 hover:text-red-800"
@@ -1028,7 +1075,7 @@ export default function LeprosyAssistantPage() {
                               ...profile,
                               medical: {
                                 ...profile.medical,
-                                medications: [...profile.medical.medications, medicationInput]
+                                currentMedications: [...profile.medical.currentMedications, medicationInput]
                               }
                             });
                             setMedicationInput('');
@@ -1273,16 +1320,16 @@ export default function LeprosyAssistantPage() {
                   </select>
 
                   <select
-                    value={profile.lifestyle.dietType}
+                    value={profile.lifestyle.dietQuality}
                     onChange={(e) => setProfile({
                       ...profile,
-                      lifestyle: { ...profile.lifestyle, dietType: e.target.value }
+                      lifestyle: { ...profile.lifestyle, dietQuality: e.target.value }
                     })}
                     className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
                   >
-                    <option value="vegetarian">Vegetarian</option>
-                    <option value="non-veg">Non-Vegetarian</option>
-                    <option value="vegan">Vegan</option>
+                    <option value="poor">Poor Diet Quality</option>
+                    <option value="moderate">Moderate Diet Quality</option>
+                    <option value="good">Good Diet Quality</option>
                   </select>
 
                   <input
@@ -1389,6 +1436,13 @@ export default function LeprosyAssistantPage() {
                 Back to Chat
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Risk Analysis Tab */}
+        {activeTab === 'risk-analysis' && (
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-200">
+            <RiskAnalysisComponent />
           </div>
         )}
       </div>

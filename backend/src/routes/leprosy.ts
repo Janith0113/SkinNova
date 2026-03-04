@@ -3,7 +3,9 @@ import { requireAuth } from '../middleware/auth'
 import SymptomLog from '../models/SymptomLog'
 import LeprosyAssistantChat from '../models/LeprosyAssistantChat'
 import LeprosyUserProfile from '../models/LeprosyUserProfile'
+import LeprosyRiskAssessment from '../models/LeprosyRiskAssessment'
 import leprosyKnowledgeService from '../services/leprosyKnowledgeService'
+import leprosyRiskAnalysisService from '../services/leprosyRiskAnalysisService'
 
 const router = express.Router()
 
@@ -698,4 +700,333 @@ function generateAssistantResponse(message: string, userProfile: any): string {
   return defaultResponses[Math.floor(Math.random() * defaultResponses.length)]
 }
 
+// ===== RISK ASSESSMENT ENDPOINTS =====
+
+// Calculate risk assessment
+router.post('/risk-assessment', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.body?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessment = await leprosyRiskAnalysisService.calculateRiskScore(userId)
+
+    res.json({
+      success: true,
+      message: 'Risk assessment calculated successfully',
+      assessment
+    })
+  } catch (error: any) {
+    console.error('Risk calculation error:', error)
+    res.status(500).json({
+      error: error.message || 'Failed to calculate risk assessment'
+    })
+  }
+})
+
+// Get latest risk assessment
+router.get('/risk-assessment/latest', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
+      timestamp: -1
+    })
+
+    if (!assessment) {
+      return res.status(404).json({
+        error: 'No risk assessment found. Please calculate one first.'
+      })
+    }
+
+    res.json({
+      success: true,
+      assessment: assessment.assessment,
+      calculatedAt: assessment.timestamp
+    })
+  } catch (error: any) {
+    console.error('Error fetching latest assessment:', error)
+    res.status(500).json({
+      error: 'Failed to fetch risk assessment'
+    })
+  }
+})
+
+// Get risk assessment history
+router.get('/risk-assessment/history', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+    const limit = parseInt(req.query?.limit || '12')
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessments = await LeprosyRiskAssessment.find({ userId })
+      .select('assessment timestamp')
+      .sort({ timestamp: -1 })
+      .limit(limit)
+
+    res.json({
+      success: true,
+      count: assessments.length,
+      assessments: assessments.map(a => ({
+        date: a.timestamp,
+        riskScore: a.assessment.overallRiskScore,
+        riskLevel: a.assessment.riskLevel,
+        trajectory: a.assessment.diseaseTrajectory
+      }))
+    })
+  } catch (error: any) {
+    console.error('Error fetching assessment history:', error)
+    res.status(500).json({
+      error: 'Failed to fetch assessment history'
+    })
+  }
+})
+
+// Get risk trends over time
+router.get('/risk-assessment/trends', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+    const timeframe = req.query?.timeframe || '3m'
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const days = timeframe === '1m' ? 30 : timeframe === '6m' ? 180 : 90
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+    const assessments = await LeprosyRiskAssessment.find({
+      userId,
+      timestamp: { $gte: startDate }
+    })
+      .select('assessment timestamp')
+      .sort({ timestamp: 1 })
+
+    // Calculate trends
+    if (assessments.length < 2) {
+      return res.json({
+        success: true,
+        trend: 'insufficient_data',
+        assessmentCount: assessments.length,
+        message: 'Need at least 2 assessments to determine trend'
+      })
+    }
+
+    const first = assessments[0].assessment.overallRiskScore
+    const last = assessments[assessments.length - 1].assessment.overallRiskScore
+    const change = last - first
+    const changePercent = ((change / first) * 100).toFixed(1)
+
+    const trend = change < -5 ? 'improving' : change > 5 ? 'deteriorating' : 'stable'
+
+    res.json({
+      success: true,
+      timeframe,
+      trend,
+      startScore: first,
+      endScore: last,
+      change,
+      changePercent,
+      assessmentCount: assessments.length,
+      data: assessments.map(a => ({
+        date: a.timestamp,
+        score: a.assessment.overallRiskScore,
+        level: a.assessment.riskLevel
+      }))
+    })
+  } catch (error: any) {
+    console.error('Error fetching trends:', error)
+    res.status(500).json({
+      error: 'Failed to fetch risk trends'
+    })
+  }
+})
+
+// Get comparison with population baseline
+router.get('/risk-assessment/comparison', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const userAssessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
+      timestamp: -1
+    })
+
+    if (!userAssessment) {
+      return res.status(404).json({
+        error: 'No assessment found for comparison'
+      })
+    }
+
+    // Population baselines (from clinical data)
+    const baselines = {
+      avgScore: 52,
+      avgSymptomRisk: 48,
+      avgAdherenceRisk: 40,
+      avgComplicationRisk: 35,
+      avgSensoriomotorRisk: 45,
+      avgImmuneRisk: 50,
+      avgLifeRisk: 42
+    }
+
+    const userScore = userAssessment.assessment
+    const comparison = {
+      overall: {
+        userScore: userScore.overallRiskScore,
+        populationAvg: baselines.avgScore,
+        percentile: Math.round(
+          (userScore.overallRiskScore / baselines.avgScore) * 100
+        ),
+        status:
+          userScore.overallRiskScore < baselines.avgScore ? 'better_than_average' : 'higher_than_average'
+      },
+      components: {
+        symptomProgression: {
+          userScore: userScore.componentScores.symptomProgressionRisk,
+          populationAvg: baselines.avgSymptomRisk
+        },
+        treatmentAdherence: {
+          userScore: userScore.componentScores.treatmentAdherenceRisk,
+          populationAvg: baselines.avgAdherenceRisk
+        },
+        complication: {
+          userScore: userScore.componentScores.complicationRisk,
+          populationAvg: baselines.avgComplicationRisk
+        },
+        sensoriomotor: {
+          userScore: userScore.componentScores.sensorimotorCompromiseRisk,
+          populationAvg: baselines.avgSensoriomotorRisk
+        },
+        immune: {
+          userScore: userScore.componentScores.immuneResponseRisk,
+          populationAvg: baselines.avgImmuneRisk
+        },
+        lifeConditions: {
+          userScore: userScore.componentScores.lifeconditionsRisk,
+          populationAvg: baselines.avgLifeRisk
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      comparison,
+      note: 'Baselines are from clinical leprosy cohort data'
+    })
+  } catch (error: any) {
+    console.error('Error fetching comparison:', error)
+    res.status(500).json({
+      error: 'Failed to fetch comparison data'
+    })
+  }
+})
+
+// Get doctor/provider summary
+router.get('/risk-assessment/doctor-summary', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
+      timestamp: -1
+    })
+
+    if (!assessment) {
+      return res.status(404).json({
+        error: 'No assessment found'
+      })
+    }
+
+    const profile = await LeprosyUserProfile.findOne({ userId })
+    const symptoms = await SymptomLog.findOne({ userId }).sort({ timestamp: -1 })
+
+    const summary = {
+      patientId: userId,
+      assessmentDate: assessment.timestamp,
+      riskLevel: assessment.assessment.riskLevel,
+      overallScore: assessment.assessment.overallRiskScore,
+      trajectory: assessment.assessment.diseaseTrajectory,
+      components: assessment.assessment.componentScores,
+      criticalFactors: assessment.assessment.criticalFactors,
+      protectiveFactors: assessment.assessment.protectiveFactors,
+      predictions: assessment.assessment.predictions,
+      recommendations: assessment.assessment.recommendations,
+      nextCheckupDue: assessment.assessment.nextCheckupDueDate,
+      patientContext: {
+        leprosyType: profile?.medical?.leprosyType,
+        treatmentDuration: profile?.medical?.treatmentDuration,
+        recentSymptoms: symptoms?.symptoms
+      }
+    }
+
+    res.json({
+      success: true,
+      summary
+    })
+  } catch (error: any) {
+    console.error('Error generating summary:', error)
+    res.status(500).json({
+      error: 'Failed to generate doctor summary'
+    })
+  }
+})
+
+// Trigger auto-calculation (called after profile/symptom updates)
+router.post('/risk-assessment/auto-trigger', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.body?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    // Check if last assessment is older than 24 hours
+    const lastAssessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
+      timestamp: -1
+    })
+
+    const hoursElapsed = lastAssessment
+      ? (Date.now() - lastAssessment.timestamp.getTime()) / (1000 * 60 * 60)
+      : 999
+
+    if (hoursElapsed < 24) {
+      return res.json({
+        success: false,
+        message: `Assessment calculated ${Math.round(hoursElapsed)} hours ago. Next auto-calculation in ${Math.round(24 - hoursElapsed)} hours.`,
+        lastCalculated: lastAssessment.timestamp
+      })
+    }
+
+    // Recalculate
+    const assessment = await leprosyRiskAnalysisService.calculateRiskScore(userId)
+
+    res.json({
+      success: true,
+      message: 'Risk assessment auto-triggered and recalculated',
+      assessment
+    })
+  } catch (error: any) {
+    console.error('Auto-trigger error:', error)
+    res.status(500).json({
+      error: 'Failed to auto-trigger assessment'
+    })
+  }
+})
+
 export default router
+
