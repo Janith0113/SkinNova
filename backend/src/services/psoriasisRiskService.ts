@@ -35,40 +35,54 @@ export const calculatePsoriasisRisk = (weather: WeatherData): RiskAnalysis => {
   let totalRiskScore = 0;
 
   // ========== FACTOR 1: TEMPERATURE ==========
+  // Calculate temperature risk as continuous function based on actual celsius value
+  // Formula: Risk decreases as temperature increases (optimal at warm temps)
+  // At 0°C: 50 points | At 10°C: 35 points | At 20°C: 20 points | At 30°C: 5 points
   let tempScore = 0;
   let tempImpact: RiskFactor['impact'] = 'Low';
   let tempExplanation = '';
 
-  if (weather.temperature < 5) {
+  if (weather.temperature <= 0) {
     tempScore = 50;
     tempImpact = 'Critical';
-    tempExplanation =
-      'Severe cold (below 5°C) drastically reduces skin moisture and triggers vasoconstriction, blocking nutrient delivery to skin. Immune system becomes overactive in response to stress.';
-  } else if (weather.temperature < 10) {
-    tempScore = 35;
-    tempImpact = 'High Risk';
-    tempExplanation =
-      'Cold temperature (5-10°C) causes skin dryness and weakens skin barrier function. This is the #1 psoriasis trigger - research shows 60% of psoriasis flare-ups occur in winter.';
-  } else if (weather.temperature < 15) {
-    tempScore = 20;
-    tempImpact = 'Moderate';
-    tempExplanation =
-      'Cool weather (10-15°C) mildly affects skin hydration. Risk is present but manageable with proper skincare.';
-  } else if (weather.temperature >= 25) {
+  } else if (weather.temperature >= 30) {
     tempScore = 5;
     tempImpact = 'Low';
-    tempExplanation =
-      'Warm temperature (25°C+) promotes skin hydration and natural moisture. This is protective - many patients experience relief in summer.';
   } else {
-    tempScore = 10;
-    tempImpact = 'Low';
+    // Continuous calculation: decreases from 50 to 5 as temp goes from 0 to 30°C
+    tempScore = Math.max(5, 50 - (weather.temperature * 1.5));
+    
+    // Determine impact level based on calculated score
+    if (tempScore >= 40) tempImpact = 'Critical';
+    else if (tempScore >= 30) tempImpact = 'High Risk';
+    else if (tempScore >= 15) tempImpact = 'Moderate';
+    else tempImpact = 'Low';
+  }
+
+  // Real-time explanation based on actual temperature
+  if (weather.temperature < 0) {
     tempExplanation =
-      'Moderate temperature (15-25°C) is optimal for skin health. Minimal risk from temperature alone.';
+      `Freezing cold (${weather.temperature}°C) is extremely dangerous for psoriasis. Severe vasoconstriction blocks nutrient delivery to skin, immune system overactivates, barrier function severely compromised.`;
+  } else if (weather.temperature < 10) {
+    tempExplanation =
+      `Cold temperature (${weather.temperature}°C) is a major psoriasis trigger. Research shows 60% of winter flare-ups occur in this range. Causes skin dryness and weakens barrier function.`;
+  } else if (weather.temperature < 15) {
+    tempExplanation =
+      `Cool weather (${weather.temperature}°C) has moderate impact. Skin hydration affected but manageable with proper skincare.`;
+  } else if (weather.temperature < 20) {
+    tempExplanation =
+      `Mild temperature (${weather.temperature}°C) has low impact. Near optimal range for skin health.`;
+  } else if (weather.temperature < 25) {
+    tempExplanation =
+      `Comfortable temperature (${weather.temperature}°C) is good for skin. Supports natural hydration and barrier function.`;
+  } else {
+    tempExplanation =
+      `Warm temperature (${weather.temperature}°C) is protective for psoriasis. Increases blood circulation, enhances skin hydration, suppresses inflammatory pathways. Many patients experience relief.`;
   }
 
   factors.push({
     label: 'Temperature',
-    value: tempScore,
+    value: Math.round(tempScore),
     impact: tempImpact,
     explanation: tempExplanation,
     recommendation:
@@ -80,40 +94,53 @@ export const calculatePsoriasisRisk = (weather: WeatherData): RiskAnalysis => {
   totalRiskScore += tempScore;
 
   // ========== FACTOR 2: HUMIDITY ==========
+  // Calculate humidity risk as continuous function based on actual humidity percentage
+  // Optimal range: 40-85% | Below 40% increases risk | Above 85% slight fungal risk
   let humidityScore = 0;
   let humidityImpact: RiskFactor['impact'] = 'Low';
   let humidityExplanation = '';
 
-  if (weather.humidity < 20) {
+  if (weather.humidity <= 10) {
     humidityScore = 45;
     humidityImpact = 'Critical';
-    humidityExplanation =
-      'Critically dry air (below 20% humidity) severely compromises skin barrier. Psoriasis patches become inflamed and itchy. Research shows very low humidity directly correlates with flare-ups.';
-  } else if (weather.humidity < 30) {
-    humidityScore = 35;
-    humidityImpact = 'High Risk';
-    humidityExplanation =
-      'Low humidity (20-30%) accelerates transepidermal water loss (TEWL). Skin cannot retain moisture, weakening the protective barrier and triggering flare-ups.';
   } else if (weather.humidity < 40) {
-    humidityScore = 15;
-    humidityImpact = 'Moderate';
-    humidityExplanation =
-      'Moderately low humidity (30-40%) mildly increases skin dryness. This is acceptable but requires extra attention to moisturizing.';
-  } else if (weather.humidity > 85) {
-    humidityScore = 10;
-    humidityImpact = 'Increased';
-    humidityExplanation =
-      'Very high humidity (85%+) can increase risk of fungal infections and maceration (skin softening/breakdown), which may trigger psoriasis in some patients.';
-  } else {
+    // Below 40%: Linearly scale from 45 (at 10%) to 0 (at 40%)
+    humidityScore = Math.max(0, 45 - (weather.humidity * 1.125));
+    
+    if (humidityScore >= 35) humidityImpact = 'High Risk';
+    else if (humidityScore >= 15) humidityImpact = 'Moderate';
+    else humidityImpact = 'Low';
+  } else if (weather.humidity <= 85) {
+    // Optimal range: 40-85% = 0 risk
     humidityScore = 0;
     humidityImpact = 'Optimal';
+  } else {
+    // Above 85%: Slight risk from fungal growth/maceration
+    humidityScore = Math.min(10, 5 + (weather.humidity - 85) * 0.2);
+    humidityImpact = 'Increased';
+  }
+
+  // Real-time explanation based on actual humidity percentage
+  if (weather.humidity < 20) {
     humidityExplanation =
-      'Optimal humidity (40-85%) supports healthy skin barrier. This range allows skin to maintain moisture without excess moisture that could cause other issues.';
+      `Critically dry air (${weather.humidity}% humidity) severely damages skin barrier. Water evaporates rapidly from skin surface. Plaques become inflamed, itchy. Risk of flare-up: IMMEDIATE.`;
+  } else if (weather.humidity < 30) {
+    humidityExplanation =
+      `Very dry air (${weather.humidity}% humidity) accelerates transepidermal water loss (TEWL). Skin cannot retain moisture, weakening protective barrier. High flare-up risk.`;
+  } else if (weather.humidity < 40) {
+    humidityExplanation =
+      `Moderately dry air (${weather.humidity}% humidity) increases skin dryness gradually. TEWL is elevated but manageable with extra moisturizing. Acceptable with attention.`;
+  } else if (weather.humidity <= 85) {
+    humidityExplanation =
+      `Humidity at ${weather.humidity}% is in the optimal range. Skin can retain moisture effectively. Barrier function well-supported. Excellent conditions.`;
+  } else {
+    humidityExplanation =
+      `Very high humidity (${weather.humidity}%) can promote fungal/bacterial growth and skin maceration. Keep skin dry in folds. Use antifungal powder if needed.`;
   }
 
   factors.push({
     label: 'Humidity',
-    value: humidityScore,
+    value: Math.round(humidityScore),
     impact: humidityImpact,
     explanation: humidityExplanation,
     recommendation:
