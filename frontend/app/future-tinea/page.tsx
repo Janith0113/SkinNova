@@ -84,7 +84,7 @@ export default function FutureTineaPage() {
           <div className="mb-4">
             <span className="text-6xl">🔮</span>
           </div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-3">Your Future Tinea Page</h1>
+          <h1 className="text-5xl font-bold text-gray-900 mb-3">Your Future Prediction</h1>
           <p className="text-xl text-gray-700">
             Discover personalized predictions about your health, wealth, and future based on your birth details
           </p>
@@ -102,6 +102,7 @@ export default function FutureTineaPage() {
                   type="date"
                   value={dateOfBirth}
                   onChange={(e) => setDateOfBirth(e.target.value)}
+                  title="Date of Birth"
                   className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-indigo-500 focus:outline-none text-gray-900 font-medium transition-colors"
                 />
               </div>
@@ -114,6 +115,7 @@ export default function FutureTineaPage() {
                   type="time"
                   value={birthTime}
                   onChange={(e) => setBirthTime(e.target.value)}
+                  title="Birth Time"
                   className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-indigo-500 focus:outline-none text-gray-900 font-medium transition-colors"
                 />
               </div>
