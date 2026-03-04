@@ -179,6 +179,15 @@ const DOSHA_INFO: Record<'vata' | 'pitta' | 'kapha', DoshaInfo> = {
 const questions: Question[] = [
   {
     id: 1,
+    question: 'What is your pulse rate?',
+    options: [
+      { text: 'High & irregular (80+ bpm)', dosha: 'vata' },
+      { text: 'Moderate & regular (70-80 bpm)', dosha: 'pitta' },
+      { text: 'Slow & steady (below 70 bpm)', dosha: 'kapha' },
+    ],
+  },
+  {
+    id: 2,
     question: 'What is your body frame?',
     options: [
       { text: 'Thin, light build', dosha: 'vata' },
@@ -187,7 +196,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 2,
+    id: 3,
     question: 'How would you describe your skin?',
     options: [
       { text: 'Dry, thin, cool', dosha: 'vata' },
@@ -196,7 +205,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 3,
+    id: 4,
     question: 'What is your appetite like?',
     options: [
       { text: 'Irregular, easily skips meals', dosha: 'vata' },
@@ -205,7 +214,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 4,
+    id: 5,
     question: 'How do you typically feel?',
     options: [
       { text: 'Anxious, restless, energetic', dosha: 'vata' },
@@ -214,7 +223,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 5,
+    id: 6,
     question: 'What is your sleep pattern?',
     options: [
       { text: 'Light, interrupted, restless', dosha: 'vata' },
@@ -223,7 +232,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 6,
+    id: 7,
     question: 'How do you prefer the weather?',
     options: [
       { text: 'Warm, humid weather', dosha: 'vata' },
@@ -232,7 +241,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 7,
+    id: 8,
     question: 'What is your typical digestion like?',
     options: [
       { text: 'Variable, prone to bloating', dosha: 'vata' },
@@ -241,7 +250,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 8,
+    id: 9,
     question: 'What is your energy level throughout the day?',
     options: [
       { text: 'Fluctuating, bursts of energy', dosha: 'vata' },
@@ -250,7 +259,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 9,
+    id: 10,
     question: 'How do you handle stress?',
     options: [
       { text: 'Get nervous, anxious', dosha: 'vata' },
@@ -259,7 +268,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 10,
+    id: 11,
     question: 'What is your hair type?',
     options: [
       { text: 'Thin, dry, early graying', dosha: 'vata' },
@@ -268,7 +277,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 11,
+    id: 12,
     question: 'What are your hands and feet usually like?',
     options: [
       { text: 'Small, thin, cool', dosha: 'vata' },
@@ -277,7 +286,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 12,
+    id: 13,
     question: 'How is your memory?',
     options: [
       { text: 'Quick to learn, quick to forget', dosha: 'vata' },
@@ -286,7 +295,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 13,
+    id: 14,
     question: 'What is your speaking style?',
     options: [
       { text: 'Fast, talks a lot, gets excited', dosha: 'vata' },
@@ -295,7 +304,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 14,
+    id: 15,
     question: 'How do you typically move?',
     options: [
       { text: 'Quick, energetic, fidgety', dosha: 'vata' },
@@ -304,7 +313,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 15,
+    id: 16,
     question: 'What is your body temperature tendency?',
     options: [
       { text: 'Cold hands and feet', dosha: 'vata' },
@@ -313,7 +322,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 16,
+    id: 17,
     question: 'How do you spend your leisure time?',
     options: [
       { text: 'Traveling, socializing, new activities', dosha: 'vata' },
@@ -322,7 +331,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 17,
+    id: 18,
     question: 'What is your natural body odor?',
     options: [
       { text: 'Minimal, slight', dosha: 'vata' },
@@ -331,7 +340,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 18,
+    id: 19,
     question: 'How do you handle cold weather?',
     options: [
       { text: 'Dislike it, feel cold easily', dosha: 'vata' },
@@ -340,7 +349,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 19,
+    id: 20,
     question: 'What is your typical bowel habit?',
     options: [
       { text: 'Irregular, dry stools, tendency to constipation', dosha: 'vata' },
@@ -349,7 +358,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 20,
+    id: 21,
     question: 'How is your sense of humor?',
     options: [
       { text: 'Changeable, enjoys playfulness', dosha: 'vata' },
@@ -358,7 +367,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 21,
+    id: 22,
     question: 'What are your nails like?',
     options: [
       { text: 'Thin, fragile, easily break', dosha: 'vata' },
@@ -367,7 +376,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 22,
+    id: 23,
     question: 'How do you react to loud noise?',
     options: [
       { text: 'Very sensitive, easily disturbed', dosha: 'vata' },
@@ -376,7 +385,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 23,
+    id: 24,
     question: 'What is your financial spending pattern?',
     options: [
       { text: 'Impulsive, erratic spending', dosha: 'vata' },
@@ -385,7 +394,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 24,
+    id: 25,
     question: 'How do you typically react to new situations?',
     options: [
       { text: 'Enthusiastic but anxious', dosha: 'vata' },
@@ -394,7 +403,7 @@ const questions: Question[] = [
     ],
   },
   {
-    id: 25,
+    id: 26,
     question: 'What is your eye color and type?',
     options: [
       { text: 'Small, active, dark', dosha: 'vata' },

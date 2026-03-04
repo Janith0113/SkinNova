@@ -502,6 +502,28 @@ export default function TineaFullDetails() {
             </div>
           </div>
         </div>
+
+        {/* Your Future Tinea Page Button */}
+        <div className="mt-12 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl shadow-xl p-8 border border-white/40 hover:shadow-2xl transition-all">
+          <div className="flex items-start justify-between mb-4">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
+              <span className="text-3xl">🔮</span>
+            </div>
+            <span className="rounded-full bg-white/20 px-4 py-1 text-xs font-semibold text-white">
+              Coming Soon
+            </span>
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-3">Your Future Prediction</h3>
+          <p className="text-indigo-100 text-sm mb-6">
+            Discover personalized insights about your health, wealth, and future based on your birth details and astrological analysis.
+          </p>
+          <button
+            onClick={() => (window.location.href = "/future-tinea")}
+            className="w-full py-3 rounded-2xl bg-white text-indigo-800 font-semibold hover:bg-indigo-50 transition-colors shadow-lg hover:shadow-xl"
+          >
+            Get Your Prediction
+          </button>
+        </div>
       </div>
     </div>
   );
