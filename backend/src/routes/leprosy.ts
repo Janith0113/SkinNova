@@ -1028,5 +1028,74 @@ router.post('/risk-assessment/auto-trigger', requireAuth, async (req: any, res: 
   }
 })
 
+// Get XAI explanation for latest assessment
+router.get('/risk-assessment/xai/latest', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
+      timestamp: -1
+    })
+
+    if (!assessment) {
+      return res.status(404).json({
+        error: 'No risk assessment found'
+      })
+    }
+
+    if (!assessment.assessment.xai) {
+      return res.status(404).json({
+        error: 'XAI explanation not available for this assessment'
+      })
+    }
+
+    res.json({
+      success: true,
+      xai: assessment.assessment.xai,
+      calculatedAt: assessment.timestamp
+    })
+  } catch (error: any) {
+    console.error('Error fetching XAI explanation:', error)
+    res.status(500).json({
+      error: 'Failed to fetch XAI explanation'
+    })
+  }
+})
+
+// Get full assessment with XAI
+router.get('/risk-assessment/full/:id', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+    const assessmentId = req.params.id
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessment = await LeprosyRiskAssessment.findById(assessmentId)
+
+    if (!assessment || assessment.userId !== userId) {
+      return res.status(404).json({
+        error: 'Assessment not found'
+      })
+    }
+
+    res.json({
+      success: true,
+      assessment: assessment.assessment,
+      calculatedAt: assessment.timestamp
+    })
+  } catch (error: any) {
+    console.error('Error fetching full assessment:', error)
+    res.status(500).json({
+      error: 'Failed to fetch assessment'
+    })
+  }
+})
+
 export default router
 
