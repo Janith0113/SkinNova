@@ -11,6 +11,7 @@ import SkinCancerChatbot from "@/components/SkinCancerChatbot";
 import ClinicalMetadataForm, { MetadataForm } from "@/components/ClinicalMetadataForm";
 import MultimodalRiskResults from "@/components/MultimodalRiskResults";
 import { calculateSkinCancerRisk, RiskResult } from "@/utils/skinRiskLogic";
+import { generatePDFReport, downloadReportAsPDF } from "@/utils/reportGenerator";
 
 // Model configuration for skin cancer detection
 const MODEL_CONFIG = {
@@ -131,6 +132,27 @@ export default function SkinCancerDetection() {
         setPredictions(null);
         setShowMetadataForm(false);
         setRiskResult(null);
+    };
+
+    const handleDownloadReport = () => {
+        if (!riskResult || !predictions) return;
+
+        const topPrediction = predictions.reduce((prev, current) => 
+            (prev.probability > current.probability) ? prev : current
+        );
+
+        const reportData = {
+            timestamp: new Date().toLocaleString(),
+            riskScore: riskResult.totalRiskScore,
+            riskLevel: riskResult.riskLevel,
+            contributors: riskResult.contributors,
+            recommendations: riskResult.recommendations,
+            imageClassName: topPrediction.className,
+            imageProbability: topPrediction.probability,
+        };
+
+        const reportHtml = generatePDFReport(reportData);
+        downloadReportAsPDF(reportHtml, `SkinCancer_Risk_Report_${new Date().getTime()}.pdf`);
     };
 
     const saveScanResult = async () => {
@@ -459,12 +481,18 @@ export default function SkinCancerDetection() {
                             
                             {/* Reset for Risk Result */}
                             {riskResult && (
-                                <div className="flex justify-center pt-8">
+                                <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
+                                    <button
+                                        onClick={handleDownloadReport}
+                                        className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl border-2 border-green-500 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                                    >
+                                        <span>📥</span> Download Report
+                                    </button>
                                     <button
                                         onClick={handleReset}
-                                        className="px-8 py-4 bg-white hover:bg-gray-50 text-gray-900 font-bold rounded-full shadow-lg border-2 border-gray-200 hover:border-green-300 transition-all transform hover:-translate-y-1"
+                                        className="px-8 py-4 bg-white hover:bg-gray-50 text-gray-900 font-bold rounded-xl shadow-lg border-2 border-gray-200 hover:border-green-300 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2"
                                     >
-                                        Start New Analysis
+                                        <span>🔄</span> Start New Analysis
                                     </button>
                                 </div>
                             )}
