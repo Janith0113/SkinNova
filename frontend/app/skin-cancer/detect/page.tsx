@@ -8,6 +8,9 @@ import Results from "@/components/Results";
 import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
 import SkinCancerChatbot from "@/components/SkinCancerChatbot";
+import ClinicalMetadataForm, { MetadataForm } from "@/components/ClinicalMetadataForm";
+import MultimodalRiskResults from "@/components/MultimodalRiskResults";
+import { calculateSkinCancerRisk, RiskResult } from "@/utils/skinRiskLogic";
 
 // Model configuration for skin cancer detection
 const MODEL_CONFIG = {
@@ -31,6 +34,11 @@ export default function SkinCancerDetection() {
     const [savingResult, setSavingResult] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
     const router = useRouter();
+    const metadataFormRef = useRef<HTMLDivElement>(null);
+    
+    // New State for Metadata & Risk
+    const [showMetadataForm, setShowMetadataForm] = useState(false);
+    const [riskResult, setRiskResult] = useState<RiskResult | null>(null);
 
     // Load model on mount
     useEffect(() => {
@@ -58,6 +66,8 @@ export default function SkinCancerDetection() {
     const handleImageSelect = (file: File) => {
         setSelectedImage(file);
         setPredictions(null);
+        setShowMetadataForm(false);
+        setRiskResult(null);
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -102,10 +112,25 @@ export default function SkinCancerDetection() {
         }
     };
 
+    const handleMetadataSubmit = (data: MetadataForm) => {
+        if (!predictions || predictions.length === 0) return;
+
+        // Get top prediction
+        const topPrediction = predictions.reduce((prev, current) => 
+            (prev.probability > current.probability) ? prev : current
+        );
+
+        const risk = calculateSkinCancerRisk(data, topPrediction.probability, topPrediction.className);
+        setRiskResult(risk);
+        setShowMetadataForm(false);
+    };
+
     const handleReset = () => {
         setSelectedImage(null);
         setPreviewUrl(null);
         setPredictions(null);
+        setShowMetadataForm(false);
+        setRiskResult(null);
     };
 
     const saveScanResult = async () => {
@@ -337,9 +362,47 @@ export default function SkinCancerDetection() {
                                         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border-2 border-gray-300 shadow-lg">
                                             <Spinner />
                                         </div>
+                                    ) : riskResult ? (
+                                        <MultimodalRiskResults data={riskResult} />
+                                    ) : showMetadataForm ? (
+                                        <div className="space-y-6 animate-fadeIn" ref={metadataFormRef}>
+                                            <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-lg opacity-80 hover:opacity-100 transition-opacity">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <h3 className="text-gray-700 font-bold">Step 1: Visual Analysis</h3>
+                                                    <span className="text-green-600 font-bold text-sm">✓ Complete</span>
+                                                </div>
+                                                <Results predictions={predictions} />
+                                            </div>
+                                            <ClinicalMetadataForm onSubmit={handleMetadataSubmit} onSkip={() => setShowMetadataForm(false)} />
+                                        </div>
                                     ) : predictions ? (
-                                        <div className="animate-fadeIn">
-                                            <Results predictions={predictions} />
+                                        <div className="space-y-6 animate-fadeIn">
+                                            <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-lg">
+                                                <Results predictions={predictions} />
+                                                
+                                                <div className="mt-8 border-t pt-6">
+                                                    <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                                                        <span>🩺</span> Next Step
+                                                    </h4>
+                                                    <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                                                        Image analysis is only one part of the diagnosis. To get a comprehensive 
+                                                        <span className="font-bold text-green-700"> Risk Stratification Report</span>, 
+                                                        please provide basic clinical details.
+                                                    </p>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setShowMetadataForm(true);
+                                                            setTimeout(() => {
+                                                                metadataFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                            }, 100);
+                                                        }}
+                                                        className="w-full py-4 bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-700 hover:to-cyan-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
+                                                    >
+                                                        <span>📝</span> 
+                                                        Continue to Risk Assessment
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-green-50 to-cyan-50 rounded-2xl border-2 border-green-300 shadow-md">
@@ -352,6 +415,7 @@ export default function SkinCancerDetection() {
                             </div>
 
                             {/* Action Buttons */}
+                            {!showMetadataForm && !riskResult && (
                             <div className="flex flex-col sm:flex-row gap-4">
                                 <button
                                     onClick={handleReset}
@@ -391,12 +455,26 @@ export default function SkinCancerDetection() {
                                     </button>
                                 )}
                             </div>
+                            )}
+                            
+                            {/* Reset for Risk Result */}
+                            {riskResult && (
+                                <div className="flex justify-center pt-8">
+                                    <button
+                                        onClick={handleReset}
+                                        className="px-8 py-4 bg-white hover:bg-gray-50 text-gray-900 font-bold rounded-full shadow-lg border-2 border-gray-200 hover:border-green-300 transition-all transform hover:-translate-y-1"
+                                    >
+                                        Start New Analysis
+                                    </button>
+                                </div>
+                            )}
+
                         </div>
                     )}
                 </div>
             </div>
 
-            <SkinCancerChatbot predictions={predictions} />
+            <SkinCancerChatbot predictions={predictions && !riskResult ? predictions : null} />
 
             <style>{`
                 @keyframes blob {
