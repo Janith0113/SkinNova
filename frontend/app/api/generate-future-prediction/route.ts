@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const GEMINI_API_KEY = 'AIzaSyBIK7vOI44BtV7VBUhq8rU2jkR4FRcMpUc';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDFMQQrWHnHCvbVDxIDW6gf89-irwOZotU';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 interface PredictionRequest {
