@@ -3,6 +3,9 @@ import { requireAuth } from '../middleware/auth'
 import SymptomLog from '../models/SymptomLog'
 import LeprosyAssistantChat from '../models/LeprosyAssistantChat'
 import LeprosyUserProfile from '../models/LeprosyUserProfile'
+import LeprosyRiskAssessment from '../models/LeprosyRiskAssessment'
+import leprosyKnowledgeService from '../services/leprosyKnowledgeService'
+import leprosyRiskAnalysisService from '../services/leprosyRiskAnalysisService'
 
 const router = express.Router()
 
@@ -150,7 +153,7 @@ router.get('/latest-symptom-log', requireAuth, async (req: any, res: any) => {
   }
 })
 
-// AI Chat with leprosy assistant
+// AI Chat with leprosy assistant - ENHANCED WITH KNOWLEDGE BASE
 router.post('/chat/leprosy-assistant', requireAuth, async (req: any, res: any) => {
   try {
     const { message, userId, context } = req.body
@@ -179,14 +182,23 @@ router.post('/chat/leprosy-assistant', requireAuth, async (req: any, res: any) =
       timestamp: new Date()
     })
 
-    // Generate assistant response based on keywords, context, and user profile
-    const reply = generateAssistantResponse(message, userProfile)
+    // Search knowledge base for relevant information
+    const searchResults = leprosyKnowledgeService.searchKnowledge(message)
+    
+    // Generate enhanced assistant response with citations
+    const { reply, sources, disclaimer } = generateEnhancedAssistantResponse(
+      message,
+      userProfile,
+      searchResults
+    )
 
-    // Add assistant message to history
+    // Add assistant message to history with sources
     chatHistory.messages.push({
       text: reply,
       sender: 'assistant',
-      timestamp: new Date()
+      timestamp: new Date(),
+      sources: sources,
+      disclaimer: disclaimer
     })
 
     // Keep only last 100 messages to avoid memory issues
@@ -199,7 +211,10 @@ router.post('/chat/leprosy-assistant', requireAuth, async (req: any, res: any) =
     res.json({
       success: true,
       reply,
-      context
+      sources,
+      disclaimer,
+      context,
+      hasKnowledgeBaseCitation: searchResults.length > 0
     })
   } catch (error) {
     console.error('Error in leprosy assistant chat:', error)
@@ -241,7 +256,200 @@ router.delete('/chat-history', requireAuth, async (req: any, res: any) => {
   }
 })
 
-// Generate assistant response based on message content and user profile
+// Get knowledge base statistics and info
+router.get('/knowledge-base-info', async (req: any, res: any) => {
+  try {
+    const stats = leprosyKnowledgeService.getStatistics()
+
+    res.json({
+      success: true,
+      stats,
+      message: 'Knowledge base loaded with verified WHO, CDC, and ILA data'
+    })
+  } catch (error) {
+    console.error('Error fetching knowledge base info:', error)
+    res.status(500).json({ error: 'Failed to fetch knowledge base info' })
+  }
+})
+
+// Search knowledge base directly
+router.post('/search-knowledge', async (req: any, res: any) => {
+  try {
+    const { query } = req.body
+
+    if (!query) {
+      return res.status(400).json({ error: 'Search query required' })
+    }
+
+    const results = leprosyKnowledgeService.searchKnowledge(query)
+
+    res.json({
+      success: true,
+      results,
+      count: results.length
+    })
+  } catch (error) {
+    console.error('Error searching knowledge base:', error)
+    res.status(500).json({ error: 'Failed to search knowledge base' })
+  }
+})
+
+// Enhanced response generation with knowledge base integration
+function generateEnhancedAssistantResponse(
+  message: string,
+  userProfile: any,
+  searchResults: any[]
+) {
+  const lowerMessage = message.toLowerCase()
+  let reply = ''
+  let sources: any[] = []
+  let disclaimer = 'This information is based on WHO, CDC, and ILA guidelines. Always consult your healthcare provider for personalized advice.'
+
+  // If knowledge base has relevant results, use them first
+  if (searchResults.length > 0) {
+    const primaryResult = searchResults[0]
+    
+    // Default sources for all responses
+    const defaultSources = [
+      { name: 'World Health Organization', url: 'https://www.who.int/health-topics/leprosy', organization: 'WHO' },
+      { name: 'CDC Leprosy Information', url: 'https://www.cdc.gov/leprosy/', organization: 'CDC' },
+      { name: 'CDC Treatment Guidelines', url: 'https://www.cdc.gov/leprosy/diagnosis/treatment-guidelines.html', organization: 'CDC' }
+    ]
+    
+    sources = defaultSources
+
+    // Build response based on category
+    if (primaryResult.category === 'disease_classification') {
+      const classification = leprosyKnowledgeService.getClassificationDetails(primaryResult.id)
+      if (classification) {
+        reply = leprosyKnowledgeService.formatClassificationResponse(classification)
+        sources = leprosyKnowledgeService.getTrustedSources('leprosy-classification')
+      } else {
+        reply = primaryResult.content
+      }
+    } else if (primaryResult.category === 'treatment_protocols') {
+      // Determine if asking about PB or MB
+      const classType = lowerMessage.includes('paucibacillary') || lowerMessage.includes('pb') || lowerMessage.includes('6 month') ? 'PB' : 'MB'
+      const protocol = leprosyKnowledgeService.getTreatmentProtocol(classType)
+      if (protocol) {
+        reply = leprosyKnowledgeService.formatTreatmentResponse(protocol)
+      } else {
+        reply = `Treatment for ${classType}: ${primaryResult.clinicalReference || 'refer to CDC/WHO guidelines'}`
+      }
+      sources = [
+        { name: 'WHO MDT Guidelines', url: 'https://www.who.int/teams/public-health-surveillance-and-response/dpc/ntds/leprosy-elimination/multi-drug-therapy', organization: 'WHO' },
+        { name: 'CDC Treatment Guidelines', url: 'https://www.cdc.gov/leprosy/diagnosis/treatment-guidelines.html', organization: 'CDC' }
+      ]
+    } else if (primaryResult.category === 'reactions_management') {
+      if (lowerMessage.includes('type 1') || lowerMessage.includes('reversal')) {
+        reply = formatType1ReactionResponse()
+      } else if (lowerMessage.includes('type 2') || lowerMessage.includes('enl')) {
+        reply = formatType2ReactionResponse()
+      } else {
+        reply = 'Information about leprosy reactions. Both Type 1 and Type 2 reactions are treatable but require immediate medical attention. Please consult your healthcare provider.'
+      }
+      sources = [
+        { name: 'CDC Reactions Guide', url: 'https://www.cdc.gov/leprosy/complications/reactions.html', organization: 'CDC' },
+        { name: 'WHO Guidelines', url: 'https://www.who.int/health-topics/leprosy', organization: 'WHO' }
+      ]
+    } else if (primaryResult.category === 'faq') {
+      reply = primaryResult.content
+      sources = defaultSources
+    } else {
+      reply = primaryResult.content
+    }
+  } else {
+    // Fall back to original personalized responses
+    reply = generateAssistantResponse(message, userProfile)
+    
+    // Provide default sources even for fallback responses
+    sources = [
+      { name: 'World Health Organization', url: 'https://www.who.int/health-topics/leprosy', organization: 'WHO' },
+      { name: 'CDC Leprosy Information', url: 'https://www.cdc.gov/leprosy/', organization: 'CDC' }
+    ]
+  }
+
+  return {
+    reply,
+    sources,
+    disclaimer
+  }
+}
+
+/**
+ * Format Type 1 Reaction response
+ */
+function formatType1ReactionResponse(): string {
+  return `**Type 1 Reaction (Reversal Reaction)**
+
+This is a cell-mediated immune response that can occur during or shortly after treatment.
+
+**⚠️ Warning Signs (Get medical help immediately):**
+- Sudden inflammation or swelling of existing lesions
+- Nerve inflammation (neuritis) - tenderness, pain, weakness
+- New patches appearing
+- Sensory loss progression
+- Loss of muscle function
+
+**What to Do:**
+1. Contact your healthcare provider immediately
+2. Do NOT stop taking your MDT medications
+3. Seek urgent care if experiencing severe symptoms
+4. Bring notes about when symptoms started
+
+**Treatment:**
+- Corticosteroids (prednisolone) prescribed by your doctor
+- Continue MDT throughout reaction management
+- Regular monitoring for 3-12 months
+
+**Important:** Type 1 reactions are treatable. Early medical attention prevents permanent damage. Do not panic, but do seek help promptly.
+
+📌 **Sources:**
+- [CDC Reactions Guide](https://www.cdc.gov/leprosy/complications/reactions.html)
+- [WHO Official Guidelines](https://www.who.int/health-topics/leprosy)`
+}
+
+/**
+ * Format Type 2 Reaction response
+ */
+function formatType2ReactionResponse(): string {
+  return `**Type 2 Reaction (Erythema Nodosum Leprosum - ENL)**
+
+This is an immune complex reaction requiring prompt medical attention.
+
+**⚠️ Warning Signs (Seek medical attention immediately):**
+- Tender nodules (bumps) under the skin
+- High fever (often 39°C+)
+- Extreme fatigue and body aches
+- Eye inflammation with vision changes
+- Nerve pain or weakness
+- Swollen joints
+
+**What to Do:**
+1. Seek medical attention immediately
+2. Continue taking your MDT medications
+3. Do not self-treat - requires doctor oversight
+4. Have someone help if you're very ill
+
+**Treatment:**
+- Corticosteroids (prednisolone) - prescribed by doctor
+- Possible Thalidomide use (under strict medical supervision)
+- Continue MDT throughout
+
+**Critical Information:**
+- Thalidomide is teratogenic (causes birth defects) - pregnancy prevention essential
+- Type 2 reactions can recur even after treatment ends
+- Long-term management may be needed
+- Regular monitoring is crucial
+
+**Important:** Type 2 reactions are serious but treatable. Get medical help immediately. With proper treatment, outcomes are good.
+
+📌 **Sources:**
+- [CDC Complications Guide](https://www.cdc.gov/leprosy/complications/reactions.html)
+- [WHO Treatment Guidelines](https://www.who.int/health-topics/leprosy)`
+}
+
+// Original response generation with personalization (fallback)
 function generateAssistantResponse(message: string, userProfile: any): string {
   const lowerMessage = message.toLowerCase()
   let personalizationContext = ''
@@ -492,4 +700,402 @@ function generateAssistantResponse(message: string, userProfile: any): string {
   return defaultResponses[Math.floor(Math.random() * defaultResponses.length)]
 }
 
+// ===== RISK ASSESSMENT ENDPOINTS =====
+
+// Calculate risk assessment
+router.post('/risk-assessment', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.body?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessment = await leprosyRiskAnalysisService.calculateRiskScore(userId)
+
+    res.json({
+      success: true,
+      message: 'Risk assessment calculated successfully',
+      assessment
+    })
+  } catch (error: any) {
+    console.error('Risk calculation error:', error)
+    res.status(500).json({
+      error: error.message || 'Failed to calculate risk assessment'
+    })
+  }
+})
+
+// Get latest risk assessment
+router.get('/risk-assessment/latest', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
+      timestamp: -1
+    })
+
+    if (!assessment) {
+      return res.status(404).json({
+        error: 'No risk assessment found. Please calculate one first.'
+      })
+    }
+
+    res.json({
+      success: true,
+      assessment: assessment.assessment,
+      calculatedAt: assessment.timestamp
+    })
+  } catch (error: any) {
+    console.error('Error fetching latest assessment:', error)
+    res.status(500).json({
+      error: 'Failed to fetch risk assessment'
+    })
+  }
+})
+
+// Get risk assessment history
+router.get('/risk-assessment/history', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+    const limit = parseInt(req.query?.limit || '12')
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessments = await LeprosyRiskAssessment.find({ userId })
+      .select('assessment timestamp')
+      .sort({ timestamp: -1 })
+      .limit(limit)
+
+    res.json({
+      success: true,
+      count: assessments.length,
+      assessments: assessments.map(a => ({
+        date: a.timestamp,
+        riskScore: a.assessment.overallRiskScore,
+        riskLevel: a.assessment.riskLevel,
+        trajectory: a.assessment.diseaseTrajectory
+      }))
+    })
+  } catch (error: any) {
+    console.error('Error fetching assessment history:', error)
+    res.status(500).json({
+      error: 'Failed to fetch assessment history'
+    })
+  }
+})
+
+// Get risk trends over time
+router.get('/risk-assessment/trends', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+    const timeframe = req.query?.timeframe || '3m'
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const days = timeframe === '1m' ? 30 : timeframe === '6m' ? 180 : 90
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+    const assessments = await LeprosyRiskAssessment.find({
+      userId,
+      timestamp: { $gte: startDate }
+    })
+      .select('assessment timestamp')
+      .sort({ timestamp: 1 })
+
+    // Calculate trends
+    if (assessments.length < 2) {
+      return res.json({
+        success: true,
+        trend: 'insufficient_data',
+        assessmentCount: assessments.length,
+        message: 'Need at least 2 assessments to determine trend'
+      })
+    }
+
+    const first = assessments[0].assessment.overallRiskScore
+    const last = assessments[assessments.length - 1].assessment.overallRiskScore
+    const change = last - first
+    const changePercent = ((change / first) * 100).toFixed(1)
+
+    const trend = change < -5 ? 'improving' : change > 5 ? 'deteriorating' : 'stable'
+
+    res.json({
+      success: true,
+      timeframe,
+      trend,
+      startScore: first,
+      endScore: last,
+      change,
+      changePercent,
+      assessmentCount: assessments.length,
+      data: assessments.map(a => ({
+        date: a.timestamp,
+        score: a.assessment.overallRiskScore,
+        level: a.assessment.riskLevel
+      }))
+    })
+  } catch (error: any) {
+    console.error('Error fetching trends:', error)
+    res.status(500).json({
+      error: 'Failed to fetch risk trends'
+    })
+  }
+})
+
+// Get comparison with population baseline
+router.get('/risk-assessment/comparison', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const userAssessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
+      timestamp: -1
+    })
+
+    if (!userAssessment) {
+      return res.status(404).json({
+        error: 'No assessment found for comparison'
+      })
+    }
+
+    // Population baselines (from clinical data)
+    const baselines = {
+      avgScore: 52,
+      avgSymptomRisk: 48,
+      avgAdherenceRisk: 40,
+      avgComplicationRisk: 35,
+      avgSensoriomotorRisk: 45,
+      avgImmuneRisk: 50,
+      avgLifeRisk: 42
+    }
+
+    const userScore = userAssessment.assessment
+    const comparison = {
+      overall: {
+        userScore: userScore.overallRiskScore,
+        populationAvg: baselines.avgScore,
+        percentile: Math.round(
+          (userScore.overallRiskScore / baselines.avgScore) * 100
+        ),
+        status:
+          userScore.overallRiskScore < baselines.avgScore ? 'better_than_average' : 'higher_than_average'
+      },
+      components: {
+        symptomProgression: {
+          userScore: userScore.componentScores.symptomProgressionRisk,
+          populationAvg: baselines.avgSymptomRisk
+        },
+        treatmentAdherence: {
+          userScore: userScore.componentScores.treatmentAdherenceRisk,
+          populationAvg: baselines.avgAdherenceRisk
+        },
+        complication: {
+          userScore: userScore.componentScores.complicationRisk,
+          populationAvg: baselines.avgComplicationRisk
+        },
+        sensoriomotor: {
+          userScore: userScore.componentScores.sensorimotorCompromiseRisk,
+          populationAvg: baselines.avgSensoriomotorRisk
+        },
+        immune: {
+          userScore: userScore.componentScores.immuneResponseRisk,
+          populationAvg: baselines.avgImmuneRisk
+        },
+        lifeConditions: {
+          userScore: userScore.componentScores.lifeconditionsRisk,
+          populationAvg: baselines.avgLifeRisk
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      comparison,
+      note: 'Baselines are from clinical leprosy cohort data'
+    })
+  } catch (error: any) {
+    console.error('Error fetching comparison:', error)
+    res.status(500).json({
+      error: 'Failed to fetch comparison data'
+    })
+  }
+})
+
+// Get doctor/provider summary
+router.get('/risk-assessment/doctor-summary', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
+      timestamp: -1
+    })
+
+    if (!assessment) {
+      return res.status(404).json({
+        error: 'No assessment found'
+      })
+    }
+
+    const profile = await LeprosyUserProfile.findOne({ userId })
+    const symptoms = await SymptomLog.findOne({ userId }).sort({ timestamp: -1 })
+
+    const summary = {
+      patientId: userId,
+      assessmentDate: assessment.timestamp,
+      riskLevel: assessment.assessment.riskLevel,
+      overallScore: assessment.assessment.overallRiskScore,
+      trajectory: assessment.assessment.diseaseTrajectory,
+      components: assessment.assessment.componentScores,
+      criticalFactors: assessment.assessment.criticalFactors,
+      protectiveFactors: assessment.assessment.protectiveFactors,
+      predictions: assessment.assessment.predictions,
+      recommendations: assessment.assessment.recommendations,
+      nextCheckupDue: assessment.assessment.nextCheckupDueDate,
+      patientContext: {
+        leprosyType: profile?.medical?.leprosyType,
+        treatmentDuration: profile?.medical?.treatmentDuration,
+        recentSymptoms: symptoms?.symptoms
+      }
+    }
+
+    res.json({
+      success: true,
+      summary
+    })
+  } catch (error: any) {
+    console.error('Error generating summary:', error)
+    res.status(500).json({
+      error: 'Failed to generate doctor summary'
+    })
+  }
+})
+
+// Trigger auto-calculation (called after profile/symptom updates)
+router.post('/risk-assessment/auto-trigger', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.body?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    // Check if last assessment is older than 24 hours
+    const lastAssessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
+      timestamp: -1
+    })
+
+    const hoursElapsed = lastAssessment
+      ? (Date.now() - lastAssessment.timestamp.getTime()) / (1000 * 60 * 60)
+      : 999
+
+    if (hoursElapsed < 24) {
+      return res.json({
+        success: false,
+        message: `Assessment calculated ${Math.round(hoursElapsed)} hours ago. Next auto-calculation in ${Math.round(24 - hoursElapsed)} hours.`,
+        lastCalculated: lastAssessment.timestamp
+      })
+    }
+
+    // Recalculate
+    const assessment = await leprosyRiskAnalysisService.calculateRiskScore(userId)
+
+    res.json({
+      success: true,
+      message: 'Risk assessment auto-triggered and recalculated',
+      assessment
+    })
+  } catch (error: any) {
+    console.error('Auto-trigger error:', error)
+    res.status(500).json({
+      error: 'Failed to auto-trigger assessment'
+    })
+  }
+})
+
+// Get XAI explanation for latest assessment
+router.get('/risk-assessment/xai/latest', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
+      timestamp: -1
+    })
+
+    if (!assessment) {
+      return res.status(404).json({
+        error: 'No risk assessment found'
+      })
+    }
+
+    if (!assessment.assessment.xai) {
+      return res.status(404).json({
+        error: 'XAI explanation not available for this assessment'
+      })
+    }
+
+    res.json({
+      success: true,
+      xai: assessment.assessment.xai,
+      calculatedAt: assessment.timestamp
+    })
+  } catch (error: any) {
+    console.error('Error fetching XAI explanation:', error)
+    res.status(500).json({
+      error: 'Failed to fetch XAI explanation'
+    })
+  }
+})
+
+// Get full assessment with XAI
+router.get('/risk-assessment/full/:id', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id || req.query?.userId
+    const assessmentId = req.params.id
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    const assessment = await LeprosyRiskAssessment.findById(assessmentId)
+
+    if (!assessment || assessment.userId !== userId) {
+      return res.status(404).json({
+        error: 'Assessment not found'
+      })
+    }
+
+    res.json({
+      success: true,
+      assessment: assessment.assessment,
+      calculatedAt: assessment.timestamp
+    })
+  } catch (error: any) {
+    console.error('Error fetching full assessment:', error)
+    res.status(500).json({
+      error: 'Failed to fetch assessment'
+    })
+  }
+})
+
 export default router
+

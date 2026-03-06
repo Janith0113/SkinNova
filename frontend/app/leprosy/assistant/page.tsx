@@ -1,14 +1,21 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Calendar, HelpCircle, Pill, Activity, ArrowLeft, User, Plus, X } from 'lucide-react';
+import { Heart, MessageCircle, Calendar, HelpCircle, Pill, Activity, ArrowLeft, User, Plus, X, ExternalLink, History, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import RiskAnalysisComponent from '../components/RiskAnalysis';
 
 interface Message {
   id: string;
   text: string;
   sender: 'user' | 'assistant';
   timestamp: Date;
+  sources?: {
+    name: string;
+    url?: string;
+    organization?: string;
+  }[];
+  disclaimer?: string;
 }
 
 interface ScheduleItem {
@@ -24,6 +31,22 @@ interface FAQ {
   question: string;
   answer: string;
   category: string;
+}
+
+interface SymptomLogEntry {
+  _id: string;
+  userId: string;
+  symptoms: {
+    skinPatches: boolean;
+    numbness: boolean;
+    weakness: boolean;
+    eyeIssues: boolean;
+    painfulNerves: boolean;
+    other: string;
+  };
+  notes: string;
+  timestamp: Date;
+  createdAt: Date;
 }
 
 const COMMON_FAQS: FAQ[] = [
@@ -138,7 +161,7 @@ const DEFAULT_SCHEDULE: ScheduleItem[] = [
 
 export default function LeprosyAssistantPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'chat' | 'symptoms' | 'schedule' | 'qa' | 'profile'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'symptoms' | 'schedule' | 'qa' | 'profile' | 'risk-analysis'>('chat');
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -160,6 +183,8 @@ export default function LeprosyAssistantPage() {
     other: ''
   });
   const [symptomNotes, setSymptomNotes] = useState('');
+  const [symptomLogs, setSymptomLogs] = useState<SymptomLogEntry[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
   
   const [schedule, setSchedule] = useState<ScheduleItem[]>(DEFAULT_SCHEDULE);
   const [selectedFAQ, setSelectedFAQ] = useState<FAQ | null>(null);
@@ -177,7 +202,7 @@ export default function LeprosyAssistantPage() {
       leprosyType: '',
       treatmentDuration: undefined as number | undefined,
       treatmentStatus: 'ongoing',
-      medications: [] as string[],
+      currentMedications: [] as string[],
       allergies: [] as string[],
       comorbidities: [] as string[]
     },
@@ -191,7 +216,7 @@ export default function LeprosyAssistantPage() {
     lifestyle: {
       occupation: '',
       physicalActivity: 'moderate',
-      dietType: 'non-veg',
+      dietQuality: 'moderate',
       sleepHours: 7,
       smokingStatus: 'never'
     },
@@ -238,6 +263,34 @@ export default function LeprosyAssistantPage() {
     loadProfile();
   }, []);
 
+  // Load symptom logs on mount and when symptoms section is viewed
+  useEffect(() => {
+    const loadSymptomLogs = async () => {
+      try {
+        setLoadingLogs(true);
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:4000/api/leprosy/symptom-logs', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.logs) {
+            setSymptomLogs(data.logs);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading symptom logs:', error);
+      } finally {
+        setLoadingLogs(false);
+      }
+    };
+    
+    loadSymptomLogs();
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -260,7 +313,7 @@ export default function LeprosyAssistantPage() {
       const token = localStorage.getItem('token');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-      const response = await fetch('http://localhost:4000/api/chat/leprosy-assistant', {
+      const response = await fetch('http://localhost:4000/api/leprosy/chat/leprosy-assistant', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -268,7 +321,7 @@ export default function LeprosyAssistantPage() {
         },
         body: JSON.stringify({
           message: inputMessage,
-          userId: user._id,
+          userId: user.id,
           context: 'leprosy_care'
         })
       });
@@ -279,7 +332,9 @@ export default function LeprosyAssistantPage() {
           id: (Date.now() + 1).toString(),
           text: data.reply || 'I understand. Please provide more details so I can better assist you.',
           sender: 'assistant',
-          timestamp: new Date()
+          timestamp: new Date(),
+          sources: data.sources || [],
+          disclaimer: data.disclaimer
         };
         setMessages(prev => [...prev, assistantMessage]);
       } else {
@@ -288,7 +343,8 @@ export default function LeprosyAssistantPage() {
           id: (Date.now() + 1).toString(),
           text: generateAssistantResponse(inputMessage),
           sender: 'assistant',
-          timestamp: new Date()
+          timestamp: new Date(),
+          disclaimer: 'Always consult your healthcare provider for personalized advice.'
         };
         setMessages(prev => [...prev, assistantMessage]);
       }
@@ -298,7 +354,8 @@ export default function LeprosyAssistantPage() {
         id: (Date.now() + 1).toString(),
         text: generateAssistantResponse(inputMessage),
         sender: 'assistant',
-        timestamp: new Date()
+        timestamp: new Date(),
+        disclaimer: 'Always consult your healthcare provider for personalized advice.'
       };
       setMessages(prev => [...prev, fallbackMessage]);
     } finally {
@@ -334,6 +391,14 @@ export default function LeprosyAssistantPage() {
     
     try {
       const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user.id || user._id || user.userId;
+
+      if (!userId) {
+        setProfileMessage('✗ User ID not found. Please log in again.');
+        setProfileLoading(false);
+        return;
+      }
       
       const response = await fetch('http://localhost:4000/api/leprosy/profile', {
         method: 'POST',
@@ -341,7 +406,10 @@ export default function LeprosyAssistantPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(profile)
+        body: JSON.stringify({
+          userId: userId,
+          ...profile
+        })
       });
 
       if (response.ok) {
@@ -349,7 +417,7 @@ export default function LeprosyAssistantPage() {
         setTimeout(() => setProfileMessage(''), 3000);
       } else {
         const error = await response.json();
-        setProfileMessage('✗ Failed to save profile: ' + (error.message || 'Unknown error'));
+        setProfileMessage('✗ Failed to save profile: ' + (error.error || error.message || 'Unknown error'));
       }
     } catch (error) {
       setProfileMessage('✗ Error saving profile. Please try again.');
@@ -363,6 +431,21 @@ export default function LeprosyAssistantPage() {
     try {
       const token = localStorage.getItem('token');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user.id || user._id || user.userId;
+
+      if (!token) {
+        alert('Error: Not logged in. Please log in first.');
+        console.error('No token found in localStorage');
+        return;
+      }
+
+      if (!userId) {
+        alert('Error: User ID not found. Please log in again.');
+        console.error('No user ID found in localStorage', { user });
+        return;
+      }
+
+      console.log('Submitting symptoms for user:', userId);
 
       const response = await fetch('http://localhost:4000/api/leprosy/symptom-log', {
         method: 'POST',
@@ -371,7 +454,7 @@ export default function LeprosyAssistantPage() {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          userId: user._id,
+          userId: userId,
           symptoms: {
             skinPatches: symptoms.skinPatches,
             numbness: symptoms.numbness,
@@ -385,14 +468,36 @@ export default function LeprosyAssistantPage() {
         })
       });
 
+      console.log('Response status:', response.status, response.statusText);
+
       if (response.ok) {
+        const data = await response.json();
+        console.log('Symptoms logged successfully:', data);
         alert('Symptoms logged successfully!');
         setSymptoms({ skinPatches: false, numbness: false, weakness: false, eyeIssues: false, painfulNerves: false, other: '' });
         setSymptomNotes('');
+        
+        // Reload symptom logs
+        const logsResponse = await fetch('http://localhost:4000/api/leprosy/symptom-logs', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        if (logsResponse.ok) {
+          const logsData = await logsResponse.json();
+          if (logsData.logs) {
+            setSymptomLogs(logsData.logs);
+          }
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Server error:', response.status, errorData);
+        alert(`Error: ${errorData.error || 'Failed to log symptoms (Status: ' + response.status + ')'}`);
       }
     } catch (error) {
-      console.error('Error submitting symptoms:', error);
-      alert('Failed to log symptoms. Please try again.');
+      console.error('Network/Fetch error submitting symptoms:', error);
+      alert(`Failed to log symptoms: ${error instanceof Error ? error.message : 'Network error - is the backend running on port 5000?'}`);
     }
   };
 
@@ -479,6 +584,17 @@ export default function LeprosyAssistantPage() {
             <User className="w-5 h-5" />
             Profile
           </button>
+          <button
+            onClick={() => setActiveTab('risk-analysis')}
+            className={`flex items-center gap-2 px-4 py-3 font-semibold border-b-2 transition-all ${
+              activeTab === 'risk-analysis'
+                ? 'border-red-600 text-red-600'
+                : 'border-transparent text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <AlertTriangle className="w-5 h-5" />
+            Risk Analysis
+          </button>
         </div>
 
         {/* Chat Tab */}
@@ -492,17 +608,57 @@ export default function LeprosyAssistantPage() {
                     key={message.id}
                     className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div
-                      className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
-                        message.sender === 'user'
-                          ? 'bg-red-600 text-white rounded-br-none'
-                          : 'bg-gray-100 text-gray-800 rounded-bl-none'
-                      }`}
-                    >
-                      <p className="text-sm">{message.text}</p>
-                      <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-red-100' : 'text-gray-600'}`}>
-                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                    <div className="max-w-xs lg:max-w-md">
+                      <div
+                        className={`px-4 py-3 rounded-2xl ${
+                          message.sender === 'user'
+                            ? 'bg-red-600 text-white rounded-br-none'
+                            : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                        <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-red-100' : 'text-gray-600'}`}>
+                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      
+                      {/* Show sources and disclaimer for assistant messages */}
+                      {message.sender === 'assistant' && (message.sources?.length || message.disclaimer) && (
+                        <div className="mt-3 max-w-md text-xs text-gray-600 bg-blue-50 rounded-lg p-3 border border-blue-100">
+                          {message.sources && message.sources.length > 0 && (
+                            <div className="mb-2">
+                              <p className="font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                                📌 Sources:
+                              </p>
+                              <ul className="space-y-1">
+                                {message.sources.map((source, idx) => (
+                                  <li key={idx} className="flex items-start gap-1">
+                                    <span className="text-blue-600">•</span>
+                                    {source.url ? (
+                                      <a 
+                                        href={source.url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
+                                      >
+                                        {source.organization || source.name}
+                                        <ExternalLink size={12} />
+                                      </a>
+                                    ) : (
+                                      <span className="text-gray-700">{source.organization || source.name}</span>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {message.disclaimer && (
+                            <div className="pt-2 border-t border-blue-100">
+                              <p className="italic text-gray-600">{message.disclaimer}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -546,7 +702,7 @@ export default function LeprosyAssistantPage() {
 
         {/* Symptoms Tab */}
         {activeTab === 'symptoms' && (
-          <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-200">
+          <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-200 max-h-[800px] overflow-y-auto">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Log Your Symptoms</h2>
             <p className="text-gray-600 mb-6">Track your symptoms regularly to monitor your condition and share with your healthcare provider.</p>
 
@@ -586,10 +742,95 @@ export default function LeprosyAssistantPage() {
 
             <button
               onClick={handleSymptomSubmit}
-              className="w-full px-6 py-3 bg-gradient-to-r from-red-600 to-orange-500 text-white rounded-full font-bold hover:shadow-lg transition-all"
+              className="w-full px-6 py-3 bg-gradient-to-r from-red-600 to-orange-500 text-white rounded-full font-bold hover:shadow-lg transition-all mb-8"
             >
               Log Symptoms
             </button>
+
+            {/* Symptom History Section */}
+            <div className="border-t pt-8">
+              <div className="flex items-center gap-2 mb-6">
+                <History className="w-6 h-6 text-red-600" />
+                <h3 className="text-2xl font-bold text-gray-900">Symptom History</h3>
+              </div>
+
+              {loadingLogs ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">Loading your symptom history...</p>
+                </div>
+              ) : symptomLogs.length === 0 ? (
+                <div className="text-center py-8 rounded-2xl bg-gray-50 border border-gray-200">
+                  <p className="text-gray-600">No symptom logs yet. Start tracking by logging your symptoms above!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {symptomLogs.map((log) => (
+                    <div key={log._id} className="p-4 rounded-2xl border border-gray-200 hover:border-red-300 hover:bg-red-50/30 transition-all">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {new Date(log.timestamp || log.createdAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                        {log.symptoms.skinPatches && (
+                          <span className="text-sm px-2 py-1 bg-red-100 text-red-700 rounded-full">
+                            🔴 Skin patches
+                          </span>
+                        )}
+                        {log.symptoms.numbness && (
+                          <span className="text-sm px-2 py-1 bg-orange-100 text-orange-700 rounded-full">
+                            🟠 Numbness
+                          </span>
+                        )}
+                        {log.symptoms.weakness && (
+                          <span className="text-sm px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">
+                            🟡 Weakness
+                          </span>
+                        )}
+                        {log.symptoms.eyeIssues && (
+                          <span className="text-sm px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                            🔵 Eye issues
+                          </span>
+                        )}
+                        {log.symptoms.painfulNerves && (
+                          <span className="text-sm px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                            🟣 Painful nerves
+                          </span>
+                        )}
+                        {log.symptoms.other && (
+                          <span className="text-sm px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+                            ⚪ Other
+                          </span>
+                        )}
+                      </div>
+
+                      {log.symptoms.other && (
+                        <div className="mb-2 p-2 bg-gray-50 rounded-lg">
+                          <p className="text-xs text-gray-600 font-semibold">Other symptoms:</p>
+                          <p className="text-sm text-gray-700">{log.symptoms.other}</p>
+                        </div>
+                      )}
+
+                      {log.notes && (
+                        <div className="p-2 bg-blue-50 rounded-lg">
+                          <p className="text-xs text-blue-600 font-semibold">Notes:</p>
+                          <p className="text-sm text-blue-900">{log.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -766,9 +1007,10 @@ export default function LeprosyAssistantPage() {
                     className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
                   >
                     <option value="">Select Leprosy Type</option>
-                    <option value="tuberculoid">Tuberculoid</option>
-                    <option value="borderline">Borderline</option>
-                    <option value="lepromatous">Lepromatous</option>
+                    <option value="multibacillary">Multibacillary</option>
+                    <option value="paucibacillary">Paucibacillary</option>
+                    {/* <option value="borderline">Borderline</option> */}
+                    {/* <option value="lepromatous">Lepromatous</option> */}
                     <option value="unknown">Unknown</option>
                   </select>
 
@@ -800,7 +1042,7 @@ export default function LeprosyAssistantPage() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Current Medications</label>
                     <div className="space-y-2 mb-3">
-                      {profile.medical.medications.map((med, idx) => (
+                      {profile.medical.currentMedications.map((med, idx) => (
                         <div key={idx} className="flex items-center gap-2 bg-red-50 p-2 rounded-2xl">
                           <span className="flex-1 text-sm">{med}</span>
                           <button
@@ -808,7 +1050,7 @@ export default function LeprosyAssistantPage() {
                               ...profile,
                               medical: {
                                 ...profile.medical,
-                                medications: profile.medical.medications.filter((_, i) => i !== idx)
+                                currentMedications: profile.medical.currentMedications.filter((_, i) => i !== idx)
                               }
                             })}
                             className="text-red-600 hover:text-red-800"
@@ -833,7 +1075,7 @@ export default function LeprosyAssistantPage() {
                               ...profile,
                               medical: {
                                 ...profile.medical,
-                                medications: [...profile.medical.medications, medicationInput]
+                                currentMedications: [...profile.medical.currentMedications, medicationInput]
                               }
                             });
                             setMedicationInput('');
@@ -1078,16 +1320,16 @@ export default function LeprosyAssistantPage() {
                   </select>
 
                   <select
-                    value={profile.lifestyle.dietType}
+                    value={profile.lifestyle.dietQuality}
                     onChange={(e) => setProfile({
                       ...profile,
-                      lifestyle: { ...profile.lifestyle, dietType: e.target.value }
+                      lifestyle: { ...profile.lifestyle, dietQuality: e.target.value }
                     })}
                     className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
                   >
-                    <option value="vegetarian">Vegetarian</option>
-                    <option value="non-veg">Non-Vegetarian</option>
-                    <option value="vegan">Vegan</option>
+                    <option value="poor">Poor Diet Quality</option>
+                    <option value="moderate">Moderate Diet Quality</option>
+                    <option value="good">Good Diet Quality</option>
                   </select>
 
                   <input
@@ -1194,6 +1436,13 @@ export default function LeprosyAssistantPage() {
                 Back to Chat
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Risk Analysis Tab */}
+        {activeTab === 'risk-analysis' && (
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-200">
+            <RiskAnalysisComponent />
           </div>
         )}
       </div>

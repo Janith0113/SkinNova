@@ -7,6 +7,11 @@ import Spinner from "@/components/Spinner";
 import Results from "@/components/Results";
 import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
+import SkinCancerChatbot from "@/components/SkinCancerChatbot";
+import ClinicalMetadataForm, { MetadataForm } from "@/components/ClinicalMetadataForm";
+import MultimodalRiskResults from "@/components/MultimodalRiskResults";
+import { calculateSkinCancerRisk, RiskResult } from "@/utils/skinRiskLogic";
+import { generatePDFReport, downloadReportAsPDF } from "@/utils/reportGenerator";
 
 // Model configuration for skin cancer detection
 const MODEL_CONFIG = {
@@ -30,6 +35,11 @@ export default function SkinCancerDetection() {
     const [savingResult, setSavingResult] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
     const router = useRouter();
+    const metadataFormRef = useRef<HTMLDivElement>(null);
+    
+    // New State for Metadata & Risk
+    const [showMetadataForm, setShowMetadataForm] = useState(false);
+    const [riskResult, setRiskResult] = useState<RiskResult | null>(null);
 
     // Load model on mount
     useEffect(() => {
@@ -57,6 +67,8 @@ export default function SkinCancerDetection() {
     const handleImageSelect = (file: File) => {
         setSelectedImage(file);
         setPredictions(null);
+        setShowMetadataForm(false);
+        setRiskResult(null);
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -101,10 +113,46 @@ export default function SkinCancerDetection() {
         }
     };
 
+    const handleMetadataSubmit = (data: MetadataForm) => {
+        if (!predictions || predictions.length === 0) return;
+
+        // Get top prediction
+        const topPrediction = predictions.reduce((prev, current) => 
+            (prev.probability > current.probability) ? prev : current
+        );
+
+        const risk = calculateSkinCancerRisk(data, topPrediction.probability, topPrediction.className);
+        setRiskResult(risk);
+        setShowMetadataForm(false);
+    };
+
     const handleReset = () => {
         setSelectedImage(null);
         setPreviewUrl(null);
         setPredictions(null);
+        setShowMetadataForm(false);
+        setRiskResult(null);
+    };
+
+    const handleDownloadReport = () => {
+        if (!riskResult || !predictions) return;
+
+        const topPrediction = predictions.reduce((prev, current) => 
+            (prev.probability > current.probability) ? prev : current
+        );
+
+        const reportData = {
+            timestamp: new Date().toLocaleString(),
+            riskScore: riskResult.totalRiskScore,
+            riskLevel: riskResult.riskLevel,
+            contributors: riskResult.contributors,
+            recommendations: riskResult.recommendations,
+            imageClassName: topPrediction.className,
+            imageProbability: topPrediction.probability,
+        };
+
+        const reportHtml = generatePDFReport(reportData);
+        downloadReportAsPDF(reportHtml, `SkinCancer_Risk_Report_${new Date().getTime()}.pdf`);
     };
 
     const saveScanResult = async () => {
@@ -206,24 +254,24 @@ export default function SkinCancerDetection() {
             </nav>
 
             {/* Main Content */}
-            <div className="relative z-10 min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 sm:p-6 lg:p-8">
-                <div className="w-full max-w-6xl">
+            <div className="relative z-10 min-h-[calc(100vh-4rem)] flex flex-col items-center justify-start p-4 sm:p-6 lg:p-8 pb-32">
+                <div className="w-full max-w-6xl space-y-12 lg:pr-64 transition-all duration-300">
                     {/* Header Section */}
                     <div className="text-center mb-12 sm:mb-16">
                         <div className="inline-block mb-6 p-4 bg-gradient-to-br from-green-500 to-cyan-500 rounded-2xl border-2 border-white shadow-lg">
                             <span className="text-5xl sm:text-6xl">🔬</span>
                         </div>
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 text-gray-900 leading-tight">
+                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 text-slate-900 leading-tight tracking-tight">
                             Skin Cancer Detection
                         </h1>
-                        <p className="text-gray-700 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-medium">
-                            Advanced AI-powered analysis to detect melanoma and other skin lesions with high accuracy
+                        <p className="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-medium">
+                            Professional AI-powered dermatological analysis to detect potential melanoma risks
                         </p>
                     </div>
 
                     {/* Model Status */}
-                    <div className="mb-10">
-                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-8 sm:p-10 border border-gray-200 shadow-xl hover:shadow-2xl transition-all duration-300">
+                    <div className="mb-10 w-full">
+                        <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 sm:p-10 border border-emerald-100 shadow-xl shadow-emerald-100/50 hover:shadow-2xl transition-all duration-300">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 {/* Task Card */}
                                 <div className="group relative">
@@ -314,7 +362,7 @@ export default function SkinCancerDetection() {
                         </div>
                     ) : (
                         // Preview and Analysis Section
-                        <div className="space-y-8">
+                        <div className="space-y-8 pb-32">
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 {/* Image Preview */}
                                 <div className="lg:col-span-1">
@@ -336,9 +384,47 @@ export default function SkinCancerDetection() {
                                         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border-2 border-gray-300 shadow-lg">
                                             <Spinner />
                                         </div>
+                                    ) : riskResult ? (
+                                        <MultimodalRiskResults data={riskResult} />
+                                    ) : showMetadataForm ? (
+                                        <div className="space-y-6 animate-fadeIn" ref={metadataFormRef}>
+                                            <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-lg opacity-80 hover:opacity-100 transition-opacity">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <h3 className="text-gray-700 font-bold">Step 1: Visual Analysis</h3>
+                                                    <span className="text-green-600 font-bold text-sm">✓ Complete</span>
+                                                </div>
+                                                <Results predictions={predictions} />
+                                            </div>
+                                            <ClinicalMetadataForm onSubmit={handleMetadataSubmit} onSkip={() => setShowMetadataForm(false)} />
+                                        </div>
                                     ) : predictions ? (
-                                        <div className="animate-fadeIn">
-                                            <Results predictions={predictions} />
+                                        <div className="space-y-6 animate-fadeIn">
+                                            <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-lg">
+                                                <Results predictions={predictions} />
+                                                
+                                                <div className="mt-8 border-t pt-6">
+                                                    <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                                                        <span>🩺</span> Next Step
+                                                    </h4>
+                                                    <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                                                        Image analysis is only one part of the diagnosis. To get a comprehensive 
+                                                        <span className="font-bold text-green-700"> Risk Stratification Report</span>, 
+                                                        please provide basic clinical details.
+                                                    </p>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setShowMetadataForm(true);
+                                                            setTimeout(() => {
+                                                                metadataFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                            }, 100);
+                                                        }}
+                                                        className="w-full py-4 bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-700 hover:to-cyan-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
+                                                    >
+                                                        <span>📝</span> 
+                                                        Continue to Risk Assessment
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-green-50 to-cyan-50 rounded-2xl border-2 border-green-300 shadow-md">
@@ -351,6 +437,7 @@ export default function SkinCancerDetection() {
                             </div>
 
                             {/* Action Buttons */}
+                            {!showMetadataForm && !riskResult && (
                             <div className="flex flex-col sm:flex-row gap-4">
                                 <button
                                     onClick={handleReset}
@@ -390,10 +477,67 @@ export default function SkinCancerDetection() {
                                     </button>
                                 )}
                             </div>
+                            )}
+                            
+                            {/* Reset for Risk Result */}
+                            {riskResult && (
+                                <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
+                                    <button
+                                        onClick={handleDownloadReport}
+                                        className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl border-2 border-green-500 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                                    >
+                                        <span>📥</span> Download Report
+                                    </button>
+                                    <button
+                                        onClick={handleReset}
+                                        className="px-8 py-4 bg-white hover:bg-gray-50 text-gray-900 font-bold rounded-xl shadow-lg border-2 border-gray-200 hover:border-green-300 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                                    >
+                                        <span>🔄</span> Start New Analysis
+                                    </button>
+                                </div>
+                            )}
+
                         </div>
                     )}
                 </div>
             </div>
+
+            <SkinCancerChatbot predictions={predictions && !riskResult ? predictions : null} />
+
+            <style>{`
+                @keyframes blob {
+                  0%, 100% { transform: translate(0, 0) scale(1); }
+                  33% { transform: translate(30px, -50px) scale(1.1); }
+                  66% { transform: translate(-20px, 20px) scale(0.9); }
+                }
+                
+                .animate-blob {
+                  animation: blob 7s infinite;
+                }
+                
+                .animation-delay-2000 {
+                  animation-delay: 2s;
+                }
+                
+                .animation-delay-4000 {
+                  animation-delay: 4s;
+                }
+                
+                @keyframes fadeIn {
+                  from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(0);
+                  }
+                }
+                
+                .animate-fadeIn {
+                  animation: fadeIn 0.5s ease-out;
+                }
+            `}</style>
         </main>
     );
 }

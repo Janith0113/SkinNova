@@ -39,6 +39,14 @@ interface ApiResponse {
   riskAnalysis: RiskAnalysis;
 }
 
+interface GradCAMData {
+  risk_score: number;
+  grad_cam_heatmap: number[];
+  factor_importance: Record<string, number>;
+  feature_values: Record<string, number>;
+  color_map: Record<string, string>;
+}
+
 export default function PsoriasisRiskAnalysis() {
   const [weatherData, setWeatherData] = useState<ApiResponse['weather'] | null>(null);
   const [location, setLocation] = useState<string>("");
@@ -47,6 +55,8 @@ export default function PsoriasisRiskAnalysis() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [expandedFactor, setExpandedFactor] = useState<number | null>(null);
+  const [gradcamData, setGradcamData] = useState<GradCAMData | null>(null);
+  const [gradcamLoading, setGradcamLoading] = useState(false);
 
   // Fetch weather data from backend API
   const fetchWeatherData = async (latitude: number, longitude: number) => {
@@ -75,11 +85,46 @@ export default function PsoriasisRiskAnalysis() {
       });
       setLastUpdate(new Date());
       setError(null);
+      
+      // Fetch Grad-CAM explanation
+      fetchGradCAMExplanation(data.weather);
     } catch (err) {
       console.error('Error fetching weather data:', err);
       setError("Unable to fetch weather data. Please check your location permissions.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch Grad-CAM explanation for neural network interpretability
+  const fetchGradCAMExplanation = async (weather: ApiResponse['weather']) => {
+    try {
+      setGradcamLoading(true);
+      const response = await fetch('http://localhost:4000/api/psoriasis/grad-cam', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          temperature: weather.temperature,
+          humidity: weather.humidity,
+          trend_value: weather.temperatureTrend === 'warming' ? 1 : 
+                       weather.temperatureTrend === 'cooling' ? -1 : 0,
+          wind_speed: weather.windSpeed,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch Grad-CAM explanation');
+      }
+
+      const data = await response.json();
+      setGradcamData(data.gradcamExplanation);
+    } catch (err) {
+      console.error('Error fetching Grad-CAM:', err);
+      // Grad-CAM is optional, don't set error state
+    } finally {
+      setGradcamLoading(false);
     }
   };
 
@@ -110,12 +155,13 @@ export default function PsoriasisRiskAnalysis() {
     return activations;
   };
 
-  // Get RGB color from heatmap (blue -> green -> yellow -> red)
-  const getHeatmapColor = (activation: number): string => {
-    if (activation < 0.25) return '#3b82f6'; // Blue
-    if (activation < 0.5) return '#10b981'; // Green
-    if (activation < 0.75) return '#fbbf24'; // Yellow
-    return '#ef4444'; // Red
+  // Get RGB color from heatmap based on ACTUAL RISK POINTS (not relative ranking)
+  // 0-10 pts = Blue (safe) | 10-20 pts = Green (low) | 20-35 pts = Yellow (moderate) | 35+ pts = Red (critical)
+  const getHeatmapColor = (points: number): string => {
+    if (points < 10) return '#3b82f6'; // Blue - minimal risk
+    if (points < 20) return '#10b981'; // Green - low risk
+    if (points < 35) return '#fbbf24'; // Yellow - moderate risk
+    return '#ef4444'; // Red - high/critical risk
   };
 
   // Get user location and fetch weather
@@ -242,7 +288,7 @@ export default function PsoriasisRiskAnalysis() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                 {/* Risk Score */}
                 <div>
-                  <div className="text-7xl font-bold mb-2">{riskAnalysis.score}</div>
+                  <div className="text-7xl font-bold mb-2">{riskAnalysis.score.toFixed(2)}</div>
                   <div className="text-xl font-semibold mb-4">Risk Score / 100</div>
                   <div className="inline-block bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full font-bold text-lg">
                     {riskAnalysis.level} Risk
@@ -307,7 +353,7 @@ export default function PsoriasisRiskAnalysis() {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-5xl font-bold text-gray-900">
-                        {Math.round(riskAnalysis.score)}
+                        {riskAnalysis.score.toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-600">/ 100</div>
                     </div>
@@ -333,21 +379,129 @@ export default function PsoriasisRiskAnalysis() {
               </div>
             </div>
 
-            {/* Grad-CAM: Visual Feature Activation Map */}
+            {/* REAL Grad-CAM: Neural Network Visualization */}
+            {gradcamData && (
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 shadow-2xl mb-8 border-2 border-cyan-500 text-white">
+                <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                  <Brain className="text-cyan-400" />
+                  Real Grad-CAM: Neural Network Explanation
+                </h3>
+                <p className="text-gray-300 text-sm mb-6">
+                  🧠 Gradient-weighted Class Activation Mapping shows which weather factors the CNN model focuses on most.
+                  Brighter colors = Strong model focus | Darker colors = Low attention
+                </p>
+                
+                {/* Grad-CAM Heatmap Visualization */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                  {Object.entries(gradcamData.factor_importance).map(([factor, importance]) => {
+                    const color = gradcamData.color_map?.[factor] || '#3b82f6';
+                    const heatmapValue = gradcamData.grad_cam_heatmap[
+                      Object.keys(gradcamData.factor_importance).indexOf(factor)
+                    ] || 0;
+                    
+                    return (
+                      <div key={factor} className="group">
+                        <div
+                          className="w-full aspect-square rounded-2xl shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 cursor-pointer relative overflow-hidden flex items-center justify-center border-2 flex-col justify-between p-4"
+                          style={{
+                            backgroundColor: color,
+                            borderColor: color,
+                            opacity: 0.7 + (importance * 0.3),
+                          }}
+                        >
+                          <div className="text-center z-10">
+                            <div className="text-xs font-bold text-white/90 mb-1 uppercase tracking-wider">
+                              {factor}
+                            </div>
+                            <div className="text-3xl font-bold text-white mb-2">
+                              {(importance * 100).toFixed(0)}%
+                            </div>
+                            <div className="text-xs text-white/80">
+                              Gradient: {(heatmapValue * 100).toFixed(1)}
+                            </div>
+                          </div>
+
+                          {/* Animated gradient overlay */}
+                          <div
+                            className="absolute inset-0 opacity-20 animate-pulse"
+                            style={{
+                              background: `radial-gradient(circle, ${color}, transparent)`,
+                            }}
+                          ></div>
+                        </div>
+                        
+                        <div className="mt-2 text-center text-xs text-gray-400">
+                          {importance > 0.5 ? '🔴 High Impact' : importance > 0.25 ? '🟡 Medium' : '🟢 Low Impact'}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Grad-CAM Explanation */}
+                <div className="p-4 bg-cyan-500/10 rounded-2xl border border-cyan-500/30 mb-6">
+                  <p className="text-sm text-cyan-100">
+                    📊 <span className="font-semibold">How to read this:</span> The neural network has learned which weather factors are most important for psoriasis risk prediction. Color intensity and percentage show the model's activation gradient for each factor. This is computed via backpropagation through the CNN.
+                  </p>
+                </div>
+
+                {/* Feature Importance Bar Chart */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold mb-4">Factor Importance (Gradient-based)</h4>
+                  {Object.entries(gradcamData.factor_importance).map(([factor, importance]) => (
+                    <div key={factor} className="space-y-1">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="font-medium">{factor}</span>
+                        <span className="text-cyan-300">{(importance * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden border border-slate-600">
+                        <div
+                          className="h-full transition-all duration-500 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full"
+                          style={{
+                            width: `${Math.min(importance * 100, 100)}%`,
+                          }}
+                        >
+                          <div className="h-full bg-white/20 animate-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {gradcamLoading && (
+              <div className="bg-slate-900 rounded-3xl p-8 text-center mb-8 border-2 border-cyan-500">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400 mb-4"></div>
+                <p className="text-white">Computing Grad-CAM neural network explanation...</p>
+              </div>
+            )}
+
+            {/* Grad-CAM: Visual Feature Impact Map */}
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 shadow-2xl mb-8 border-2 border-cyan-500 text-white">
               <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
                 <Brain className="text-cyan-400" />
-                Grad-CAM: Feature Activation Map
+                Risk Factor Impact Map
               </h3>
-              <p className="text-gray-300 text-sm mb-6">Gradient-weighted Class Activation Mapping - Shows which factors have the strongest influence on your risk score</p>
+              <p className="text-gray-300 text-sm mb-6">Shows how strongly each factor is affecting your psoriasis risk - Red/Orange = Strong Effect | Blue/Green = No Effect</p>
               
               {/* Grad-CAM Heatmap Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                {riskAnalysis && riskAnalysis.factors.map((factor, idx) => {
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                {riskAnalysis && riskAnalysis.factors.filter(f => f.label !== 'Wind Speed').map((factor, idx) => {
+                  const color = getHeatmapColor(factor.value);
                   const activations = calculateGradCAMActivation(riskAnalysis.factors);
                   const activation = activations[factor.label] || 0;
-                  const color = getHeatmapColor(activation);
-                  const intensity = Math.round(activation * 100);
+
+                  // Get actual weather value based on factor label
+                  let displayValue = '';
+                  if (factor.label === 'Temperature') {
+                    displayValue = `${weatherData?.temperature}°C`;
+                  } else if (factor.label === 'Humidity') {
+                    displayValue = `${weatherData?.humidity}%`;
+                  } else if (factor.label === 'Temperature Trend') {
+                    displayValue = weatherData?.temperatureTrend === 'warming' ? '📈 Warming' : 
+                                   weatherData?.temperatureTrend === 'cooling' ? '📉 Cooling' : '➡️ Stable';
+                  }
 
                   return (
                     <div key={idx} className="group">
@@ -361,8 +515,8 @@ export default function PsoriasisRiskAnalysis() {
                       >
                         <div className="text-center z-10">
                           <div className="text-sm font-bold text-white/90 mb-1">{factor.label}</div>
-                          <div className="text-2xl font-bold text-white">{intensity}%</div>
-                          <div className="text-xs text-white/70 mt-1">Activation</div>
+                          <div className="text-2xl font-bold text-white">{displayValue}</div>
+                          <div className="text-xs text-white/70 mt-1">{factor.value} pts risk</div>
                         </div>
 
                         {/* Animated gradient overlay */}
@@ -384,17 +538,27 @@ export default function PsoriasisRiskAnalysis() {
 
               {/* Heatmap Legend */}
               <div className="p-4 bg-slate-700/50 rounded-2xl border border-slate-600">
-                <p className="text-xs font-semibold text-gray-300 mb-3">Activation Intensity Scale:</p>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1">
-                    <div className="w-12 h-2 rounded" style={{background: 'linear-gradient(to right, #3b82f6, #10b981, #fbbf24, #ef4444)'}}></div>
-                    <span className="text-xs text-gray-300">
-                      Low (0%) → High (100%)
-                    </span>
+                <p className="text-xs font-semibold text-gray-300 mb-3">Risk Level Color Guide:</p>
+                <div className="flex items-center gap-4 flex-wrap text-xs text-gray-300">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg" style={{backgroundColor: '#3b82f6'}}></div>
+                    <span>0-10 pts = Safe</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg" style={{backgroundColor: '#10b981'}}></div>
+                    <span>10-20 pts = Low</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg" style={{backgroundColor: '#fbbf24'}}></div>
+                    <span>20-35 pts = Moderate</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg" style={{backgroundColor: '#ef4444'}}></div>
+                    <span>35+ pts = High Risk</span>
                   </div>
                 </div>
                 <p className="text-xs text-gray-400 mt-3">
-                  🔍 Interpretation: Brighter/redder tiles = stronger influence on risk score. These are the primary drivers of your psoriasis risk.
+                  ✅ Blue/Green tiles = Good for you | 🟠🔴 Orange/Red tiles = Be careful with this factor
                 </p>
               </div>
             </div>
@@ -403,36 +567,47 @@ export default function PsoriasisRiskAnalysis() {
             <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-indigo-200 mb-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <BarChart3 className="text-indigo-600" />
-                Grad-CAM: Gradient Activation by Factor
+                Risk Factor Impact Strength
               </h3>
               
               <div className="space-y-6">
-                {riskAnalysis && riskAnalysis.factors.map((factor, idx) => {
+                {riskAnalysis && riskAnalysis.factors.filter(f => f.label !== 'Wind Speed').map((factor, idx) => {
+                  const color = getHeatmapColor(factor.value);
                   const activations = calculateGradCAMActivation(riskAnalysis.factors);
                   const activation = activations[factor.label] || 0;
-                  const color = getHeatmapColor(activation);
+                  
+                  // Get actual weather value based on factor label
+                  let displayValue = '';
+                  if (factor.label === 'Temperature') {
+                    displayValue = `${weatherData?.temperature}°C`;
+                  } else if (factor.label === 'Humidity') {
+                    displayValue = `${weatherData?.humidity}%`;
+                  } else if (factor.label === 'Temperature Trend') {
+                    displayValue = weatherData?.temperatureTrend === 'warming' ? 'Warming' : 
+                                   weatherData?.temperatureTrend === 'cooling' ? 'Cooling' : 'Stable';
+                  }
                   
                   return (
                     <div key={idx} className="space-y-2">
                       <div className="flex justify-between items-center mb-2">
                         <div>
                           <p className="font-bold text-gray-900">{factor.label}</p>
-                          <p className="text-xs text-gray-600">Value: {factor.value}% | Impact: {factor.impact}</p>
+                          <p className="text-xs text-gray-600">📍 Actual: {displayValue} | Risk: {factor.value} pts | {factor.impact}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold" style={{color}}>
-                            {Math.round(activation * 100)}%
+                            {factor.value} pts
                           </p>
-                          <p className="text-xs text-gray-600">Activation</p>
+                          <p className="text-xs text-gray-600">Risk Points</p>
                         </div>
                       </div>
 
-                      {/* Gradient Activation Bar */}
+                      {/* Risk Points Bar */}
                       <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
                         <div
                           className="h-full transition-all duration-500 relative"
                           style={{
-                            width: `${activation * 100}%`,
+                            width: `${Math.min((factor.value / 50) * 100, 100)}%`,
                             background: `linear-gradient(90deg, #3b82f6, ${color})`,
                           }}
                         >
@@ -440,9 +615,9 @@ export default function PsoriasisRiskAnalysis() {
                         </div>
                       </div>
 
-                      {/* Activation Reasons */}
+                      {/* Impact Explanation */}
                       <p className="text-sm text-gray-700 leading-relaxed">
-                        💡 <span className="font-semibold">Why this activation:</span> {factor.explanation.substring(0, 120)}...
+                        💡 <span className="font-semibold">Why it matters:</span> {factor.explanation.substring(0, 120)}...
                       </p>
                     </div>
                   );
@@ -451,87 +626,12 @@ export default function PsoriasisRiskAnalysis() {
 
               <div className="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-200">
                 <p className="text-xs text-gray-700">
-                  📊 <span className="font-semibold">Grad-CAM Interpretation:</span> This visualization shows the gradient activation map - indicating which features have the highest influence on the model's prediction. Higher activation = stronger contribution to risk score.
+                  📊 <span className="font-semibold">How to Read This:</span> Each bar shows how much that factor is contributing to your total risk. A long bar (high %) = that factor is greatly affecting you. A short bar (low %) = that factor is not a concern. Focus protective measures on the longest bars!
                 </p>
               </div>
             </div>
 
-            {/* Grad-CAM: 2D Heatmap - Factor Interaction Matrix */}
-            <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-rose-200 mb-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Brain className="text-rose-600" />
-                Grad-CAM: Feature Interaction Heatmap
-              </h3>
-              
-              {riskAnalysis && (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b-2 border-gray-200">
-                        <th className="text-left py-3 px-4 font-bold text-gray-900">Factor</th>
-                        <th className="text-center py-3 px-4 font-bold text-gray-900">Activation</th>
-                        <th className="text-center py-3 px-4 font-bold text-gray-900">Contribution</th>
-                        <th className="text-center py-3 px-4 font-bold text-gray-900">Risk Impact</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {riskAnalysis.factors.map((factor, idx) => {
-                        const activations = calculateGradCAMActivation(riskAnalysis.factors);
-                        const activation = activations[factor.label] || 0;
-                        const contribution = Math.round((factor.value / riskAnalysis.score) * 100);
-                        const color = getHeatmapColor(activation);
 
-                        return (
-                          <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                            <td className="py-4 px-4 font-semibold text-gray-900">{factor.label}</td>
-                            <td className="py-4 px-4">
-                              <div className="flex items-center justify-center">
-                                <div
-                                  className="w-16 h-8 rounded-lg flex items-center justify-center font-bold text-white text-sm transition-transform hover:scale-110"
-                                  style={{backgroundColor: color}}
-                                >
-                                  {Math.round(activation * 100)}%
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-4 px-4">
-                              <div className="flex items-center justify-center gap-2">
-                                <div className="w-32 bg-gray-200 rounded-full h-2 overflow-hidden">
-                                  <div
-                                    className="h-full transition-all"
-                                    style={{
-                                      width: `${contribution}%`,
-                                      backgroundColor: color,
-                                    }}
-                                  ></div>
-                                </div>
-                                <span className="font-bold text-gray-900 min-w-fit">{contribution}%</span>
-                              </div>
-                            </td>
-                            <td className="py-4 px-4 text-center">
-                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                factor.impact === 'Critical' ? 'bg-red-100 text-red-800' :
-                                factor.impact === 'High Risk' ? 'bg-orange-100 text-orange-800' :
-                                factor.impact === 'Moderate' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-green-100 text-green-800'
-                              }`}>
-                                {factor.impact}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              <div className="mt-6 p-4 bg-rose-50 rounded-xl border border-rose-200">
-                <p className="text-xs text-gray-700">
-                  🎨 <span className="font-semibold">Feature Interaction Matrix:</span> This heatmap shows how each environmental factor activates in the model and contributes to your overall risk. Combines Grad-CAM activation with actual risk contribution percentages.
-                </p>
-              </div>
-            </div>
 
             {/* Key Insights - Explainable AI */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -668,7 +768,7 @@ export default function PsoriasisRiskAnalysis() {
             </div>
 
             {/* Model Info & Medical Disclaimer */}
-            <div className="bg-yellow-50 rounded-3xl p-8 shadow-lg border-2 border-yellow-300 mb-8">
+            <div className="bg-yellow-50 rounded-3xl p-8 shadow-lg border-2 border-yellow-300 mb-8 mt-12">
               <p className="text-sm text-yellow-900 flex items-start gap-3">
                 <span className="text-2xl flex-shrink-0">⚕️</span>
                 <span>
