@@ -62,6 +62,26 @@ interface IXAIExplanation {
   }
 }
 
+interface IAIPrediction {
+  leprosyTypeId: number
+  leprosyTypeName: string
+  leprosyTypeCode: string
+  riskLevel: string
+  description: string
+  confidence: number
+  confidencePercent: number
+  classProbabilities: Record<string, number>
+  clinicalInterpretation?: {
+    typeClassification: string
+    bacillaryLoad: string
+    treatmentRegimen: string
+    monitoringPriority: string
+    keyClinicalNotes: string[]
+  }
+  disclaimer?: string
+  predictionTimestamp?: Date
+}
+
 interface IRiskAssessment {
   overallRiskScore: number
   riskLevel: 'Low' | 'Moderate' | 'High' | 'Critical'
@@ -73,6 +93,7 @@ interface IRiskAssessment {
   recommendations: string[]
   nextCheckupDueDate: Date
   xai?: IXAIExplanation
+  aiPrediction?: IAIPrediction
 }
 
 interface ILeprosyRiskAssessment extends Document {
@@ -176,7 +197,28 @@ const riskAssessmentSchema = new Schema<IRiskAssessment>(
     },
     recommendations: [String],
     nextCheckupDueDate: Date,
-    xai: xaiExplanationSchema
+    xai: xaiExplanationSchema,
+    aiPrediction: {
+      leprosyTypeId: Number,
+      leprosyTypeName: String,
+      leprosyTypeCode: String,
+      riskLevel: String,
+      description: String,
+      confidence: Number,
+      confidencePercent: Number,
+      classProbabilities: { type: Map, of: Number },
+      clinicalInterpretation: {
+        typeClassification: String,
+        bacillaryLoad: String,
+        treatmentRegimen: String,
+        monitoringPriority: String,
+        keyClinicalNotes: [String],
+        _id: false
+      },
+      disclaimer: String,
+      predictionTimestamp: Date,
+      _id: false
+    }
   },
   { _id: false }
 )
@@ -207,4 +249,4 @@ export default mongoose.model<ILeprosyRiskAssessment>(
   'LeprosyRiskAssessment',
   LeprosyRiskAssessmentSchema
 )
-export type { IRiskAssessment, ILeprosyRiskAssessment, IXAIExplanation, IFeatureContribution, IAttributionMap }
+export type { IRiskAssessment, ILeprosyRiskAssessment, IXAIExplanation, IFeatureContribution, IAttributionMap, IAIPrediction }

@@ -42,8 +42,19 @@ interface SymptomLogEntry {
     weakness: boolean;
     eyeIssues: boolean;
     painfulNerves: boolean;
+    nerveThickening: boolean;
+    lossSensation: boolean;
     other: string;
   };
+  clinicalMeasurements?: {
+    numberOfLesions?: number;
+    largestLesionSizeCm?: number;
+    skinSmearRight?: number;
+    skinSmearLeft?: number;
+    bacillusIndex?: number;
+    morphologicalIndex?: number;
+  };
+  spreadingRate?: string;
   notes: string;
   timestamp: Date;
   createdAt: Date;
@@ -180,8 +191,19 @@ export default function LeprosyAssistantPage() {
     weakness: false,
     eyeIssues: false,
     painfulNerves: false,
+    nerveThickening: false,
+    lossSensation: false,
     other: ''
   });
+  const [clinicalMeasurements, setClinicalMeasurements] = useState({
+    numberOfLesions: '' as string | number,
+    largestLesionSizeCm: '' as string | number,
+    skinSmearRight: '' as string | number,
+    skinSmearLeft: '' as string | number,
+    bacillusIndex: '' as string | number,
+    morphologicalIndex: '' as string | number
+  });
+  const [spreadingRate, setSpreadingRate] = useState('static');
   const [symptomNotes, setSymptomNotes] = useState('');
   const [symptomLogs, setSymptomLogs] = useState<SymptomLogEntry[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
@@ -196,12 +218,14 @@ export default function LeprosyAssistantPage() {
       age: undefined as number | undefined,
       gender: '',
       weight: undefined as number | undefined,
-      height: undefined as number | undefined
+      height: undefined as number | undefined,
+      householdContacts: undefined as number | undefined
     },
     medical: {
       leprosyType: '',
       treatmentDuration: undefined as number | undefined,
       treatmentStatus: 'ongoing',
+      prevTreatment: false,
       currentMedications: [] as string[],
       allergies: [] as string[],
       comorbidities: [] as string[]
@@ -218,7 +242,10 @@ export default function LeprosyAssistantPage() {
       physicalActivity: 'moderate',
       dietQuality: 'moderate',
       sleepHours: 7,
-      smokingStatus: 'never'
+      smokingStatus: 'never',
+      stressLevel: 'moderate',
+      treatmentAccess: 'good',
+      hygiene_conditions: 'moderate'
     },
     goals: [] as string[],
     notes: ''
@@ -461,8 +488,19 @@ export default function LeprosyAssistantPage() {
             weakness: symptoms.weakness,
             eyeIssues: symptoms.eyeIssues,
             painfulNerves: symptoms.painfulNerves,
+            nerveThickening: symptoms.nerveThickening,
+            lossSensation: symptoms.lossSensation,
             other: symptoms.other
           },
+          clinicalMeasurements: {
+            numberOfLesions: clinicalMeasurements.numberOfLesions !== '' ? Number(clinicalMeasurements.numberOfLesions) : undefined,
+            largestLesionSizeCm: clinicalMeasurements.largestLesionSizeCm !== '' ? Number(clinicalMeasurements.largestLesionSizeCm) : undefined,
+            skinSmearRight: clinicalMeasurements.skinSmearRight !== '' ? Number(clinicalMeasurements.skinSmearRight) : undefined,
+            skinSmearLeft: clinicalMeasurements.skinSmearLeft !== '' ? Number(clinicalMeasurements.skinSmearLeft) : undefined,
+            bacillusIndex: clinicalMeasurements.bacillusIndex !== '' ? Number(clinicalMeasurements.bacillusIndex) : undefined,
+            morphologicalIndex: clinicalMeasurements.morphologicalIndex !== '' ? Number(clinicalMeasurements.morphologicalIndex) : undefined
+          },
+          spreadingRate,
           notes: symptomNotes,
           timestamp: new Date()
         })
@@ -474,7 +512,9 @@ export default function LeprosyAssistantPage() {
         const data = await response.json();
         console.log('Symptoms logged successfully:', data);
         alert('Symptoms logged successfully!');
-        setSymptoms({ skinPatches: false, numbness: false, weakness: false, eyeIssues: false, painfulNerves: false, other: '' });
+        setSymptoms({ skinPatches: false, numbness: false, weakness: false, eyeIssues: false, painfulNerves: false, nerveThickening: false, lossSensation: false, other: '' });
+        setClinicalMeasurements({ numberOfLesions: '', largestLesionSizeCm: '', skinSmearRight: '', skinSmearLeft: '', bacillusIndex: '', morphologicalIndex: '' });
+        setSpreadingRate('static');
         setSymptomNotes('');
         
         // Reload symptom logs
@@ -706,18 +746,22 @@ export default function LeprosyAssistantPage() {
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Log Your Symptoms</h2>
             <p className="text-gray-600 mb-6">Track your symptoms regularly to monitor your condition and share with your healthcare provider.</p>
 
-            <div className="space-y-4 mb-8">
+            {/* Symptom Checkboxes */}
+            <div className="space-y-3 mb-6">
+              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Clinical Symptoms</h3>
               {[
                 { key: 'skinPatches', label: 'New or changing skin patches' },
                 { key: 'numbness', label: 'Numbness or loss of sensation' },
                 { key: 'weakness', label: 'Weakness in hands or feet' },
                 { key: 'eyeIssues', label: 'Eye issues or vision problems' },
-                { key: 'painfulNerves', label: 'Painful or thickened nerves' }
+                { key: 'painfulNerves', label: 'Painful nerves' },
+                { key: 'nerveThickening', label: 'Nerve thickening (palpable)' },
+                { key: 'lossSensation', label: 'Loss of touch sensation' }
               ].map((item) => (
-                <label key={item.key} className="flex items-center gap-3 p-4 rounded-2xl border border-gray-200 hover:bg-red-50/50 cursor-pointer transition-colors">
+                <label key={item.key} className="flex items-center gap-3 p-3 rounded-2xl border border-gray-200 hover:bg-red-50/50 cursor-pointer transition-colors">
                   <input
                     type="checkbox"
-                    checked={symptoms[item.key as keyof typeof symptoms]}
+                    checked={symptoms[item.key as keyof typeof symptoms] as boolean}
                     onChange={(e) => setSymptoms(prev => ({
                       ...prev,
                       [item.key]: e.target.checked
@@ -727,17 +771,118 @@ export default function LeprosyAssistantPage() {
                   <span className="font-medium text-gray-800">{item.label}</span>
                 </label>
               ))}
+            </div>
 
-              <div className="mt-6">
-                <label className="block text-sm font-semibold text-gray-800 mb-2">Other symptoms or notes</label>
-                <textarea
-                  value={symptomNotes}
-                  onChange={(e) => setSymptomNotes(e.target.value)}
-                  placeholder="Describe any other symptoms, severity, or additional observations..."
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-200 resize-none"
-                  rows={4}
-                />
+            {/* Spreading Rate */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Spreading Rate</label>
+              <select
+                value={spreadingRate}
+                onChange={(e) => setSpreadingRate(e.target.value)}
+                className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+              >
+                <option value="static">Static (no change)</option>
+                <option value="slow">Slow progression</option>
+                <option value="rapid">Rapid progression</option>
+              </select>
+            </div>
+
+            {/* Clinical Measurements */}
+            <div className="mb-6 p-4 rounded-2xl border border-blue-200 bg-blue-50">
+              <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                Clinical Measurements (optional — for AI analysis)
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Number of Lesions</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 5"
+                    value={clinicalMeasurements.numberOfLesions}
+                    onChange={(e) => setClinicalMeasurements(prev => ({ ...prev, numberOfLesions: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:border-red-600 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Largest Lesion Size (cm)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="e.g. 3.5"
+                    value={clinicalMeasurements.largestLesionSizeCm}
+                    onChange={(e) => setClinicalMeasurements(prev => ({ ...prev, largestLesionSizeCm: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:border-red-600 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Skin Smear — Right (0–6)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="6"
+                    step="0.5"
+                    placeholder="0–6"
+                    value={clinicalMeasurements.skinSmearRight}
+                    onChange={(e) => setClinicalMeasurements(prev => ({ ...prev, skinSmearRight: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:border-red-600 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Skin Smear — Left (0–6)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="6"
+                    step="0.5"
+                    placeholder="0–6"
+                    value={clinicalMeasurements.skinSmearLeft}
+                    onChange={(e) => setClinicalMeasurements(prev => ({ ...prev, skinSmearLeft: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:border-red-600 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Bacillus Index (BI, 0–6)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="6"
+                    step="0.1"
+                    placeholder="e.g. 2.5"
+                    value={clinicalMeasurements.bacillusIndex}
+                    onChange={(e) => setClinicalMeasurements(prev => ({ ...prev, bacillusIndex: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:border-red-600 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Morphological Index (MI, 0–100%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    placeholder="e.g. 40"
+                    value={clinicalMeasurements.morphologicalIndex}
+                    onChange={(e) => setClinicalMeasurements(prev => ({ ...prev, morphologicalIndex: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:border-red-600 text-sm"
+                  />
+                </div>
               </div>
+              <p className="text-xs text-blue-600 mt-3">These values are used by the AI model to classify leprosy type and improve risk predictions.</p>
+            </div>
+
+            {/* Additional Symptom Notes */}
+            <div className="mb-8">
+              <label className="block text-sm font-semibold text-gray-800 mb-2">Other symptoms or notes</label>
+              <textarea
+                value={symptomNotes}
+                onChange={(e) => setSymptomNotes(e.target.value)}
+                placeholder="Describe any other symptoms, severity, or additional observations..."
+                className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-200 resize-none"
+                rows={3}
+              />
             </div>
 
             <button
@@ -806,12 +951,36 @@ export default function LeprosyAssistantPage() {
                             🟣 Painful nerves
                           </span>
                         )}
+                        {log.symptoms.nerveThickening && (
+                          <span className="text-sm px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">
+                            🫀 Nerve thickening
+                          </span>
+                        )}
+                        {log.symptoms.lossSensation && (
+                          <span className="text-sm px-2 py-1 bg-pink-100 text-pink-700 rounded-full">
+                            ✋ Loss of sensation
+                          </span>
+                        )}
                         {log.symptoms.other && (
                           <span className="text-sm px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
                             ⚪ Other
                           </span>
                         )}
                       </div>
+
+                      {log.clinicalMeasurements && Object.values(log.clinicalMeasurements).some(v => v !== undefined && v !== null) && (
+                        <div className="mb-2 p-2 bg-blue-50 rounded-lg">
+                          <p className="text-xs text-blue-700 font-semibold mb-1">Clinical Measurements:</p>
+                          <div className="grid grid-cols-2 gap-1 text-xs text-blue-900">
+                            {log.clinicalMeasurements.numberOfLesions !== undefined && <span>Lesions: {log.clinicalMeasurements.numberOfLesions}</span>}
+                            {log.clinicalMeasurements.largestLesionSizeCm !== undefined && <span>Size: {log.clinicalMeasurements.largestLesionSizeCm} cm</span>}
+                            {log.clinicalMeasurements.skinSmearRight !== undefined && <span>Smear R: {log.clinicalMeasurements.skinSmearRight}</span>}
+                            {log.clinicalMeasurements.skinSmearLeft !== undefined && <span>Smear L: {log.clinicalMeasurements.skinSmearLeft}</span>}
+                            {log.clinicalMeasurements.bacillusIndex !== undefined && <span>BI: {log.clinicalMeasurements.bacillusIndex}</span>}
+                            {log.clinicalMeasurements.morphologicalIndex !== undefined && <span>MI: {log.clinicalMeasurements.morphologicalIndex}%</span>}
+                          </div>
+                        </div>
+                      )}
 
                       {log.symptoms.other && (
                         <div className="mb-2 p-2 bg-gray-50 rounded-lg">
@@ -988,6 +1157,17 @@ export default function LeprosyAssistantPage() {
                     })}
                     className="px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
                   />
+                  <input
+                    type="number"
+                    placeholder="Household Contacts (for AI model)"
+                    min="0"
+                    value={profile.personalInfo.householdContacts ?? ''}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      personalInfo: { ...profile.personalInfo, householdContacts: e.target.value ? parseInt(e.target.value) : undefined }
+                    })}
+                    className="px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  />
                 </div>
               </div>
 
@@ -1037,6 +1217,19 @@ export default function LeprosyAssistantPage() {
                     })}
                     className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
                   />
+
+                  <label className="flex items-center gap-3 cursor-pointer p-2">
+                    <input
+                      type="checkbox"
+                      checked={profile.medical.prevTreatment}
+                      onChange={(e) => setProfile({
+                        ...profile,
+                        medical: { ...profile.medical, prevTreatment: e.target.checked }
+                      })}
+                      className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-600"
+                    />
+                    <span className="text-sm font-semibold text-gray-700">Previously treated for leprosy</span>
+                  </label>
 
                   {/* Medications */}
                   <div>
@@ -1356,6 +1549,45 @@ export default function LeprosyAssistantPage() {
                     <option value="never">Never Smoked</option>
                     <option value="former">Former Smoker</option>
                     <option value="current">Current Smoker</option>
+                  </select>
+
+                  <select
+                    value={profile.lifestyle.stressLevel}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      lifestyle: { ...profile.lifestyle, stressLevel: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="low">Stress Level — Low</option>
+                    <option value="moderate">Stress Level — Moderate</option>
+                    <option value="high">Stress Level — High</option>
+                  </select>
+
+                  <select
+                    value={profile.lifestyle.treatmentAccess}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      lifestyle: { ...profile.lifestyle, treatmentAccess: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="good">Treatment Access — Good</option>
+                    <option value="limited">Treatment Access — Limited</option>
+                    <option value="poor">Treatment Access — Poor</option>
+                  </select>
+
+                  <select
+                    value={profile.lifestyle.hygiene_conditions}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      lifestyle: { ...profile.lifestyle, hygiene_conditions: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="good">Hygiene Conditions — Good</option>
+                    <option value="moderate">Hygiene Conditions — Moderate</option>
+                    <option value="poor">Hygiene Conditions — Poor</option>
                   </select>
                 </div>
               </div>

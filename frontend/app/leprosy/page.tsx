@@ -33,7 +33,7 @@ export default function LeprosyPage() {
         </div>
 
         {/* Quick Action Buttons */}
-        <div className="grid gap-4 sm:grid-cols-2 mb-12">
+        <div className="grid gap-4 sm:grid-cols-3 mb-12">
           <button
             onClick={() => router.push("/leprosy/detect")}
             className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-2 border-blue-200 hover:border-blue-500"
@@ -55,6 +55,18 @@ export default function LeprosyPage() {
             <p className="text-gray-600 mb-4">Chat with our intelligent leprosy assistant</p>
             <span className="inline-block bg-indigo-100 text-indigo-700 px-4 py-2 rounded-full font-semibold text-sm">
               Open Assistant →
+            </span>
+          </button>
+
+          <button
+            onClick={() => router.push("/leprosy/predict")}
+            className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-2 border-purple-200 hover:border-purple-500"
+          >
+            <div className="text-4xl mb-3">🧬</div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">AI Type Prediction</h3>
+            <p className="text-gray-600 mb-4">Classify leprosy type from clinical measurements</p>
+            <span className="inline-block bg-purple-100 text-purple-700 px-4 py-2 rounded-full font-semibold text-sm">
+              Run Prediction →
             </span>
           </button>
         </div>
