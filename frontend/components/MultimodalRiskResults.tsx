@@ -9,7 +9,7 @@ interface Props {
 }
 
 export default function MultimodalRiskResults({ data }: Props) {
-  const { totalRiskScore, riskLevel, contributors, recommendations } = data;
+  const { totalRiskScore, riskLevel, contributors, recommendations, imageClassName, imageProbability } = data;
 
   const getScoreColor = () => {
     if (riskLevel === "Low") return "text-green-600";
@@ -30,6 +30,19 @@ export default function MultimodalRiskResults({ data }: Props) {
       <h2 className="text-3xl font-black text-gray-900 mb-8 border-b pb-4">
         Multimodal Risk Analysis Report
       </h2>
+
+      {/* DEBUG: AI Classification Display */}
+      <div className="mb-8 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+        <h3 className="text-sm font-bold text-blue-900 mb-2">🤖 AI Classification Result</h3>
+        <div className="flex justify-between items-center">
+          <span className="text-lg font-bold text-blue-900">
+            Detected: <span className="text-blue-700">{imageClassName || "Unknown"}</span>
+          </span>
+          <span className="text-lg font-bold text-blue-700">
+            Confidence: {imageProbability ? `${(imageProbability * 100).toFixed(1)}%` : "N/A"}
+          </span>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Left Column: Score & Gauge */}

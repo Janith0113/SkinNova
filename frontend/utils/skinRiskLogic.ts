@@ -23,6 +23,8 @@ export interface RiskResult {
   riskLevel: "Low" | "Moderate" | "High" | "Very High";
   contributors: { factor: string; impact: number; description: string }[];
   recommendations: string[];
+  imageClassName?: string; // What the AI classified the image as
+  imageProbability?: number; // Confidence score
 }
 
 export const calculateSkinCancerRisk = (
@@ -44,7 +46,8 @@ export const calculateSkinCancerRisk = (
 
   if (isMalignantPrediction) {
     // Malignant prediction: Higher base score
-    const impact = Math.round(imageProbability * 60); // 0-60 points from image alone
+    // Use a more aggressive scaling to ensure melanoma images reach >50% with metadata
+    const impact = Math.round(imageProbability * 50) + 15; // 15-65 points from image alone
     score += impact;
     contributors.push({
       factor: "AI Image Analysis",
@@ -61,117 +64,141 @@ export const calculateSkinCancerRisk = (
     });
   }
 
-  // --- 2. ABCDE Rules & Lesion Symptoms (only meaningful additions to benign cases) ---
-  // D = Diameter > 6mm
-  const maxDiameter = Math.max(factors.diameter1 || 0, factors.diameter2 || 0);
-  if (maxDiameter > 6) {
-    const diameterImpact = isMalignantPrediction ? 12 : 5; // Smaller impact for benign
-    score += diameterImpact;
-    contributors.push({
-      factor: "Lesion Diameter",
-      impact: diameterImpact,
-      description: `Lesion size (${maxDiameter}mm) exceeds the 6mm concern threshold.`
-    });
-  }
-
-  // E = Evolving (Changed, Grow, Elevation)
-  if (factors.changed || factors.grow) {
-    const evolutionImpact = isMalignantPrediction ? 20 : 8; // Smaller impact for benign
-    score += evolutionImpact;
-    contributors.push({
-      factor: "Evolution",
-      impact: evolutionImpact,
-      description: "Reports of change in size, shape, or color."
-    });
-  }
+  // --- 2. ABCDE Rules & Lesion Symptoms (only for MALIGNANT predictions) ---
+  // If image is benign, symptoms are minimized. Only personal history matters.
   
-  if (factors.elevation) {
-    const elevationImpact = isMalignantPrediction ? 10 : 4; // Smaller impact for benign
-    score += elevationImpact;
-    contributors.push({
-      factor: "Elevation",
-      impact: elevationImpact,
-      description: "Lesion is elevated above skin surface."
-    });
-  }
+  if (isMalignantPrediction) {
+    // D = Diameter > 6mm
+    const maxDiameter = Math.max(factors.diameter1 || 0, factors.diameter2 || 0);
+    if (maxDiameter > 6) {
+      const diameterImpact = 12;
+      score += diameterImpact;
+      contributors.push({
+        factor: "Lesion Diameter",
+        impact: diameterImpact,
+        description: `Lesion size (${maxDiameter}mm) exceeds the 6mm concern threshold.`
+      });
+    }
 
-  // Symptoms - Reduced weight for benign predictions
-  if (factors.bleed) {
-    const bleedImpact = isMalignantPrediction ? 25 : 12; // Bleeding is significant but less for benign
-    score += bleedImpact;
-    contributors.push({
-      factor: "Bleeding",
-      impact: bleedImpact,
-      description: "Spontaneous bleeding is a warning sign."
-    });
-  }
+    // E = Evolving (Changed, Grow, Elevation)
+    if (factors.changed || factors.grow) {
+      const evolutionImpact = 20;
+      score += evolutionImpact;
+      contributors.push({
+        factor: "Evolution",
+        impact: evolutionImpact,
+        description: "Reports of change in size, shape, or color."
+      });
+    }
+    
+    if (factors.elevation) {
+      const elevationImpact = 10;
+      score += elevationImpact;
+      contributors.push({
+        factor: "Elevation",
+        impact: elevationImpact,
+        description: "Lesion is elevated above skin surface."
+      });
+    }
 
-  if (factors.itch || factors.hurt) {
-    const symptomImpact = isMalignantPrediction ? 10 : 3; // Minimal impact for benign
-    score += symptomImpact;
-    contributors.push({
-      factor: "Sensory Symptoms",
-      impact: symptomImpact,
-      description: "Itching or pain associated with the lesion."
-    });
-  }
+    // Symptoms - Full weight for malignant predictions
+    if (factors.bleed) {
+      const bleedImpact = 25;
+      score += bleedImpact;
+      contributors.push({
+        factor: "Bleeding",
+        impact: bleedImpact,
+        description: "Spontaneous bleeding is a warning sign."
+      });
+    }
 
-  // --- 3. Patient History & Demographics (strong personal risk factors) ---
-  // History - These are more meaningful regardless of image
-  if (factors.skinCancerHistory) {
-    score += 25; // Strong personal risk factor
-    contributors.push({
-      factor: "Personal History",
-      impact: 25,
-      description: "Previous history of skin cancer increases recurrence risk."
-    });
+    if (factors.itch || factors.hurt) {
+      const symptomImpact = 10;
+      score += symptomImpact;
+      contributors.push({
+        factor: "Sensory Symptoms",
+        impact: symptomImpact,
+        description: "Itching or pain associated with the lesion."
+      });
+    }
   }
+  // For benign predictions, lesion symptoms are NOT significantly weighted
 
-  if (factors.cancerHistory) {
-    const familyImpact = isMalignantPrediction ? 10 : 5;
-    score += familyImpact;
-    contributors.push({
-      factor: "Family History",
-      impact: familyImpact,
-      description: "Family history of cancer implies genetic predisposition."
-    });
+  // --- 3. For BENIGN Images: VERY Limited Metadata ---
+  // Benign images should NEVER exceed 20 points total, ensuring they stay well under 50%
+  if (!isMalignantPrediction) {
+    // Only add minimal personal history for benign
+    if (factors.skinCancerHistory) {
+      const minimalHistoryImpact = 10;
+      score += minimalHistoryImpact; // Max 10+10 = 20
+      contributors.push({
+        factor: "Personal History",
+        impact: minimalHistoryImpact,
+        description: "Previous history of skin cancer noted."
+      });
+    }
+    
+    // Cap benign at 20 to ensure well under 50%
+    score = Math.max(0, Math.min(20, score));
+  } else {
+    // --- For MALIGNANT Images: Full Metadata Integration ---
+    // Personal skin cancer history
+    if (factors.skinCancerHistory) {
+      const personalHistoryImpact = 25;
+      score += personalHistoryImpact;
+      contributors.push({
+        factor: "Personal History",
+        impact: personalHistoryImpact,
+        description: "Previous history of skin cancer increases recurrence risk."
+      });
+    }
+
+    // Family history
+    if (factors.cancerHistory) {
+      const familyImpact = 10;
+      score += familyImpact;
+      contributors.push({
+        factor: "Family History",
+        impact: familyImpact,
+        description: "Family history of cancer implies genetic predisposition."
+      });
+    }
+
+    // Age - Cumulative risk
+    if (factors.age > 50) {
+      const ageImpact = 10;
+      score += ageImpact;
+      contributors.push({
+        factor: "Age",
+        impact: ageImpact,
+        description: "Age over 50 carries higher cumulative sun exposure risk."
+      });
+    }
+
+    // Lifestyle - General health factors
+    if (factors.smoke) {
+      const smokeImpact = 5;
+      score += smokeImpact;
+      contributors.push({
+        factor: "Smoking",
+        impact: smokeImpact,
+        description: "Smoking impairs healing and immune response."
+      });
+    }
+
+    if (factors.pesticide) {
+      const pestImpact = 5;
+      score += pestImpact;
+      contributors.push({
+        factor: "Environmental Exposure",
+        impact: pestImpact,
+        description: "Exposure to pesticides/chemicals."
+      });
+    }
+    
+    // Malignant image: Allow up to 100
+    score = Math.max(0, Math.min(100, score));
   }
-
-  // Age - Cumulative risk
-  if (factors.age > 50) {
-    const ageImpact = isMalignantPrediction ? 10 : 3;
-    score += ageImpact;
-    contributors.push({
-      factor: "Age",
-      impact: ageImpact,
-      description: "Age over 50 carries higher cumulative sun exposure risk."
-    });
-  }
-
-  // Lifestyle - General health factors
-  if (factors.smoke) {
-    const smokeImpact = isMalignantPrediction ? 5 : 2;
-    score += smokeImpact;
-    contributors.push({
-      factor: "Smoking",
-      impact: smokeImpact,
-      description: "Smoking impairs healing and immune response."
-    });
-  }
-
-  if (factors.pesticide) {
-    const pestImpact = isMalignantPrediction ? 5 : 2;
-    score += pestImpact;
-    contributors.push({
-      factor: "Environmental Exposure",
-      impact: pestImpact,
-      description: "Exposure to pesticides/chemicals."
-    });
-  }
-
-  // --- 4. Normalization and Classification ---
-  // Cap at 100, Floor at 0
-  score = Math.max(0, Math.min(100, score));
 
   let riskLevel: "Low" | "Moderate" | "High" | "Very High" = "Low";
   if (score >= 75) riskLevel = "Very High";
@@ -197,6 +224,8 @@ export const calculateSkinCancerRisk = (
     totalRiskScore: score,
     riskLevel,
     contributors: contributors.sort((a, b) => b.impact - a.impact),
-    recommendations
+    recommendations,
+    imageClassName: imageClassName,
+    imageProbability: imageProbability
   };
 };
