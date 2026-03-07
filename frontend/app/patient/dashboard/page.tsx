@@ -347,6 +347,13 @@ export default function PatientDashboard() {
     try {
       setLoadingAppointments(true);
       const token = localStorage.getItem("token");
+      
+      if (!token) {
+        console.warn("No authentication token found. User may not be logged in.");
+        setAppointments([]);
+        return;
+      }
+
       const response = await fetch("http://localhost:4000/api/appointments", {
         method: "GET",
         headers: {
@@ -356,13 +363,22 @@ export default function PatientDashboard() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch appointments");
+        const errorDetails = await response.text();
+        console.error(
+          `API Error: ${response.status} ${response.statusText}`,
+          errorDetails
+        );
+        throw new Error(
+          `Failed to fetch appointments: ${response.status} ${response.statusText}`
+        );
       }
 
       const data = await response.json();
       setAppointments(data.appointments || []);
-    } catch (err) {
-      console.error("Error fetching appointments:", err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("Error fetching appointments:", errorMessage);
+      setAppointments([]);
     } finally {
       setLoadingAppointments(false);
     }
@@ -385,8 +401,9 @@ export default function PatientDashboard() {
       const data = await response.json();
       console.log("Verified doctors found:", data.doctors);
       setDoctors(data.doctors || []);
-    } catch (err) {
-      console.error("Error fetching doctors:", err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("Error fetching doctors:", errorMessage);
       setDoctors([]);
     }
   };
@@ -413,8 +430,9 @@ export default function PatientDashboard() {
         setScanData(data.scansByDisease);
         console.log("Scans loaded:", data.scansByDisease);
       }
-    } catch (err) {
-      console.error("Error fetching scans:", err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("Error fetching scans:", errorMessage);
     } finally {
       setLoadingScans(false);
     }
@@ -437,8 +455,9 @@ export default function PatientDashboard() {
 
       const data = await response.json();
       setDoctorAvailability(data.availabilitySlots || []);
-    } catch (err) {
-      console.error("Error fetching doctor availability:", err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("Error fetching doctor availability:", errorMessage);
       setDoctorAvailability([]);
     }
   };
@@ -596,7 +615,7 @@ export default function PatientDashboard() {
       setShowScheduleModal(false);
       setScheduleFormData({ requestedDate: "", reason: "" });
       await fetchAppointments();
-    } catch (err) {
+    } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to schedule appointment");
     }
   };
@@ -634,7 +653,7 @@ export default function PatientDashboard() {
       }
       alert("Profile photo uploaded successfully!");
       setShowPhotoModal(false);
-    } catch (err) {
+    } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to upload profile photo");
     } finally {
       setUploadingPhoto(false);
@@ -667,7 +686,7 @@ export default function PatientDashboard() {
       setProfilePhoto("");
       alert("Profile photo removed successfully!");
       setShowPhotoModal(false);
-    } catch (err) {
+    } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to remove profile photo");
     } finally {
       setUploadingPhoto(false);
