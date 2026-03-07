@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { tineaModel } from './tineaModelClient';
-import TineaGradCAMVisualization from '@/components/TineaGradCAMVisualization';
 
 interface TineaResult {
   success: boolean;
@@ -214,8 +213,6 @@ export default function TinePage() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [doishaAnswers, setDoishaAnswers] = useState<string[]>([]);
   const [doishaResult, setDoishaResult] = useState<DoishaResult | null>(null);
-  const [gradcamData, setGradcamData] = useState<any>(null);
-  const [gradcamLoading, setGradcamLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -412,9 +409,6 @@ export default function TinePage() {
         recommendations: info.skinAdvice,
         skinAdvice: info.skinAdvice
       });
-
-      // Compute GradCAM explanation for doisha prediction
-      computeGradCAM(newAnswers, doishKey);
     }
   };
 
@@ -422,41 +416,7 @@ export default function TinePage() {
     setCurrentQuestion(0);
     setDoishaAnswers([]);
     setDoishaResult(null);
-    setGradcamData(null);
     setDetectionMode('tinea');
-  };
-
-  const computeGradCAM = async (answers: string[], doisha: 'vata' | 'pitta' | 'kapha') => {
-    try {
-      setGradcamLoading(true);
-      
-      // Convert doisha answers to numeric values (0 = A/Vata, 1 = B/Pitta, 2 = C/Kapha)
-      const doishaMap = { vata: 0, pitta: 1, kapha: 2 };
-      const quizAnswers = answers.map(a => doishaMap[a as keyof typeof doishaMap]);
-      
-      const response = await fetch('/api/tinea-xai/compute-cnn-gradcam', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          quizAnswers,
-          predictedDoisha: doisha
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to compute GradCAM');
-      }
-
-      const result = await response.json();
-      if (result.success) {
-        setGradcamData(result.data);
-      }
-    } catch (err) {
-      console.error('GradCAM computation error:', err);
-      // Non-critical error - page still works without GradCAM
-    } finally {
-      setGradcamLoading(false);
-    }
   };
 
   return (
@@ -1033,28 +993,6 @@ export default function TinePage() {
                   <p className="text-sm font-semibold text-yellow-900 mb-2">⚠️ TINEA RISK PROFILE:</p>
                   <p className="text-yellow-900">{DOISHA_INFO[doishaResult.dominantDoisha].tineaRisk}</p>
                 </div>
-
-                {/* GradCAM Explanation */}
-                {gradcamLoading && (
-                  <div className="bg-blue-50 rounded-2xl p-8 border-2 border-blue-300 text-center">
-                    <p className="text-lg text-blue-900 font-semibold">⏳ Computing explanation...</p>
-                  </div>
-                )}
-
-                {gradcamData && (
-                  <div className="space-y-4">
-                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-indigo-300">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">🔬 Why You're {doishaResult.dominantDoisha.charAt(0).toUpperCase() + doishaResult.dominantDoisha.slice(1)}</h3>
-                      <p className="text-gray-700 text-sm mb-4">AI Explainability Analysis - See which answers most influenced your doisha classification</p>
-                    </div>
-                    <TineaGradCAMVisualization
-                      doishaType={doishaResult.dominantDoisha}
-                      gradcamData={gradcamData.gradcam_data}
-                      overallImportance={gradcamData.overall_importance}
-                      topFeatures={gradcamData.top_features}
-                    />
-                  </div>
-                )}
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3">
