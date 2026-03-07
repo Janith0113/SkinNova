@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { tineaModel } from './tineaModelClient';
 
 interface TineaResult {
@@ -201,6 +202,7 @@ const DOISHA_INFO = {
 };
 
 export default function TinePage() {
+  const router = useRouter();
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -579,6 +581,28 @@ export default function TinePage() {
                 </div>
               </div>
             </div>
+
+            {/* Your Future Tinea Page Button */}
+            <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl shadow-xl p-8 border border-white/40 hover:shadow-2xl transition-all">
+              <div className="flex items-start justify-between mb-4">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
+                  <span className="text-3xl">🔮</span>
+                </div>
+                <span className="rounded-full bg-white/20 px-4 py-1 text-xs font-semibold text-white">
+                  Coming Soon
+                </span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">Your Future Prediction</h3>
+              <p className="text-indigo-100 text-sm mb-6">
+                Discover personalized insights about your health, wealth, and future based on your birth details and astrological analysis.
+              </p>
+              <button
+                onClick={() => (window.location.href = "/future-tinea")}
+                className="w-full py-3 rounded-2xl bg-white text-indigo-800 font-semibold hover:bg-indigo-50 transition-colors shadow-lg hover:shadow-xl"
+              >
+                Get Your Prediction
+              </button>
+            </div>
           </div>
         )}
 
@@ -618,55 +642,6 @@ export default function TinePage() {
               <>
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">🔍 Tinea AI Detection</h1>
                 <p className="text-gray-700 text-lg mb-8">Upload or capture an image for instant AI-powered analysis</p>
-
-                {/* Smart Device Connector - Smartwatch Only */}
-                <div className="mb-8 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-2xl p-6 border-2 border-blue-300">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    ⌚ Smartwatch Health Data Integration
-                  </h3>
-                  <p className="text-gray-700 mb-4">Connect your smartwatch to monitor health metrics and skin condition patterns:</p>
-                  <div className="space-y-4">
-                    <div className="bg-white/70 hover:bg-white rounded-xl transition-all p-6 hover:shadow-lg border-2 border-blue-200">
-                      <div className="flex items-start gap-4">
-                        <div className="text-5xl">⌚</div>
-                        <div className="flex-1">
-                          <p className="font-bold text-lg text-gray-900">Apple Watch</p>
-                          <p className="text-gray-600 text-sm mt-1">Real-time heart rate, body temperature, and stress monitoring</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Heart Rate</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Temperature</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Sleep Data</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Stress Level</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-white/70 hover:bg-white rounded-xl transition-all p-6 hover:shadow-lg border-2 border-blue-200">
-                      <div className="flex items-start gap-4">
-                        <div className="text-5xl">⌚</div>
-                        <div className="flex-1">
-                          <p className="font-bold text-lg text-gray-900">Wear OS & Samsung Watch</p>
-                          <p className="text-gray-600 text-sm mt-1">Compatible with all Wear OS and Samsung Galaxy Watch devices</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Activity Tracking</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">Hydration</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">ECG Data</span>
-                            <span className="text-xs bg-blue-200 text-blue-900 px-3 py-1 rounded-full font-medium">SpO2</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-r from-green-100 to-blue-100 rounded-xl p-4 border-2 border-green-300">
-                      <p className="font-semibold text-green-900 mb-2">📊 Data Benefits:</p>
-                      <ul className="text-sm text-green-800 space-y-1">
-                        <li>• Track skin condition improvements over time</li>
-                        <li>• Correlate infection patterns with stress levels</li>
-                        <li>• Monitor temperature changes during treatment</li>
-                        <li>• Get personalized health recommendations based on your data</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
 
             {!result ? (
               <div className="space-y-8">
