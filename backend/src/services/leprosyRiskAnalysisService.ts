@@ -2,6 +2,7 @@ import SymptomLog from '../models/SymptomLog'
 import LeprosyUserProfile from '../models/LeprosyUserProfile'
 import LeprosyRiskAssessment from '../models/LeprosyRiskAssessment'
 import { IRiskAssessment } from '../models/LeprosyRiskAssessment'
+import leprosyXAIService from './leprosyXAIService'
 
 interface ComponentScores {
   symptomProgressionRisk: number
@@ -84,6 +85,15 @@ class LeprosyRiskAnalysisService {
       // Calculate next checkup date
       const nextCheckupDueDate = this.calculateNextCheckupDate(overallScore, trajectory)
 
+      // Generate XAI explanation
+      const xaiExplanation = await leprosyXAIService.generateXAIExplanation(
+        userId,
+        Math.round(overallScore),
+        componentScores,
+        profile,
+        symptomLogs
+      )
+
       const assessment: IRiskAssessment = {
         overallRiskScore: Math.round(overallScore),
         riskLevel,
@@ -93,7 +103,8 @@ class LeprosyRiskAnalysisService {
         protectiveFactors,
         predictions,
         recommendations,
-        nextCheckupDueDate
+        nextCheckupDueDate,
+        xai: xaiExplanation
       }
 
       // Save assessment
