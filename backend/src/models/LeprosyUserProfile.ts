@@ -7,11 +7,13 @@ interface ILeprosyUserProfile extends Document {
     gender?: 'male' | 'female' | 'other'
     weight?: number
     height?: number
+    householdContacts?: number
   }
   medical: {
     leprosyType?: 'tuberculoid' | 'borderline' | 'lepromatous' | 'multibacillary' | 'paucibacillary' | 'unknown'
     treatmentDuration?: number // in months
     treatmentStatus?: 'ongoing' | 'completed' | 'not-started'
+    prevTreatment?: boolean
     currentMedications?: string[]
     allergies?: string[]
     comorbidities?: string[]
@@ -44,6 +46,10 @@ interface ILeprosyUserProfile extends Document {
       severity: 'mild' | 'moderate' | 'severe'
     }>
     eyeStatus?: 'normal' | 'mild' | 'moderate' | 'severe'
+    skinSmearRight?: number
+    skinSmearLeft?: number
+    bacillusIndex?: number
+    morphologicalIndex?: number
   }
   riskFactors?: {
     hivStatus?: 'positive' | 'negative' | 'unknown'
@@ -80,7 +86,8 @@ const LeprosyUserProfileSchema = new Schema<ILeprosyUserProfile>(
       age: { type: Number, min: 0, max: 150 },
       gender: { type: String, enum: ['male', 'female', 'other'] },
       weight: { type: Number, min: 0 },
-      height: { type: Number, min: 0 }
+      height: { type: Number, min: 0 },
+      householdContacts: { type: Number, min: 0, default: 0 }
     },
     medical: {
       leprosyType: {
@@ -92,6 +99,7 @@ const LeprosyUserProfileSchema = new Schema<ILeprosyUserProfile>(
         type: String,
         enum: ['ongoing', 'completed', 'not-started']
       },
+      prevTreatment: { type: Boolean, default: false },
       currentMedications: [String],
       allergies: [String],
       comorbidities: [String]
@@ -133,7 +141,11 @@ const LeprosyUserProfileSchema = new Schema<ILeprosyUserProfile>(
       eyeStatus: {
         type: String,
         enum: ['normal', 'mild', 'moderate', 'severe']
-      }
+      },
+      skinSmearRight: { type: Number, min: 0, max: 6 },
+      skinSmearLeft: { type: Number, min: 0, max: 6 },
+      bacillusIndex: { type: Number, min: 0, max: 6 },
+      morphologicalIndex: { type: Number, min: 0, max: 100 }
     },
     riskFactors: {
       hivStatus: {
