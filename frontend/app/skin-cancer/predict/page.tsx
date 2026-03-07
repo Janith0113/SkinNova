@@ -377,13 +377,13 @@ export default function SkinCancerPredict() {
                 Back
               </button>
               <button
-                onClick={() => router.push('/skin-cancer')}
+                onClick={() => router.push('/skin-cancer/information')}
                 className="px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
               >
                 Learn More
               </button>
               <button
-                onClick={() => router.push('/doctor')}
+                onClick={() => router.push('/patient/dashboard')}
                 className="px-8 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition"
               >
                 Find a Doctor
