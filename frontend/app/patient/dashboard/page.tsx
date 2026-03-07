@@ -268,7 +268,7 @@ const SYMPTOM_QUESTIONS: SymptomQuestion[] = [
 
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
-  const [profilePhoto, setProfilePhoto] = useState<string>("");
+  const [profilePhoto, setProfilePhoto] = useState<string>("https://api.dicebear.com/7.x/avataaars/svg?seed=SkinNova");
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedDisease, setSelectedDisease] = useState<DiseaseKey>("psoriasis");
@@ -806,20 +806,27 @@ export default function PatientDashboard() {
   const riskLevel = getAverageRiskLevel(selectedDisease);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 pt-28 px-4 sm:px-6 lg:px-8 pb-24">
-      <div className="max-w-6xl mx-auto space-y-10">
+    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-emerald-50 to-teal-100 pt-28 px-4 sm:px-6 lg:px-8 pb-24 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-cyan-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-1/2 w-96 h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div className="max-w-6xl mx-auto space-y-10 relative z-10">
         {/* Top section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div className="flex items-center gap-6">
             {/* Profile Photo - Creative Design */}
             <div className="relative group">
               {/* Animated background gradient circles */}
-              <div className="absolute -inset-1 bg-gradient-to-br from-emerald-400 via-sky-500 to-cyan-400 rounded-full blur-xl opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+              <div className="absolute -inset-2 bg-gradient-to-br from-emerald-300 via-sky-300 to-cyan-300 rounded-full blur-2xl opacity-70 group-hover:opacity-90 transition-opacity duration-300 animate-pulse"></div>
               
               {/* Main profile container */}
               <div
                 onClick={() => setShowPhotoModal(true)}
-                className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-emerald-500 to-sky-600 flex items-center justify-center cursor-pointer overflow-hidden group/photo shadow-2xl hover:shadow-3xl transition-all duration-300 border-4 border-white"
+                className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-gradient-to-br from-emerald-400 to-sky-500 flex items-center justify-center cursor-pointer overflow-hidden group/photo shadow-2xl hover:shadow-3xl transition-all duration-300 border-4 border-white backdrop-blur-xl"
               >
                 {/* Animated border effect */}
                 <div className="absolute inset-0 rounded-full border-2 border-transparent bg-gradient-to-r from-white/50 via-transparent to-white/50 opacity-0 group-hover/photo:opacity-100 transition-opacity duration-300 animate-spin" style={{ animationDuration: '3s' }}></div>
@@ -829,49 +836,48 @@ export default function PatientDashboard() {
                     src={profilePhoto}
                     alt="Profile"
                     className="w-full h-full object-cover relative z-10 group-hover/photo:scale-110 transition-transform duration-300"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://api.dicebear.com/7.x/avataaars/svg?seed=SkinNova";
+                    }}
                   />
-                ) : (
-                  <span className="text-5xl sm:text-6xl relative z-10 group-hover/photo:scale-125 transition-transform duration-300">👤</span>
-                )}
+                ) : null}
                 
                 {/* Hover overlay with gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-0 group-hover/photo:opacity-100 transition-all duration-300 flex items-end justify-center pb-4 z-20 rounded-full">
                   <span className="text-white text-xs font-bold uppercase tracking-wider">Upload</span>
                 </div>
-
-                {/* Status indicator badge */}
-                <div className="absolute -bottom-2 -right-2 w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full border-3 border-white shadow-lg z-30 flex items-center justify-center">
-                  <span className="text-xs">✓</span>
-                </div>
               </div>
+
+              {/* Online status indicator - positioned outside overflow */}
+              <div className="absolute bottom-2 right-2 w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-green-600 to-green-700 rounded-full border-3 border-white shadow-lg z-40 animate-pulse" title="Online"></div>
             </div>
 
             <div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-                Hi, <span className="bg-gradient-to-r from-emerald-600 to-sky-600 bg-clip-text text-transparent">{user.name}</span>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-800 tracking-tight">
+                Hi, <span className="bg-gradient-to-r from-emerald-600 via-sky-600 to-cyan-600 bg-clip-text text-transparent animate-pulse">{user.name}</span>
               </h1>
               <p className="mt-3 text-sm sm:text-base text-gray-700 max-w-xl leading-relaxed">
-                Welcome to your skinova space. Track your skin health, review AI insights,
-                and stay ahead of potential issues with simple, clear guidance.
+                Welcome to your SkinNova dashboard. Track your skin health, review AI insights,
+                and stay ahead with intelligent personalized guidance.
               </p>
             </div>
           </div>
           <div className="flex flex-col items-end gap-3">
-            <span className="inline-flex items-center rounded-full bg-sky-600/90 px-3 py-1 text-xs font-semibold text-white shadow-md">
-              Role • {user.role?.toUpperCase()}
+            <span className="inline-flex items-center rounded-full bg-gradient-to-r from-sky-600/90 to-emerald-600/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-xl border border-sky-400/50">
+              ✨ Role • {user.role?.toUpperCase()}
             </span>
           </div>
         </div>
 
-        {/* Disease selector tabs */}
-        <div className="flex flex-wrap gap-3 items-center justify-between">
+        {/* Disease selector tabs - Creative Design */}
+        <div className="flex flex-wrap gap-3 items-center justify-between pb-6 border-b border-emerald-200">
           <div className="flex flex-wrap gap-3">
             {(
               [
-                { key: "psoriasis", label: "Psoriasis" },
-                { key: "tinea", label: "Tinea" },
-                { key: "leprosy", label: "Leprosy" },
-                { key: "skinCancer", label: "Skin Cancer" },
+                { key: "psoriasis", label: "🟣 Psoriasis" },
+                { key: "tinea", label: "🟡 Tinea" },
+                { key: "leprosy", label: "🔴 Leprosy" },
+                { key: "skinCancer", label: "🟠 Skin Cancer" },
               ] as { key: DiseaseKey; label: string }[]
             ).map((d) => {
               const active = selectedDisease === d.key;
@@ -879,10 +885,10 @@ export default function PatientDashboard() {
                 <button
                   key={d.key}
                   onClick={() => setSelectedDisease(d.key)}
-                  className={`px-4 py-2 rounded-full text-sm font-semibold shadow-sm transition-all border ${
+                  className={`px-5 py-2.5 rounded-full text-sm font-semibold shadow-md transition-all border backdrop-blur-xl ${
                     active
-                      ? "bg-white/80 border-transparent text-emerald-800"
-                      : "bg-white/10 border-white/50 text-gray-700 hover:bg-white/40"
+                      ? "bg-gradient-to-r from-sky-500 to-emerald-500 border-sky-400 text-white scale-105"
+                      : "bg-white/60 border-sky-200 text-gray-700 hover:bg-white/80"
                   }`}
                 >
                   {d.label}
@@ -894,7 +900,7 @@ export default function PatientDashboard() {
           <div className="flex gap-3">
             <button
               onClick={() => setShowSymptomChecker(true)}
-              className="px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all border border-purple-400"
+              className="px-6 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-sky-600 to-emerald-600 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all border border-sky-400/50 backdrop-blur-xl"
             >
               🔍 Symptom Checker
             </button>
@@ -927,7 +933,7 @@ export default function PatientDashboard() {
 
         {/* Status cards – content depends on selectedDisease */}
         <div className="grid gap-6 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-lg p-5 flex flex-col gap-2">
+          <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-sky-200 shadow-lg p-5 flex flex-col gap-2">
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
               Last Scan ({cfg.label})
             </span>
@@ -938,7 +944,7 @@ export default function PatientDashboard() {
               {cfg.upcomingHint}
             </span>
           </div>
-          <div className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-lg p-5 flex flex-col gap-2">
+          <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-sky-200 shadow-lg p-5 flex flex-col gap-2">
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
               AI Risk Level
             </span>
@@ -949,7 +955,7 @@ export default function PatientDashboard() {
               {cfg.riskHint}
             </span>
           </div>
-          <div className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-lg p-5 flex flex-col gap-2">
+          <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-sky-200 shadow-lg p-5 flex flex-col gap-2">
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
               Upcoming Plan
             </span>
@@ -963,8 +969,63 @@ export default function PatientDashboard() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
-          {/* Left: Recent results */}
-          <div className="lg:col-span-2 rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-7 space-y-5">
+          {/* Left: Quick actions & tips */}
+          <div className="rounded-3xl bg-white/60 backdrop-blur-xl border border-sky-200 shadow-2xl p-6 sm:p-7 space-y-5 group hover:border-sky-300 transition-all duration-300">
+            <div>
+              <h2 className="text-lg sm:text-xl font-extrabold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                What would you like to do?
+              </h2>
+              <div className="h-1 w-12 bg-gradient-to-r from-sky-500 to-emerald-500 rounded-full mt-2"></div>
+            </div>
+            
+            <div className="space-y-3">
+              <button 
+                onClick={() => {
+                  const diseaseRoutes: Record<DiseaseKey, string> = {
+                    psoriasis: "/psoriasis/upload",
+                    tinea: "/tinea/detect",
+                    leprosy: "/leprosy/detect",
+                    skinCancer: "/skin-cancer/detect"
+                  };
+                  router.push(diseaseRoutes[selectedDisease]);
+                }}
+                className="w-full rounded-2xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold px-4 py-3 shadow-lg hover:shadow-2xl hover:scale-105 transition-all"
+              >
+                🔍 Start new {cfg.label.toLowerCase()} scan
+              </button>
+
+              <button 
+                onClick={() => router.push('/patient/reports')} 
+                className="w-full rounded-2xl bg-blue-700 hover:bg-blue-900 text-white text-sm font-semibold px-4 py-3 shadow-lg hover:shadow-2xl hover:scale-105 transition-all"
+              >
+                📊 View previous reports
+              </button>
+
+              <button 
+                onClick={() => {
+                  const diseaseRoutes: Record<DiseaseKey, string> = {
+                    psoriasis: "/psoriasis/risk-analysis",
+                    tinea: "/tinea",
+                    leprosy: "/leprosy",
+                    skinCancer: "/skin-cancer"
+                  };
+                  router.push(diseaseRoutes[selectedDisease]);
+                }}
+                className="w-full rounded-2xl bg-emerald-700 hover:bg-emerald-900 text-white text-sm font-semibold px-4 py-3 shadow-lg hover:shadow-2xl hover:scale-105 transition-all"
+              >
+                ⚠️ {selectedDisease === 'psoriasis' ? 'Risk analysis' : `Ask a doctor`}
+              </button>
+            </div>
+
+            {/* Daily tip card with Glass Morphism */}
+            <div className="mt-6 rounded-2xl bg-cyan-100 backdrop-blur-2xl px-5 py-4 text-xs text-cyan-900 border border-cyan-300 shadow-lg">
+              <p className="font-semibold mb-2 text-cyan-900 flex items-center gap-2">💡 Daily Tip for {cfg.label}</p>
+              <p className="text-cyan-800 leading-relaxed">{cfg.tip}</p>
+            </div>
+          </div>
+
+          {/* Right: Recent results */}
+          <div className="lg:col-span-2 rounded-3xl bg-white/60 backdrop-blur-xl border border-sky-200 shadow-xl p-6 sm:p-7 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900">
                 Recent Skin Checks – {cfg.label}
@@ -1029,129 +1090,83 @@ export default function PatientDashboard() {
               )}
             </div>
           </div>
-
-          {/* Right: Quick actions & tips */}
-          <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-7 space-y-5">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-              What would you like to do?
-            </h2>
-            <div className="space-y-3">
-              <button 
-                onClick={() => {
-                  const diseaseRoutes: Record<DiseaseKey, string> = {
-                    psoriasis: "/psoriasis/upload",
-                    tinea: "/tinea/detect",
-                    leprosy: "/leprosy/detect",
-                    skinCancer: "/skin-cancer/detect"
-                  };
-                  router.push(diseaseRoutes[selectedDisease]);
-                }}
-                className="w-full rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:shadow-lg hover:scale-105 transition-all"
-              >
-                🔍 Start a new {cfg.label.toLowerCase()} scan
-              </button>
-              <button onClick={() => router.push('/patient/reports')} className="w-full rounded-2xl bg-sky-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:bg-sky-700 transition-all">
-                View my previous reports
-              </button>
-              <button 
-                onClick={() => {
-                  const diseaseRoutes: Record<DiseaseKey, string> = {
-                    psoriasis: "/psoriasis/risk-analysis",
-                    tinea: "/tinea",
-                    leprosy: "/leprosy",
-                    skinCancer: "/skin-cancer"
-                  };
-                  router.push(diseaseRoutes[selectedDisease]);
-                }}
-                className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold px-4 py-2.5 shadow hover:shadow-lg hover:scale-105 transition-all"
-              >
-                {selectedDisease === 'psoriasis' ? 'Psoriasis risk analysis' : `Ask a doctor about ${cfg.label.toLowerCase()}`}
-              </button>
-            </div>
-
-            <div className="mt-4 rounded-2xl bg-white/50 px-4 py-3 text-xs text-gray-700">
-              <p className="font-semibold mb-1">Daily tip for {cfg.label}</p>
-              <p>{cfg.tip}</p>
-            </div>
-          </div>
         </div>
 
-        {/* Doctors Section - Book Appointment */}
-        <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            👨‍⚕️ Available Doctors - Schedule Appointment
-          </h2>
-          
-          {doctors.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-700 text-lg">No verified doctors available</p>
-              <p className="text-gray-600 text-sm mt-2">Please check back later</p>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {doctors.map((doctor) => (
-                <div key={doctor._id} className="bg-white/40 rounded-2xl p-5 border border-white/50 hover:shadow-lg transition-all hover:scale-105 duration-300">
-                  <div className="flex flex-col gap-4 h-full">
-                    {/* Doctor Header */}
-                    <div>
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="text-lg font-bold text-gray-900">Dr. {doctor.name}</p>
-                          <p className="text-xs text-gray-600 mt-1">📧 {doctor.email}</p>
-                        </div>
-                        <div className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-1 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-emerald-700">✓ Verified</span>
-                        </div>
-                      </div>
-                      
-                      {/* Additional Doctor Info */}
-                      <div className="mt-3 space-y-2 text-xs">
-                        {doctor.specialization && (
-                          <p className="flex items-center gap-2 text-gray-700">
-                            <span>🩺</span>
-                            <span className="font-medium">{doctor.specialization}</span>
-                          </p>
-                        )}
-                        {doctor.phone && (
-                          <p className="flex items-center gap-2 text-gray-700">
-                            <span>📱</span>
-                            <span>{doctor.phone}</span>
-                          </p>
-                        )}
-                        {doctor.experience && (
-                          <p className="flex items-center gap-2 text-gray-700">
-                            <span>⏱️</span>
-                            <span>{doctor.experience} years experience</span>
-                          </p>
-                        )}
-                        {doctor.location && (
-                          <p className="flex items-center gap-2 text-gray-700">
-                            <span>📍</span>
-                            <span>{doctor.location}</span>
-                          </p>
-                        )}
-                      </div>
+        {/* Doctors and Appointments Section - 2 Columns */}
+        <div className="grid gap-8 lg:grid-cols-2">
+          {/* Doctors Section - Book Appointment */}
+          <div className="rounded-3xl bg-white/50 backdrop-blur-xl border border-sky-200 shadow-xl p-6 sm:p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              👨‍⚕️ Available Doctors - Schedule Appointment
+            </h2>
+            
+            {doctors.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-700 text-lg">No verified doctors available</p>
+                <p className="text-gray-600 text-sm mt-2">Please check back later</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5">
+                {doctors.map((doctor) => (
+                  <div key={doctor._id} className="w-full bg-gradient-to-br from-white/70 to-white/50 rounded-2xl p-5 border border-sky-200 hover:shadow-xl transition-all hover:scale-105 duration-300 flex flex-col">
+                  {/* Doctor Header Row */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <p className="text-lg font-bold text-gray-900">Dr. {doctor.name}</p>
+                      <p className="text-xs text-gray-600 mt-1">📧 {doctor.email}</p>
                     </div>
-                    
-                    {/* Action Button */}
-                    <button
-                      onClick={() => handleScheduleAppointment(doctor._id)}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-bold shadow-md hover:shadow-lg transition-all text-sm mt-auto"
-                    >
-                      📅 Book Appointment
-                    </button>
+                    <div className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 whitespace-nowrap ml-2">
+                      <span className="text-xs font-semibold text-emerald-700">✓ Verified</span>
+                    </div>
                   </div>
+                  
+                  {/* Doctor Info - Row Layout */}
+                  <div className="flex flex-wrap gap-3 text-xs mb-4">
+                    {doctor.specialization && (
+                      <div className="flex items-center gap-2 bg-cyan-50 rounded-lg px-3 py-2 text-gray-700">
+                        <span>🩺</span>
+                        <span className="font-medium">{doctor.specialization}</span>
+                      </div>
+                    )}
+                    {doctor.experience && (
+                      <div className="flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-2 text-gray-700">
+                        <span>⏱️</span>
+                        <span>{doctor.experience} yrs</span>
+                      </div>
+                    )}
+                    {doctor.phone && (
+                      <div className="flex items-center gap-2 bg-emerald-50 rounded-lg px-3 py-2 text-gray-700">
+                        <span>📱</span>
+                        <span>{doctor.phone}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {doctor.location && (
+                    <div className="text-xs text-gray-600 mb-4">
+                      <span>📍</span>
+                      <span className="ml-2">{doctor.location}</span>
+                    </div>
+                  )}
+                  
+                  {/* Action Button */}
+                  <button
+                    onClick={() => handleScheduleAppointment(doctor._id)}
+                    className="w-full px-4 py-3 bg-gradient-to-r from-blue-700 to-blue-900 hover:from-blue-800 hover:to-blue-950 text-white rounded-lg font-bold shadow-md hover:shadow-lg transition-all text-sm mt-auto"
+                  >
+                    📅 Book Appointment
+                  </button>
                 </div>
               ))}
             </div>
           )}
-        </div>
+          </div>
 
-        {/* Appointments Section */}
-        <div className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl p-6 sm:p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            📅 Your Appointments
-          </h2>
+          {/* Appointments Section */}
+          <div className="rounded-3xl bg-white/50 backdrop-blur-xl border border-sky-200 shadow-xl p-6 sm:p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              📅 Your Appointments
+            </h2>
           
           {appointments.length === 0 ? (
             <div className="text-center py-8">
@@ -1246,6 +1261,7 @@ export default function PatientDashboard() {
               )}
             </div>
           )}
+          </div>
         </div>
 
         {/* Profile Photo Upload Modal */}
