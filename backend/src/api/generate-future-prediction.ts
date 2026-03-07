@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import express from 'express';
 
+const router = express.Router();
 const GEMINI_API_KEY = 'AIzaSyBIK7vOI44BtV7VBUhq8rU2jkR4FRcMpUc';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
@@ -19,16 +20,15 @@ interface PredictionResponse {
   fullPrediction: string;
 }
 
-export async function POST(request: NextRequest) {
+router.post('/generate', async (req: express.Request, res: express.Response) => {
   try {
-    const body: PredictionRequest = await request.json();
+    const body: PredictionRequest = req.body;
     const { dateOfBirth, birthTime, birthVenue } = body;
 
     if (!dateOfBirth || !birthTime || !birthVenue) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return res.status(400).json({
+        error: 'Missing required fields'
+      });
     }
 
     // Create a prompt for Gemini API
@@ -86,10 +86,9 @@ FULL_PREDICTION: [A comprehensive 3-4 paragraph prediction covering all aspects 
     if (!response.ok) {
       const error = await response.text();
       console.error('Gemini API Error:', error);
-      return NextResponse.json(
-        { error: 'Failed to generate prediction' },
-        { status: 500 }
-      );
+      return res.status(500).json({
+        error: 'Failed to generate prediction'
+      });
     }
 
     const data = await response.json();
@@ -98,17 +97,16 @@ FULL_PREDICTION: [A comprehensive 3-4 paragraph prediction covering all aspects 
     // Parse the generated text
     const parsedPrediction = parsePredictionText(generatedText);
 
-    return NextResponse.json({
+    return res.json({
       prediction: parsedPrediction,
     });
   } catch (error) {
     console.error('Error generating prediction:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return res.status(500).json({
+      error: 'Internal server error'
+    });
   }
-}
+});
 
 function parsePredictionText(text: string): PredictionResponse {
   // Initialize default values
@@ -116,7 +114,7 @@ function parsePredictionText(text: string): PredictionResponse {
   let wealth = '';
   let relationships = '';
   let career = '';
-  personalGrowth = '';
+  let personalGrowth = '';
   let recommendations: string[] = [];
   let fullPrediction = '';
 
@@ -200,3 +198,5 @@ function parsePredictionText(text: string): PredictionResponse {
     fullPrediction,
   };
 }
+
+export default router;
