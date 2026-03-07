@@ -93,7 +93,7 @@ router.delete('/profile', requireAuth, async (req: any, res: any) => {
 // Log symptoms
 router.post('/symptom-log', requireAuth, async (req: any, res: any) => {
   try {
-    const { userId, symptoms, notes } = req.body
+    const { userId, symptoms, clinicalMeasurements, affectedAreas, spreadingRate, notes } = req.body
 
     if (!userId || !symptoms) {
       return res.status(400).json({ error: 'Missing required fields' })
@@ -102,6 +102,9 @@ router.post('/symptom-log', requireAuth, async (req: any, res: any) => {
     const symptomLog = new SymptomLog({
       userId,
       symptoms,
+      clinicalMeasurements: clinicalMeasurements || {},
+      affectedAreas: affectedAreas || [],
+      spreadingRate: spreadingRate || 'static',
       notes,
       timestamp: new Date()
     })
@@ -150,6 +153,39 @@ router.get('/latest-symptom-log', requireAuth, async (req: any, res: any) => {
   } catch (error) {
     console.error('Error fetching latest symptom log:', error)
     res.status(500).json({ error: 'Failed to fetch latest symptom log' })
+  }
+})
+
+// AI predict leprosy type using trained ML model
+router.post('/ai-predict', requireAuth, async (req: any, res: any) => {
+  try {
+    const AI_SERVER = process.env.AI_PREDICTION_SERVER_URL || 'http://localhost:5001'
+    const features = req.body
+
+    const response = await fetch(`${AI_SERVER}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(features),
+      signal: AbortSignal.timeout(10000)
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      return res.status(response.status).json({ error: 'AI model server error', details: errText })
+    }
+
+    const data = await response.json()
+    res.json(data)
+  } catch (error: any) {
+    if (error.name === 'TimeoutError') {
+      res.status(504).json({ error: 'AI model server timed out. Ensure the prediction server is running.' })
+    } else if (error.cause?.code === 'ECONNREFUSED') {
+      console.warn('[AI Predict] Python server not running on port 5001. Start leprosy_prediction_server.py first.')
+      res.status(503).json({ error: 'AI prediction server is not running. Please start leprosy_prediction_server.py first.' })
+    } else {
+      console.error('[AI Predict] Unexpected error:', error.message)
+      res.status(503).json({ error: 'AI prediction server unavailable', details: error.message })
+    }
   }
 })
 

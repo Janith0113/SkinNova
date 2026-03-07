@@ -1,8 +1,10 @@
 import SymptomLog from '../models/SymptomLog'
 import LeprosyUserProfile from '../models/LeprosyUserProfile'
 import LeprosyRiskAssessment from '../models/LeprosyRiskAssessment'
-import { IRiskAssessment } from '../models/LeprosyRiskAssessment'
+import { IRiskAssessment, IAIPrediction } from '../models/LeprosyRiskAssessment'
 import leprosyXAIService from './leprosyXAIService'
+
+const AI_PREDICTION_SERVER_URL = process.env.AI_PREDICTION_SERVER_URL || 'http://localhost:5001'
 
 interface ComponentScores {
   symptomProgressionRisk: number
@@ -85,6 +87,9 @@ class LeprosyRiskAnalysisService {
       // Calculate next checkup date
       const nextCheckupDueDate = this.calculateNextCheckupDate(overallScore, trajectory)
 
+      // Call AI model for leprosy type prediction
+      const aiPrediction = await this.callAIPredictionModel(profile, symptomLogs)
+
       // Generate XAI explanation
       const xaiExplanation = await leprosyXAIService.generateXAIExplanation(
         userId,
@@ -104,7 +109,8 @@ class LeprosyRiskAnalysisService {
         predictions,
         recommendations,
         nextCheckupDueDate,
-        xai: xaiExplanation
+        xai: xaiExplanation,
+        aiPrediction: aiPrediction || undefined
       }
 
       // Save assessment
@@ -122,6 +128,97 @@ class LeprosyRiskAnalysisService {
     } catch (error) {
       console.error('[Risk Analysis] Error:', error)
       throw error
+    }
+  }
+
+  /**
+   * Call Python AI prediction model to classify leprosy type
+   */
+  private async callAIPredictionModel(profile: any, symptomLogs: any[]): Promise<IAIPrediction | null> {
+    try {
+      const recentLog = symptomLogs[0]
+
+      // Build feature object from profile and latest symptom log
+      const features = {
+        age: profile?.personalInfo?.age ?? 40,
+        gender: profile?.personalInfo?.gender === 'female' ? 'F' : 'M',
+        duration_of_illness_months: profile?.medical?.treatmentDuration ?? 6,
+        number_of_lesions: recentLog?.clinicalMeasurements?.numberOfLesions ?? 1,
+        largest_lesion_size_cm: recentLog?.clinicalMeasurements?.largestLesionSizeCm ?? 2,
+        skin_smear_right:
+          recentLog?.clinicalMeasurements?.skinSmearRight ??
+          (profile?.clinicalAssessments?.skinSmearRight ?? 0),
+        skin_smear_left:
+          recentLog?.clinicalMeasurements?.skinSmearLeft ??
+          (profile?.clinicalAssessments?.skinSmearLeft ?? 0),
+        nerve_involvement: profile?.leprosy?.nerveInvolvement ? 1 : 0,
+        nerve_thickening: recentLog?.symptoms?.nerveThickening ? 1 : 0,
+        loss_of_sensation: recentLog?.symptoms?.lossSensation ? 1 : 0,
+        muscle_weakness: recentLog?.symptoms?.weakness ? 1 : 0,
+        eye_involvement: profile?.leprosy?.eyeInvolvement ? 1 : 0,
+        bacillus_index:
+          recentLog?.clinicalMeasurements?.bacillusIndex ??
+          (profile?.clinicalAssessments?.bacillusIndex ?? 0),
+        morphological_index:
+          recentLog?.clinicalMeasurements?.morphologicalIndex ??
+          (profile?.clinicalAssessments?.morphologicalIndex ?? 0),
+        household_contacts: profile?.personalInfo?.householdContacts ?? 0,
+        prev_treatment: profile?.medical?.prevTreatment ? 1 : 0
+      }
+
+      const response = await fetch(`${AI_PREDICTION_SERVER_URL}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(features),
+        signal: AbortSignal.timeout(10000)
+      })
+
+      if (!response.ok) {
+        console.warn(`[AI Model] Prediction server returned ${response.status}`)
+        return null
+      }
+
+      const data = await response.json()
+
+      if (!data.success || !data.prediction) {
+        console.warn('[AI Model] Invalid response from prediction server')
+        return null
+      }
+
+      const pred = data.prediction
+      const ci = data.clinical_interpretation
+
+      const aiPrediction: IAIPrediction = {
+        leprosyTypeId: pred.leprosy_type_id,
+        leprosyTypeName: pred.leprosy_type_name,
+        leprosyTypeCode: pred.leprosy_type_code,
+        riskLevel: pred.risk_level,
+        description: pred.description,
+        confidence: pred.confidence,
+        confidencePercent: pred.confidence_percent,
+        classProbabilities: data.class_probabilities || {},
+        clinicalInterpretation: ci
+          ? {
+              typeClassification: ci.type_classification,
+              bacillaryLoad: ci.bacillary_load,
+              treatmentRegimen: ci.treatment_regimen,
+              monitoringPriority: ci.monitoring_priority,
+              keyClinicalNotes: ci.key_clinical_notes || []
+            }
+          : undefined,
+        disclaimer: data.disclaimer,
+        predictionTimestamp: new Date()
+      }
+
+      console.log(`[AI Model] Predicted: ${pred.leprosy_type_name} (${pred.confidence_percent}% confidence)`)
+      return aiPrediction
+    } catch (error: any) {
+      if (error.name === 'TimeoutError') {
+        console.warn('[AI Model] Prediction server timed out — skipping AI prediction')
+      } else {
+        console.warn('[AI Model] Could not reach prediction server:', error.message)
+      }
+      return null
     }
   }
 

@@ -8,6 +8,8 @@ interface ISymptomLog extends Document {
     weakness: boolean
     eyeIssues: boolean
     painfulNerves: boolean
+    nerveThickening: boolean
+    lossSensation: boolean
     other: string
   }
   symptomSeverity: {
@@ -16,6 +18,14 @@ interface ISymptomLog extends Document {
     weakness?: 'mild' | 'moderate' | 'severe'
     eyeIssues?: 'mild' | 'moderate' | 'severe'
     painfulNerves?: 'mild' | 'moderate' | 'severe'
+  }
+  clinicalMeasurements: {
+    numberOfLesions?: number
+    largestLesionSizeCm?: number
+    skinSmearRight?: number
+    skinSmearLeft?: number
+    bacillusIndex?: number
+    morphologicalIndex?: number
   }
   affectedAreas: string[]
   spreadingRate: 'static' | 'slow' | 'rapid'
@@ -43,6 +53,8 @@ const SymptomLogSchema = new Schema<ISymptomLog>(
       weakness: { type: Boolean, default: false },
       eyeIssues: { type: Boolean, default: false },
       painfulNerves: { type: Boolean, default: false },
+      nerveThickening: { type: Boolean, default: false },
+      lossSensation: { type: Boolean, default: false },
       other: { type: String, default: '' }
     },
     symptomSeverity: {
@@ -51,6 +63,14 @@ const SymptomLogSchema = new Schema<ISymptomLog>(
       weakness: { type: String, enum: ['mild', 'moderate', 'severe'], default: 'mild' },
       eyeIssues: { type: String, enum: ['mild', 'moderate', 'severe'], default: 'mild' },
       painfulNerves: { type: String, enum: ['mild', 'moderate', 'severe'], default: 'mild' }
+    },
+    clinicalMeasurements: {
+      numberOfLesions: { type: Number, min: 0 },
+      largestLesionSizeCm: { type: Number, min: 0 },
+      skinSmearRight: { type: Number, min: 0, max: 6 },
+      skinSmearLeft: { type: Number, min: 0, max: 6 },
+      bacillusIndex: { type: Number, min: 0, max: 6 },
+      morphologicalIndex: { type: Number, min: 0, max: 100 }
     },
     affectedAreas: {
       type: [String],
