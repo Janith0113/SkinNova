@@ -6,6 +6,7 @@ import LeprosyUserProfile from '../models/LeprosyUserProfile'
 import LeprosyRiskAssessment from '../models/LeprosyRiskAssessment'
 import leprosyKnowledgeService from '../services/leprosyKnowledgeService'
 import leprosyRiskAnalysisService from '../services/leprosyRiskAnalysisService'
+import { generateGeminiContent } from '../services/gemini.service'
 
 const router = express.Router()
 
@@ -220,13 +221,31 @@ router.post('/chat/leprosy-assistant', requireAuth, async (req: any, res: any) =
 
     // Search knowledge base for relevant information
     const searchResults = leprosyKnowledgeService.searchKnowledge(message)
-    
-    // Generate enhanced assistant response with citations
-    const { reply, sources, disclaimer } = generateEnhancedAssistantResponse(
-      message,
-      userProfile,
-      searchResults
-    )
+
+    // Use KB result only when it is a confident, specific match (score >= 60)
+    const confidentResults = searchResults.filter((r: any) => (r.matchScore || 0) >= 60)
+
+    let reply: string
+    let sources: any[]
+    let disclaimer: string
+
+    const defaultDisclaimer = 'This information is based on WHO, CDC, and ILA guidelines. Always consult your healthcare provider for personalized advice.'
+
+    if (confidentResults.length > 0) {
+      // Knowledge base has a confident answer – use it
+      const kb = generateEnhancedAssistantResponse(message, userProfile, confidentResults)
+      reply = kb.reply
+      sources = kb.sources
+      disclaimer = kb.disclaimer
+    } else {
+      // No confident KB match – use Gemini AI for an accurate, leprosy-specific answer
+      reply = await generateGeminiLeprosyResponse(message, userProfile)
+      sources = [
+        { name: 'World Health Organization', url: 'https://www.who.int/health-topics/leprosy', organization: 'WHO' },
+        { name: 'CDC Leprosy Information', url: 'https://www.cdc.gov/leprosy/', organization: 'CDC' }
+      ]
+      disclaimer = defaultDisclaimer
+    }
 
     // Add assistant message to history with sources
     chatHistory.messages.push({
@@ -395,7 +414,7 @@ function generateEnhancedAssistantResponse(
       reply = primaryResult.content
     }
   } else {
-    // Fall back to original personalized responses
+    // Fall back to keyword-based personalized responses
     reply = generateAssistantResponse(message, userProfile)
     
     // Provide default sources even for fallback responses
@@ -410,6 +429,54 @@ function generateEnhancedAssistantResponse(
     sources,
     disclaimer
   }
+}
+
+/**
+ * Generate a leprosy-specific response using Gemini AI
+ * Used when the knowledge base does not have a confident match for the question.
+ */
+async function generateGeminiLeprosyResponse(message: string, userProfile: any): Promise<string> {
+  const profileContext = buildProfileContext(userProfile)
+
+  const systemPrompt = `You are a compassionate and medically accurate Leprosy Care Assistant specializing in Hansen's disease (leprosy). 
+You provide evidence-based guidance to leprosy patients based on WHO, CDC, and ILA (International Leprosy Association) guidelines.
+
+Patient context:${profileContext || ' No profile information available.'}
+
+IMPORTANT GUIDELINES:
+- Answer ONLY questions related to leprosy (Hansen's disease), its symptoms, treatment (MDT), complications, lifestyle management, prevention, self-care, and day-to-day living as a leprosy patient.
+- If the question is unrelated to leprosy or general health for leprosy patients, politely redirect the patient back to leprosy-related topics.
+- Always recommend consulting the patient's healthcare provider for personalized medical decisions.
+- Be empathetic and supportive. Avoid stigmatizing language.
+- Provide practical, actionable advice.
+- Keep answers concise but thorough (3-6 sentences or bullet points).
+- Always mention relevant precautions based on leprosy-specific concerns (nerve damage, reduced sensation, photosensitivity from MDT medications, wound care).
+
+Patient question: ${message}
+
+Provide a clear, accurate, and helpful answer:`
+
+  try {
+    return await generateGeminiContent(systemPrompt)
+  } catch (error) {
+    console.warn('Gemini fallback failed, using default response:', error)
+    return 'I\'m sorry, I couldn\'t process your question right now. Please consult your healthcare provider or contact our support. Remember to always take your MDT medications as prescribed and keep your scheduled doctor appointments.'
+  }
+}
+
+/**
+ * Build a profile context string for Gemini prompts
+ */
+function buildProfileContext(userProfile: any): string {
+  if (!userProfile) return ''
+  const parts: string[] = []
+  if (userProfile.personalInfo?.age) parts.push(`Age: ${userProfile.personalInfo.age}`)
+  if (userProfile.medical?.leprosyType) parts.push(`Leprosy type: ${userProfile.medical.leprosyType}`)
+  if (userProfile.leprosy?.nerveInvolvement) parts.push('Has nerve involvement')
+  if (userProfile.leprosy?.eyeInvolvement) parts.push('Has eye involvement')
+  if (userProfile.lifestyle?.physicalActivity) parts.push(`Activity level: ${userProfile.lifestyle.physicalActivity}`)
+  if (userProfile.medical?.comorbidities?.length > 0) parts.push(`Comorbidities: ${userProfile.medical.comorbidities.join(', ')}`)
+  return parts.length > 0 ? ' ' + parts.join('; ') : ''
 }
 
 /**
@@ -546,6 +613,30 @@ function generateAssistantResponse(message: string, userProfile: any): string {
     // Personalize if user has known affected areas
     if (userProfile?.leprosy?.affectedAreas && userProfile.leprosy.affectedAreas.length > 0) {
       responses.push(`Pay special attention to your known affected areas: ${userProfile.leprosy.affectedAreas.join(', ')}. Monitor these closely for any changes in size, color, or sensation.`)
+    }
+
+    return responses[Math.floor(Math.random() * responses.length)]
+  }
+
+  // Weather, sun, outdoor, heat-related responses
+  if (
+    lowerMessage.includes('outside') ||
+    lowerMessage.includes('outdoor') ||
+    lowerMessage.includes('weather') ||
+    lowerMessage.includes('hot') ||
+    lowerMessage.includes('heat') ||
+    lowerMessage.includes('sun') ||
+    lowerMessage.includes('sunlight') ||
+    lowerMessage.includes('sunscreen') ||
+    lowerMessage.includes('uv')
+  ) {
+    let responses = [
+      'Yes, you can go outside, but take special precautions in hot or sunny weather. Leprosy patients often have reduced sensation, making it harder to detect sunburn or heat damage. Key steps: (1) Apply SPF 30+ sunscreen on all exposed and affected skin. (2) Avoid peak sun hours (10 am–4 pm). (3) Wear loose, lightweight, long-sleeved clothing to protect affected areas. (4) Stay well-hydrated (2–3 litres of water daily). (5) Inspect your skin after being outdoors for any redness, blistering, or injuries you may not have felt. If you are taking Minocycline (part of MDT), extra sun protection is essential as it increases photosensitivity.',
+      'Outdoor activities are possible with proper care. Nerve damage from leprosy can reduce your ability to sense heat, increasing the risk of burns and injuries you may not feel. Practical tips: (1) Go outdoors in the early morning or evening to avoid peak heat. (2) Always wear protective footwear – never walk barefoot on hot pavements. (3) Use SPF 50+ sunscreen. (4) Wear a wide-brimmed hat. (5) Check your feet and skin thoroughly after any outdoor activity. Leprosy does not require you to stay indoors – just be vigilant about skin and foot protection.'
+    ]
+
+    if (userProfile?.leprosy?.nerveInvolvement) {
+      responses.push('Because you have nerve involvement, you must be extra careful in hot conditions. Since you may not feel heat or pain normally in affected areas, there is a high risk of unnoticed burns or injuries. Always: wear protective footwear and gloves, apply sunscreen, inspect skin after outdoor time, and avoid handling hot objects or surfaces with numb hands or feet.')
     }
 
     return responses[Math.floor(Math.random() * responses.length)]
