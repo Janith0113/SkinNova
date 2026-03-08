@@ -1135,7 +1135,7 @@ router.post('/risk-assessment/auto-trigger', requireAuth, async (req: any, res: 
       return res.json({
         success: false,
         message: `Assessment calculated ${Math.round(hoursElapsed)} hours ago. Next auto-calculation in ${Math.round(24 - hoursElapsed)} hours.`,
-        lastCalculated: lastAssessment.timestamp
+        lastCalculated: lastAssessment?.timestamp
       })
     }
 
