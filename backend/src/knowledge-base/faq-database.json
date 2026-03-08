@@ -154,6 +154,36 @@
       "question": "What foods should I avoid with leprosy?",
       "answer": "Avoid foods that weaken immunity and slow healing: Processed foods: fast food, packaged snacks, sugary drinks (high sodium, low nutrition). Refined sugars: candy, desserts, sweetened beverages (spike inflammation). Alcohol: reduces immunity and can interact with medications like Rifampicin. Excessive salt: can increase swelling and inflammation. Spicy food: while safe, excessive amounts may irritate sensitive skin. Trans fats: fried foods and margarine (increase inflammation). Energy drinks and caffeine: can interfere with medication absorption and sleep. Instead, focus on whole, unprocessed foods. If you have medication side effects, consult your doctor about specific foods to avoid or emphasize.",
       "category": "Nutrition"
+    },
+    {
+      "id": "26",
+      "question": "Is it okay to go outside in hot weather as a leprosy patient?",
+      "answer": "Yes, you can go outside, but you must take special precautions in hot weather. Leprosy patients often have reduced sensation in affected areas, making it harder to feel heat damage or sunburn. Key precautions: (1) Avoid prolonged direct sun exposure, especially between 10 am and 4 pm. (2) Always apply SPF 30+ broad-spectrum sunscreen to affected skin. (3) Wear loose, lightweight, long-sleeved clothing to protect affected areas from heat and UV rays. (4) Stay well-hydrated by drinking 2-3 liters of water. (5) Take frequent breaks in shaded or cool areas. (6) Check your skin after being outdoors for any signs of redness, blistering, or injury you may not have felt. (7) If you are on Minocycline (part of MDT), be aware it increases photosensitivity – extra sun protection is essential. (8) People with nerve damage may not sweat normally in affected areas, increasing overheating risk – monitor your body temperature carefully. Always inform your doctor if you plan extended outdoor activities.",
+      "category": "Lifestyle"
+    },
+    {
+      "id": "27",
+      "question": "Can I be in the sun or heat with leprosy?",
+      "answer": "Leprosy patients need to be cautious with sun and heat exposure for several reasons: (1) Reduced sensation: Nerve damage from leprosy reduces your ability to feel heat or pain, making sunburn and heat injuries more likely without you noticing. (2) Skin sensitivity: Leprosy lesions and healing skin are more sensitive to UV damage. (3) Medication side effects: Minocycline (used in MDT) causes photosensitivity, increasing sunburn risk. (4) Heat regulation: Nerve damage can impair sweating in affected areas, raising overheating risk. Recommendations: Apply SPF 50+ sunscreen, wear protective clothing and wide-brimmed hats, avoid peak sun hours, stay hydrated, and inspect your skin after outdoor exposure. Heat itself does not worsen leprosy infection, but undetected heat injuries can lead to serious complications like ulcers.",
+      "category": "Lifestyle"
+    },
+    {
+      "id": "28",
+      "question": "How does hot weather affect leprosy patients?",
+      "answer": "Hot weather presents specific challenges for leprosy patients: (1) Increased sunburn risk: Reduced skin sensation means you may not notice sunburn until it becomes serious. (2) Photosensitivity from medication: Minocycline and Dapsone (MDT drugs) can increase sun sensitivity. (3) Impaired sweating: Nerve damage may reduce sweating in affected areas, leading to overheating. (4) Wound and ulcer risk: Heat, sweat, and outdoor activity increase the risk of skin breakdown in numb areas. (5) Dehydration: Staying well-hydrated is even more important during treatment. Practical tips: Go outdoors in early morning or late afternoon, use UV-protective clothing, apply sunscreen daily, drink plenty of water, and inspect your skin every evening after outdoor exposure for any unnoticed injuries.",
+      "category": "Lifestyle"
+    },
+    {
+      "id": "29",
+      "question": "What outdoor activities are safe for leprosy patients?",
+      "answer": "Most outdoor activities are safe with proper precautions. Safe and recommended activities: (1) Walking and light exercise in early morning or evening (avoid peak sun hours). (2) Swimming – great low-impact exercise, but dry skin thoroughly after and check for injuries. (3) Gentle gardening or outdoor sitting in shaded areas. (4) Work and daily outdoor tasks are generally fine once you start MDT treatment. Precautions for all outdoor activities: Wear protective footwear (trauma to numb feet is a key complication risk), protect hands with gloves if doing manual work, apply sunscreen, stay hydrated, and do a full skin check afterward. Avoid prolonged barefoot walking, carrying heavy loads on numb shoulders, or activities with high injury risk to affected areas. Leprosy does not mean you need to stay indoors – just be careful and check for injuries you may not feel.",
+      "category": "Lifestyle"
+    },
+    {
+      "id": "30",
+      "question": "What precautions should I take when going outside with leprosy?",
+      "answer": "When going outside as a leprosy patient, follow these precautions: Sun protection: Apply SPF 30+ sunscreen on all exposed skin, especially affected areas. Wear wide-brimmed hats and UV-protective clothing. Foot protection: Always wear well-fitting closed shoes to protect numb feet from cuts, burns, or pressure injuries. Skin inspection: Check your skin and feet every evening for any redness, cuts, blisters, or pressure marks you may not have felt during the day. Hydration: Drink water regularly, especially in hot weather. Clothing: Wear loose, breathable clothing that protects affected areas without causing friction or pressure. Avoid dangerous conditions: Avoid walking on hot pavements barefoot, handling very hot objects without protection, and prolonged exposure to heat in areas with nerve damage. These precautions help prevent the secondary complications (ulcers, burns, injuries) that arise from impaired sensation – a key concern in leprosy care.",
+      "category": "Prevention"
     }
   ]
 }

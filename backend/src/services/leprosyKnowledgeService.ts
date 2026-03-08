@@ -246,7 +246,14 @@ export class LeprosyKnowledgeService {
       'exercise': ['activity', 'physical', 'movement', 'sport', 'sports'],
       'care': ['caring', 'caring for', 'management', 'treatment'],
       'wash': ['water', 'clean', 'cleaning', 'cleanse'],
-      'eye': ['eyes', 'vision', 'sight', 'see', 'visual']
+      'eye': ['eyes', 'vision', 'sight', 'see', 'visual'],
+      'outside': ['outdoor', 'outdoors', 'outside', 'go out', 'hot', 'sun', 'weather', 'heat'],
+      'outdoor': ['outside', 'outdoors', 'hot', 'sun', 'weather', 'heat'],
+      'hot': ['heat', 'weather', 'sun', 'outside', 'outdoor', 'warm', 'temperature'],
+      'weather': ['hot', 'heat', 'sun', 'outside', 'outdoor', 'sunlight', 'uv'],
+      'sun': ['sunlight', 'uv', 'outside', 'outdoor', 'hot', 'heat', 'weather', 'sunscreen'],
+      'sunlight': ['sun', 'uv', 'outside', 'outdoor', 'hot', 'weather'],
+      'heat': ['hot', 'weather', 'sun', 'outside', 'outdoor', 'temperature']
     }
 
     data.faqs.forEach((faq: any) => {
