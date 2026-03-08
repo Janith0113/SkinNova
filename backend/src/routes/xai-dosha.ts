@@ -172,7 +172,7 @@ function computeGradCAM(
     ) * (baseWeight * 200); // Scale based on feature weight
     
     // Generate explanations based on the dosha and answer
-    const explanations: Record<string, string> = {
+    const explanations: Record<string, { high: string; low: string }> = {
       vata: {
         high: `This answer strongly indicates Vata characteristics. The "${answer.selectedAnswer}" response aligns with typical Vata traits like adaptability, variability, and sensitivity.`,
         low: `This answer doesn't strongly indicate Vata tendencies. Your response suggests traits more aligned with other doshas.`,
@@ -188,8 +188,8 @@ function computeGradCAM(
     };
     
     const explanation = alignmentScore > 0.7
-      ? explanations[primaryDosha].high
-      : explanations[primaryDosha].low;
+      ? (explanations[primaryDosha]?.high || '')
+      : (explanations[primaryDosha]?.low || '');
     
     return {
       questionId: answer.questionId,

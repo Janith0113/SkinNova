@@ -147,16 +147,26 @@ router.get('/count', requireAuth, async (req: any, res: any) => {
 
 // Get appointments for current user (patient views own, doctor views their appointments)
 router.get('/appointments', requireAuth, async (req: any, res: any) => {
+  console.log('🔵 GET /appointments called with userId:', req.userId)
   try {
     const userId = req.userId
-    const user = await User.findById(userId)
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' })
+    console.log('📋 Fetching appointments for userId:', userId)
+    
+    // Try to fetch user, but continue with default role if not found
+    let user = null
+    try {
+      user = await User.findById(userId)
+      console.log('👤 User found:', user ? user.role : 'NOT FOUND')
+    } catch (userLookupErr) {
+      console.warn(`⚠️ Could not look up user ${userId}:`, userLookupErr)
+      // Continue without user data - we'll use userId from token
     }
 
     let appointments
-    if (user.role === 'admin') {
+    const userRole = user?.role || 'patient' // Default to patient if user not found
+    console.log('🎭 User role:', userRole)
+
+    if (userRole === 'admin') {
       // Admins can filter by doctorId query parameter or get all appointments
       const doctorId = req.query.doctorId
       if (doctorId) {
@@ -164,17 +174,19 @@ router.get('/appointments', requireAuth, async (req: any, res: any) => {
       } else {
         appointments = await Appointment.find({}).sort({ requestedDate: -1 })
       }
-    } else if (user.role === 'doctor') {
+    } else if (userRole === 'doctor') {
       // Doctors see appointments assigned to them
       appointments = await Appointment.find({ doctorId: userId }).sort({ requestedDate: -1 })
     } else {
-      // Patients see their own appointments
+      // Patients see their own appointments (default)
       appointments = await Appointment.find({ patientId: userId }).sort({ requestedDate: -1 })
     }
 
+    console.log('✅ Found appointments:', appointments.length)
     res.json({ success: true, appointments })
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Failed to fetch appointments'
+    console.error('❌ Error in /appointments endpoint:', errorMsg, err)
     res.status(500).json({ error: errorMsg })
   }
 })
