@@ -835,6 +835,15 @@ export default function DoshaAssessmentPage() {
               </p>
             </div>
 
+            {/* Heart Rate Monitor Button */}
+            <button
+              onClick={() => window.open('http://172.20.10.6', '_blank')}
+              className="w-full px-8 py-4 bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 text-white font-bold rounded-lg hover:shadow-2xl transition-all text-lg mb-8 flex items-center justify-center gap-3"
+            >
+              <span className="text-2xl animate-pulse">❤️</span>
+              Check Heart Rate Monitor
+            </button>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {(['vata', 'pitta', 'kapha'] as const).map(dosha => {
                 const info = DOSHA_INFO[dosha];
