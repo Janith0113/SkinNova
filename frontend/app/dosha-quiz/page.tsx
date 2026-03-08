@@ -465,7 +465,7 @@ export default function DoshaAssessmentPage() {
         dosha: dosha,
       }));
 
-      const response = await fetch('/api/xai/compute-xai', {
+      const response = await fetch('http://localhost:4000/api/xai/compute-xai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -480,10 +480,18 @@ export default function DoshaAssessmentPage() {
         const data = await response.json();
         setXaiData(data.data);
       } else {
-        console.error('Failed to compute XAI');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to compute XAI:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        });
       }
     } catch (error) {
-      console.error('Error computing XAI:', error);
+      console.error('Error computing XAI:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        error: error,
+      });
     } finally {
       setLoadingXAI(false);
     }
@@ -503,6 +511,259 @@ export default function DoshaAssessmentPage() {
     setXaiData(null);
   };
 
+  const generateReport = () => {
+    if (!primaryDosha) return;
+
+    const doshaInfo = DOSHA_INFO[primaryDosha];
+    const timestamp = new Date().toLocaleString();
+
+    // Create HTML content for the report
+    const reportHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Dosha Assessment Report</title>
+        <style>
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+          }
+          .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          .header {
+            text-align: center;
+            border-bottom: 3px solid #e084f5;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .header h1 {
+            margin: 0;
+            color: #7c3aed;
+            font-size: 2.5em;
+          }
+          .header p {
+            margin: 5px 0;
+            color: #666;
+          }
+          .primary-dosha {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-left: 5px solid #7c3aed;
+          }
+          .primary-dosha h2 {
+            color: #7c3aed;
+            font-size: 2em;
+            margin: 10px 0;
+          }
+          .primary-dosha p {
+            color: #555;
+            font-size: 1.05em;
+          }
+          .scores {
+            margin-bottom: 30px;
+          }
+          .scores h3 {
+            color: #7c3aed;
+            border-bottom: 2px solid #e084f5;
+            padding-bottom: 10px;
+          }
+          .score-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+          }
+          .score-item:last-child {
+            border-bottom: none;
+          }
+          .score-label {
+            font-weight: bold;
+            text-transform: capitalize;
+            color: #333;
+          }
+          .score-bar {
+            flex: 1;
+            margin: 0 20px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            height: 20px;
+          }
+          .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7c3aed, #ec4899);
+            transition: width 0.3s ease;
+          }
+          .score-value {
+            font-weight: bold;
+            color: #7c3aed;
+          }
+          .section {
+            margin-bottom: 30px;
+          }
+          .section h3 {
+            color: #7c3aed;
+            border-bottom: 2px solid #e084f5;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+          }
+          .section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+          }
+          .section li {
+            padding: 8px 0;
+            padding-left: 30px;
+            position: relative;
+            color: #555;
+          }
+          .section li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #7c3aed;
+            font-weight: bold;
+            font-size: 1.2em;
+          }
+          .risk-warning {
+            background-color: #fef2f2;
+            border-left: 4px solid #dc2626;
+            padding: 15px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+          }
+          .risk-warning h4 {
+            color: #991b1b;
+            margin-top: 0;
+          }
+          .footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 0.9em;
+          }
+          .timestamp {
+            color: #aaa;
+            font-size: 0.9em;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🧘 Dosha Assessment Report</h1>
+            <p>Your Ayurvedic Constitution & Skin Profile</p>
+            <p class="timestamp">Generated on ${timestamp}</p>
+          </div>
+
+          <div class="primary-dosha">
+            <div style="font-size: 3em; margin-bottom: 10px;">${doshaInfo.emoji}</div>
+            <h2>${doshaInfo.name} Dosha</h2>
+            <p>${doshaInfo.description}</p>
+          </div>
+
+          <div class="scores">
+            <h3>📊 Your Constitution Scores</h3>
+            <div class="score-item">
+              <span class="score-label">Vata</span>
+              <div class="score-bar">
+                <div class="score-fill" style="width: ${(doshaScores.vata / 8) * 100}%"></div>
+              </div>
+              <span class="score-value">${doshaScores.vata}/8</span>
+            </div>
+            <div class="score-item">
+              <span class="score-label">Pitta</span>
+              <div class="score-bar">
+                <div class="score-fill" style="width: ${(doshaScores.pitta / 8) * 100}%"></div>
+              </div>
+              <span class="score-value">${doshaScores.pitta}/8</span>
+            </div>
+            <div class="score-item">
+              <span class="score-label">Kapha</span>
+              <div class="score-bar">
+                <div class="score-fill" style="width: ${(doshaScores.kapha / 8) * 100}%"></div>
+              </div>
+              <span class="score-value">${doshaScores.kapha}/8</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <h3>✨ Your Characteristics</h3>
+            <ul>
+              ${doshaInfo.characteristics.map(char => `<li>${char}</li>`).join('')}
+            </ul>
+          </div>
+
+          <div class="section">
+            <h3>💆 Skincare Advice</h3>
+            <ul>
+              ${doshaInfo.skinAdvice.map(advice => `<li>${advice}</li>`).join('')}
+            </ul>
+          </div>
+
+          <div class="section">
+            <h3>🍽️ Diet Recommendations</h3>
+            <ul>
+              ${doshaInfo.dietAdvice.map(advice => `<li>${advice}</li>`).join('')}
+            </ul>
+          </div>
+
+          <div class="section">
+            <h3>🧘 Balancing Activities</h3>
+            <ul>
+              ${doshaInfo.balancingActivities.map(activity => `<li>${activity}</li>`).join('')}
+            </ul>
+          </div>
+
+          <div class="risk-warning">
+            <h4>⚠️ Tinea Risk Assessment</h4>
+            <p><strong>Risk Level:</strong> ${doshaInfo.tineaRisk.risk}</p>
+            <p>${doshaInfo.tineaRisk.description}</p>
+          </div>
+
+          <div class="footer">
+            <p>This assessment is based on Ayurvedic principles and is for informational purposes only.</p>
+            <p>Please consult with a qualified healthcare professional for medical advice.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Use html2pdf to generate PDF
+    const element = document.createElement('div');
+    element.innerHTML = reportHTML;
+    
+    const opt = {
+      margin: 10,
+      filename: `Dosha_Assessment_${primaryDosha.toUpperCase()}_${new Date().getTime()}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+    };
+
+    // Dynamically import html2pdf
+    import('html2pdf.js').then((html2pdf) => {
+      html2pdf.default().set(opt).from(element).save();
+    });
+  };
+
   const progress = ((currentQuestion + 1) / questions.length) * 100;
   const question = questions[currentQuestion];
   const primaryDosha = showResults ? getPrimaryDosha() : null;
@@ -518,7 +779,7 @@ export default function DoshaAssessmentPage() {
 
       <div className="max-w-4xl mx-auto relative z-10">
         {/* Header */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-20 pt-8">
           <h1 className="text-5xl font-bold text-white mb-3">Dosha Assessment</h1>
           <p className="text-xl text-pink-200">Discover Your Ayurvedic Constitution & Skin Profile</p>
           <Link href="/tinea">
@@ -802,6 +1063,21 @@ export default function DoshaAssessmentPage() {
                   View Full Tinea Details →
                 </button>
               </Link>
+            </div>
+
+            {/* Report Generation */}
+            <div className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50 backdrop-blur-md rounded-xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-4">📋 Generate Report</h3>
+              <p className="text-white/80 mb-6">
+                Download a comprehensive PDF report of your Dosha Assessment including your scores, characteristics, recommendations, and personalized advice.
+              </p>
+              <button
+                onClick={generateReport}
+                className="w-full px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-bold hover:shadow-xl transition-all flex items-center justify-center gap-2"
+              >
+                <span>📥</span>
+                Download PDF Report
+              </button>
             </div>
 
             {/* Action Buttons */}
