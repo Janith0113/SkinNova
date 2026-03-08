@@ -1034,6 +1034,13 @@ export default function PatientDashboard() {
               >
                 ⚠️ {selectedDisease === 'psoriasis' ? 'Risk analysis' : `Ask a doctor`}
               </button>
+
+              <button 
+                onClick={() => window.location.href = 'http://172.20.10.6'} 
+                className="w-full rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold px-4 py-3 shadow-lg hover:shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-2"
+              >
+                ❤️ Heart Rate Check
+              </button>
             </div>
 
             {/* Daily tip card with Glass Morphism */}
