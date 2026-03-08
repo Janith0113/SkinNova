@@ -1025,14 +1025,14 @@ export default function PatientDashboard() {
                   const diseaseRoutes: Record<DiseaseKey, string> = {
                     psoriasis: "/psoriasis/risk-analysis",
                     tinea: "/tinea",
-                    leprosy: "/leprosy",
+                    leprosy: "/leprosy/predict",
                     skinCancer: "/skin-cancer"
                   };
                   router.push(diseaseRoutes[selectedDisease]);
                 }}
                 className="w-full rounded-2xl bg-emerald-700 hover:bg-emerald-900 text-white text-sm font-semibold px-4 py-3 shadow-lg hover:shadow-2xl hover:scale-105 transition-all"
               >
-                ⚠️ {selectedDisease === 'psoriasis' ? 'Risk analysis' : `Ask a doctor`}
+                ⚠️ {selectedDisease === 'psoriasis' || selectedDisease === 'leprosy' ? 'Risk Analysis' : `Ask a doctor`}
               </button>
 
               <button 

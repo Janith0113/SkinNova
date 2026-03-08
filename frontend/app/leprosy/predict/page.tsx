@@ -4,6 +4,23 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Brain, AlertCircle, CheckCircle, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 
+interface XAITopFeature {
+  feature: string;
+  display_name: string;
+  shap_value: number;
+  feature_value: number;
+  direction: 'positive' | 'negative';
+}
+
+interface XAIExplanation {
+  image_base64: string | null;
+  base_value: number;
+  prediction_score: number;
+  shap_values: Record<string, number>;
+  top_features: XAITopFeature[];
+  error?: string;
+}
+
 interface PredictionResult {
   success: boolean;
   prediction: {
@@ -24,6 +41,8 @@ interface PredictionResult {
     key_clinical_notes: string[];
   };
   feature_importance: Record<string, number>;
+  xai_explanation: XAIExplanation | null;
+  xai_narrative: string | null;
   disclaimer: string;
   timestamp: string;
 }
@@ -466,6 +485,144 @@ export default function LeprosyPredictPage() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* ── XAI Decision Narrative ── */}
+            {result.xai_narrative && (
+              <div className="rounded-3xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-lg p-6">
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-xl">
+                    🔍
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-indigo-900 mb-2">
+                      Why did the AI make this prediction?
+                    </h3>
+                    <p className="text-sm text-indigo-800 leading-relaxed">
+                      {result.xai_narrative}
+                    </p>
+                    <p className="mt-3 text-xs text-indigo-500 italic">
+                      This explanation is generated from SHAP (SHapley Additive Explanations) values —
+                      a mathematically rigorous method that attributes each feature's contribution to
+                      the model's output, analogous to Grad-CAM in image-based AI.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Grad-CAM Style XAI Explanation ── */}
+            {result.xai_explanation && (
+              <div className="rounded-3xl border border-gray-200 shadow-xl overflow-hidden"
+                   style={{ background: '#0f172a' }}>
+                {/* Header */}
+                <div className="px-6 py-5 border-b border-slate-700"
+                     style={{ background: '#1e293b' }}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        🧠 Explainable AI — Grad-CAM Analysis
+                      </h3>
+                      <p className="text-sm text-slate-400 mt-1">
+                        SHAP (SHapley Additive Explanations) — the tabular-data equivalent of
+                        image Grad-CAM. Each feature is coloured by how strongly it pushed the
+                        model toward (red/warm) or away from (blue/cool) the predicted class.
+                      </p>
+                    </div>
+                    <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                      SHAP v TreeExplainer
+                    </span>
+                  </div>
+
+                  {/* Score summary row */}
+                  {result.xai_explanation.base_value !== undefined && (
+                    <div className="mt-4 flex flex-wrap gap-4">
+                      <div className="flex items-center gap-2 bg-slate-700/60 rounded-xl px-4 py-2">
+                        <span className="text-xs text-slate-400 uppercase tracking-wide">Base Score</span>
+                        <span className="text-sm font-bold text-slate-200">
+                          {result.xai_explanation.base_value.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-indigo-500/20 rounded-xl px-4 py-2 border border-indigo-500/30">
+                        <span className="text-xs text-indigo-300 uppercase tracking-wide">Prediction Score</span>
+                        <span className="text-sm font-bold text-indigo-200">
+                          {result.xai_explanation.prediction_score.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-amber-500/10 rounded-xl px-4 py-2 border border-amber-500/20">
+                        <span className="text-xs text-amber-400 uppercase tracking-wide">SHAP Δ</span>
+                        <span className="text-sm font-bold text-amber-300">
+                          {(result.xai_explanation.prediction_score - result.xai_explanation.base_value) >= 0 ? '+' : ''}
+                          {(result.xai_explanation.prediction_score - result.xai_explanation.base_value).toFixed(4)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Grad-CAM image */}
+                {result.xai_explanation.image_base64 ? (
+                  <div className="p-4">
+                    <img
+                      src={`data:image/png;base64,${result.xai_explanation.image_base64}`}
+                      alt="Grad-CAM style feature activation map"
+                      className="w-full rounded-2xl"
+                      style={{ imageRendering: 'crisp-edges' }}
+                    />
+                  </div>
+                ) : (
+                  result.xai_explanation.error && (
+                    <div className="p-6 text-sm text-red-400">
+                      ⚠️ Could not generate visual map: {result.xai_explanation.error}
+                    </div>
+                  )
+                )}
+
+                {/* Top feature table */}
+                {result.xai_explanation.top_features?.length > 0 && (
+                  <div className="px-6 pb-6">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                      Top Feature Contributions
+                    </p>
+                    <div className="space-y-2">
+                      {result.xai_explanation.top_features.slice(0, 8).map((f, i) => {
+                        const pct = Math.min(100, Math.abs(f.shap_value) * 200);
+                        const isPos = f.direction === 'positive';
+                        return (
+                          <div key={f.feature} className="flex items-center gap-3">
+                            <span className="w-5 text-xs text-slate-500 text-right shrink-0">{i + 1}</span>
+                            <span className="w-44 text-xs font-medium text-slate-300 truncate shrink-0">
+                              {f.display_name}
+                            </span>
+                            <span className="w-14 text-xs text-amber-400 text-right shrink-0 font-mono">
+                              {f.feature_value}
+                            </span>
+                            <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${isPos ? 'bg-red-500' : 'bg-blue-500'}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className={`w-16 text-xs font-bold text-right shrink-0 font-mono ${isPos ? 'text-red-400' : 'text-blue-400'}`}>
+                              {f.shap_value >= 0 ? '+' : ''}{f.shap_value.toFixed(4)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4 flex gap-4 text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                        Increases predicted probability
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                        Decreases predicted probability
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
