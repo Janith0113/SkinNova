@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Wind, Droplets, AlertCircle, TrendingUp, Shield, Zap, Lightbulb, BarChart3, Brain } from "lucide-react";
+import { generatePsoriasisRiskReport, downloadReportAsPDF, type PsoriasisRiskReportData } from "@/utils/reportGenerator";
 
 interface RiskFactor {
   label: string;
@@ -57,6 +58,7 @@ export default function PsoriasisRiskAnalysis() {
   const [expandedFactor, setExpandedFactor] = useState<number | null>(null);
   const [gradcamData, setGradcamData] = useState<GradCAMData | null>(null);
   const [gradcamLoading, setGradcamLoading] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   // Fetch weather data from backend API
   const fetchWeatherData = async (latitude: number, longitude: number) => {
@@ -162,6 +164,46 @@ export default function PsoriasisRiskAnalysis() {
     if (points < 20) return '#10b981'; // Green - low risk
     if (points < 35) return '#fbbf24'; // Yellow - moderate risk
     return '#ef4444'; // Red - high/critical risk
+  };
+
+  const handleGenerateReport = async () => {
+    if (!riskAnalysis || !weatherData) {
+      alert("Please wait for data to load first");
+      return;
+    }
+
+    try {
+      setGeneratingReport(true);
+      const reportData: PsoriasisRiskReportData = {
+        timestamp: new Date().toLocaleString(),
+        location,
+        riskScore: riskAnalysis.score,
+        riskLevel: riskAnalysis.level,
+        weatherData: {
+          temperature: weatherData.temperature,
+          humidity: weatherData.humidity,
+          feelsLike: weatherData.feelsLike,
+          windSpeed: weatherData.windSpeed,
+          condition: weatherData.condition,
+        },
+        riskFactors: riskAnalysis.factors,
+        suggestions: riskAnalysis.suggestions,
+        explainableInsights: riskAnalysis.explainableInsights,
+      };
+
+      const htmlContent = generatePsoriasisRiskReport(reportData);
+      await downloadReportAsPDF(
+        htmlContent,
+        `Psoriasis_Risk_Report_${new Date().getTime()}.pdf`
+      );
+
+      alert("✅ Report generated and downloaded successfully!");
+    } catch (err) {
+      console.error("Error generating report:", err);
+      alert("Failed to generate report. Please try again.");
+    } finally {
+      setGeneratingReport(false);
+    }
   };
 
   // Get user location and fetch weather
@@ -758,7 +800,9 @@ export default function PsoriasisRiskAnalysis() {
                     key={idx}
                     className="flex items-start gap-4 p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 hover:shadow-md transition-shadow"
                   >
-                    <span className="text-2xl flex-shrink-0">{factor.recommendation.split(" ")[0]}</span>
+                    <span className="text-2xl f
+                    
+                    lex-shrink-0">{factor.recommendation.split(" ")[0]}</span>
                     <p className="text-gray-700 leading-relaxed font-medium">
                       {factor.recommendation.substring(2)}
                     </p>
@@ -778,12 +822,26 @@ export default function PsoriasisRiskAnalysis() {
             </div>
 
             {/* Action Buttons */}
-            <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6">
               <button
                 onClick={() => window.location.reload()}
                 className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
               >
                 🔄 Refresh Data
+              </button>
+              <button
+                onClick={handleGenerateReport}
+                disabled={generatingReport}
+                className="bg-gradient-to-r from-cyan-600 to-teal-500 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generatingReport ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="inline-block animate-spin">⚙️</span>
+                    Generating...
+                  </span>
+                ) : (
+                  "📄 Generate Report"
+                )}
               </button>
               <Link
                 href="/psoriasis/upload"
