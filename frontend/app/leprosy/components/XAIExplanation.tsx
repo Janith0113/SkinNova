@@ -276,10 +276,10 @@ export default function XAIExplanationComponent() {
               <span className="text-sm text-gray-600">Symptom Progression</span>
               <span className="text-sm font-semibold">{xaiData.riskContributionBreakdown.symptomContribution}%</span>
             </div>
-            <div className="bg-gray-100 rounded-full h-2">
+            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-red-500 h-2 rounded-full"
-                style={{ width: `${xaiData.riskContributionBreakdown.symptomContribution}%` }}
+                style={{ width: `${Math.min(100, xaiData.riskContributionBreakdown.symptomContribution)}%` }}
               ></div>
             </div>
           </div>
@@ -289,10 +289,10 @@ export default function XAIExplanationComponent() {
               <span className="text-sm text-gray-600">Treatment Adherence</span>
               <span className="text-sm font-semibold">{xaiData.riskContributionBreakdown.adherenceContribution}%</span>
             </div>
-            <div className="bg-gray-100 rounded-full h-2">
+            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-orange-500 h-2 rounded-full"
-                style={{ width: `${xaiData.riskContributionBreakdown.adherenceContribution}%` }}
+                style={{ width: `${Math.min(100, xaiData.riskContributionBreakdown.adherenceContribution)}%` }}
               ></div>
             </div>
           </div>
@@ -302,10 +302,10 @@ export default function XAIExplanationComponent() {
               <span className="text-sm text-gray-600">Complications</span>
               <span className="text-sm font-semibold">{xaiData.riskContributionBreakdown.complicationContribution}%</span>
             </div>
-            <div className="bg-gray-100 rounded-full h-2">
+            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-yellow-500 h-2 rounded-full"
-                style={{ width: `${xaiData.riskContributionBreakdown.complicationContribution}%` }}
+                style={{ width: `${Math.min(100, xaiData.riskContributionBreakdown.complicationContribution)}%` }}
               ></div>
             </div>
           </div>
@@ -315,10 +315,10 @@ export default function XAIExplanationComponent() {
               <span className="text-sm text-gray-600">Sensorimotor Status</span>
               <span className="text-sm font-semibold">{xaiData.riskContributionBreakdown.sensorimotorContribution}%</span>
             </div>
-            <div className="bg-gray-100 rounded-full h-2">
+            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-amber-500 h-2 rounded-full"
-                style={{ width: `${xaiData.riskContributionBreakdown.sensorimotorContribution}%` }}
+                style={{ width: `${Math.min(100, xaiData.riskContributionBreakdown.sensorimotorContribution)}%` }}
               ></div>
             </div>
           </div>
@@ -328,10 +328,10 @@ export default function XAIExplanationComponent() {
               <span className="text-sm text-gray-600">Immune Response</span>
               <span className="text-sm font-semibold">{xaiData.riskContributionBreakdown.immuneContribution}%</span>
             </div>
-            <div className="bg-gray-100 rounded-full h-2">
+            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-lime-500 h-2 rounded-full"
-                style={{ width: `${xaiData.riskContributionBreakdown.immuneContribution}%` }}
+                style={{ width: `${Math.min(100, xaiData.riskContributionBreakdown.immuneContribution)}%` }}
               ></div>
             </div>
           </div>
@@ -341,10 +341,10 @@ export default function XAIExplanationComponent() {
               <span className="text-sm text-gray-600">Lifestyle Conditions</span>
               <span className="text-sm font-semibold">{xaiData.riskContributionBreakdown.lifestyleContribution}%</span>
             </div>
-            <div className="bg-gray-100 rounded-full h-2">
+            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-emerald-500 h-2 rounded-full"
-                style={{ width: `${xaiData.riskContributionBreakdown.lifestyleContribution}%` }}
+                style={{ width: `${Math.min(100, xaiData.riskContributionBreakdown.lifestyleContribution)}%` }}
               ></div>
             </div>
           </div>
