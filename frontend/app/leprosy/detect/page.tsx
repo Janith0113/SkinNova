@@ -19,6 +19,8 @@ export default function LeprosyDetection() {
   const [error, setError] = useState<string | null>(null);
   const [savingReport, setSavingReport] = useState(false);
   const [lastImageFile, setLastImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showingPreview, setShowingPreview] = useState(false);
   const modelRef = useRef<any>(null);
 
   useEffect(() => {
@@ -52,6 +54,17 @@ export default function LeprosyDetection() {
     setLoading(true);
     setError(null);
 
+    // For file uploads, show preview immediately for at least 2 seconds
+    let objectUrl: string | null = null;
+    if (typeof imageFile !== 'string') {
+      objectUrl = URL.createObjectURL(imageFile);
+      setPreviewUrl(objectUrl);
+      setShowingPreview(true);
+      setLastImageFile(imageFile);
+    }
+
+    const minDisplayTime = new Promise<void>((resolve) => setTimeout(resolve, 2000));
+
     try {
       let image: HTMLImageElement | HTMLCanvasElement;
 
@@ -71,14 +84,12 @@ export default function LeprosyDetection() {
           throw new Error('No video element found');
         }
       } else {
-        // File upload - store for later saving
-        setLastImageFile(imageFile);
         image = new Image();
-        image.src = URL.createObjectURL(imageFile);
+        image.src = objectUrl!;
 
         await new Promise((resolve, reject) => {
-          image.onload = resolve;
-          image.onerror = reject;
+          (image as HTMLImageElement).onload = resolve;
+          (image as HTMLImageElement).onerror = reject;
         });
       }
 
@@ -91,16 +102,23 @@ export default function LeprosyDetection() {
         }
       });
 
-      setPrediction({
+      const result: PredictionResult = {
         label: maxPrediction.className,
         confidence: (maxPrediction.probability * 100).toFixed(2) as any,
-      });
+      };
+
+      // Ensure the preview is shown for at least 2 seconds
+      await minDisplayTime;
+
+      setPrediction(result);
     } catch (err) {
+      await minDisplayTime;
       const errorMessage = err instanceof Error ? err.message : 'Failed to process image';
       setError(`Scanning failed: ${errorMessage}`);
       console.error('Prediction error:', err);
     } finally {
       setLoading(false);
+      setShowingPreview(false);
     }
   };
 
@@ -108,6 +126,8 @@ export default function LeprosyDetection() {
     setPrediction(null);
     setError(null);
     setLastImageFile(null);
+    setPreviewUrl(null);
+    setShowingPreview(false);
   };
 
   const saveScanResult = async () => {
@@ -243,7 +263,24 @@ export default function LeprosyDetection() {
             </div>
           )}
 
-          {!prediction ? (
+          {showingPreview && previewUrl ? (
+            <div className="space-y-4">
+              <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+                <img
+                  src={previewUrl}
+                  alt="Uploaded image"
+                  className="w-full h-auto max-h-96 object-contain"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-14 w-14 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+                    <p className="text-white font-semibold text-lg">Analyzing image...</p>
+                    <p className="text-gray-300 text-sm mt-1">Please wait</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : !prediction ? (
             <ImageUploader
               onImageSelect={handleImageSelect}
               loading={loading}

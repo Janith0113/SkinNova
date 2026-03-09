@@ -1032,7 +1032,7 @@ export default function PatientDashboard() {
                 }}
                 className="w-full rounded-2xl bg-emerald-700 hover:bg-emerald-900 text-white text-sm font-semibold px-4 py-3 shadow-lg hover:shadow-2xl hover:scale-105 transition-all"
               >
-                ⚠️ {selectedDisease === 'psoriasis' || selectedDisease === 'leprosy' ? 'Risk Analysis' : `Ask a doctor`}
+                ⚠️ {selectedDisease === 'leprosy' ? 'Leprosy Type Predictor' : selectedDisease === 'psoriasis' ? 'Risk Analysis' : selectedDisease === 'skinCancer' ? 'View Information' : 'Ask a doctor'}
               </button>
 
               <button 
