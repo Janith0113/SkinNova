@@ -113,7 +113,7 @@ export default function ResultDisplay({ result }: ResultDisplayProps) {
         </div>
         <div className="bg-gray-50 rounded-lg p-4">
           <p className="text-sm text-gray-600 mb-1">Model</p>
-          <p className="font-semibold text-gray-900">Teachable Machine Classifier</p>
+          <p className="font-semibold text-gray-900">CNN Classifier</p>
         </div>
       </div>
 
