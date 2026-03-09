@@ -25,6 +25,7 @@ export interface RiskResult {
   recommendations: string[];
   imageClassName?: string; // What the AI classified the image as
   imageProbability?: number; // Confidence score
+  metadata?: RiskFactors; // Clinical metadata submitted
 }
 
 export const calculateSkinCancerRisk = (
@@ -37,12 +38,20 @@ export const calculateSkinCancerRisk = (
   const recommendations = [];
 
   // --- 1. Image Analysis Integration (Weighted Heavily - Foundation of Risk) ---
-  const isMalignantPrediction = 
+  // Check if it's explicitly a benign classification (contains "Not", "Normal", "Benign")
+  const isBenignPrediction = 
+    imageClassName.toLowerCase().includes("not") ||
+    imageClassName.toLowerCase().includes("normal") ||
+    imageClassName.toLowerCase().includes("benign");
+
+  // If NOT explicitly benign, check if it's malignant
+  const isMalignantPrediction = !isBenignPrediction && (
     imageClassName.toLowerCase().includes("malignant") || 
     imageClassName.toLowerCase().includes("melanoma") ||
     imageClassName.toLowerCase().includes("carcinoma") ||
     imageClassName.toLowerCase().includes("basal") ||
-    imageClassName.toLowerCase().includes("squamous");
+    imageClassName.toLowerCase().includes("squamous")
+  );
 
   if (isMalignantPrediction) {
     // Malignant prediction: Higher base score
@@ -56,11 +65,12 @@ export const calculateSkinCancerRisk = (
     });
   } else {
     // Benign prediction: Start with low baseline score (not negative)
-    score = 10; // Low baseline for benign lesions
+    // For non-melanoma images, this should be very low (< 20)
+    score = 5; // Very low baseline for benign/non-melanoma lesions
     contributors.push({
       factor: "AI Image Analysis",
-      impact: 10,
-      description: `Visual characteristics appear benign (${imageClassName}).`
+      impact: 5,
+      description: `Visual characteristics appear benign - ${imageClassName} (${(imageProbability * 100).toFixed(1)}% confidence).`
     });
   }
 
@@ -125,12 +135,12 @@ export const calculateSkinCancerRisk = (
   // For benign predictions, lesion symptoms are NOT significantly weighted
 
   // --- 3. For BENIGN Images: VERY Limited Metadata ---
-  // Benign images should NEVER exceed 20 points total, ensuring they stay well under 50%
-  if (!isMalignantPrediction) {
+  // Benign/Non-Melanoma images should NEVER exceed 15 points total, ensuring they stay well under 50%
+  if (isBenignPrediction || !isMalignantPrediction) {
     // Only add minimal personal history for benign
     if (factors.skinCancerHistory) {
-      const minimalHistoryImpact = 10;
-      score += minimalHistoryImpact; // Max 10+10 = 20
+      const minimalHistoryImpact = 5; // Reduced from 10
+      score += minimalHistoryImpact; // Max 5+5 = 10
       contributors.push({
         factor: "Personal History",
         impact: minimalHistoryImpact,
@@ -138,8 +148,8 @@ export const calculateSkinCancerRisk = (
       });
     }
     
-    // Cap benign at 20 to ensure well under 50%
-    score = Math.max(0, Math.min(20, score));
+    // Cap benign at 15 to ensure well under 50% - NO metadata beyond personal history added
+    score = Math.max(0, Math.min(15, score));
   } else {
     // --- For MALIGNANT Images: Full Metadata Integration ---
     // Personal skin cancer history
@@ -226,6 +236,7 @@ export const calculateSkinCancerRisk = (
     contributors: contributors.sort((a, b) => b.impact - a.impact),
     recommendations,
     imageClassName: imageClassName,
-    imageProbability: imageProbability
+    imageProbability: imageProbability,
+    metadata: factors
   };
 };
