@@ -35,24 +35,29 @@ export default function GradCAMVisualization({
               {doshaType} Analysis
             </h3>
             <p className="text-white/80">
-              Confidence Score: {(totalScore * 100).toFixed(1)}%
+              Confidence Score: {totalScore.toFixed(1)}%
             </p>
           </div>
         </div>
 
         {gradcamData && (
-          <div className="mt-4 space-y-2">
-            <p className="text-sm opacity-90">
+          <div className="mt-4 space-y-3">
+            <p className="text-sm font-semibold opacity-95">
               Key influencing factors:
             </p>
             {Array.isArray(gradcamData) && gradcamData.length > 0 && (
-              <ul className="text-sm space-y-1 opacity-80">
+              <div className="space-y-3">
                 {gradcamData.slice(0, 5).map((item: any, idx: number) => (
-                  <li key={idx}>
-                    • {typeof item === 'string' ? item : JSON.stringify(item)}
-                  </li>
+                  <div key={idx} className="bg-white/10 rounded-lg p-3 border border-white/20">
+                    <div className="flex justify-between items-start gap-2 mb-2">
+                      <span className="font-medium text-sm flex-1">{item.question || `Question ${item.questionId}`}</span>
+                      <span className="text-xs bg-white/20 px-2 py-1 rounded">{item.gradcamScore?.toFixed(1) || 0}/100</span>
+                    </div>
+                    <p className="text-xs opacity-90 mb-2">Answer: {item.selectedAnswer}</p>
+                    <p className="text-xs opacity-75">{item.explanation}</p>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         )}
