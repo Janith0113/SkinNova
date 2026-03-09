@@ -65,32 +65,33 @@ export default function RiskComponentBreakdown({ components }: { components: Com
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-6 overflow-hidden">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Risk Components Breakdown</h3>
 
         <div className="space-y-6">
           {Object.entries(components).map(([key, value]) => {
             const info = componentInfo[key as keyof typeof componentInfo]
             if (!info) return null
+            const clamped = Math.min(100, Math.round(value))
 
             return (
               <div key={key} className={`rounded-lg border p-4 ${info.color}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex-1">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-gray-900">{info.name}</h4>
                     <p className="text-xs text-gray-600 mt-1">{info.description}</p>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900">{Math.round(value)}</div>
+                  <div className="text-right shrink-0">
+                    <div className="text-2xl font-bold text-gray-900">{clamped}</div>
                     <div className="text-xs text-gray-600">Weight: {info.weight}%</div>
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                <div className="mt-3 h-2 bg-gray-300 rounded-full overflow-hidden">
+                <div className="mt-3 w-full h-2 bg-gray-300 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${getBarColor(value)} transition-all duration-500`}
-                    style={{ width: `${value}%` }}
+                    style={{ width: `${clamped}%` }}
                   ></div>
                 </div>
 

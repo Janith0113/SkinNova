@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AlertCircle, TrendingUp, TrendingDown, Activity, Heart, Shield } from 'lucide-react'
+import { AlertCircle, TrendingUp, TrendingDown, Activity, Heart, Shield, FileDown } from 'lucide-react'
 import RiskScoreGauge from './RiskScoreGauge'
 import RiskComponentBreakdown from './RiskComponentBreakdown'
 import RiskTrendsChart from './RiskTrendsChart'
 import CriticalFactorsPanel from './CriticalFactorsPanel'
 import RecommendationsPanel from './RecommendationsPanel'
 import XAIExplanation from './XAIExplanation'
+import { generateLeprosyRiskAssessmentReport, downloadReportAsPDF } from '@/utils/reportGenerator'
 
 interface RiskAssessment {
   overallRiskScore: number
@@ -65,10 +66,48 @@ export default function RiskAnalysisComponent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'breakdown' | 'trends' | 'predictions' | 'xai'>('overview')
+  const [reportLoading, setReportLoading] = useState(false)
 
   useEffect(() => {
     fetchLatestAssessment()
   }, [])
+
+  const handleDownloadReport = async () => {
+    if (!assessment) return
+    setReportLoading(true)
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      const patientName = user.name || user.username || undefined
+      const html = generateLeprosyRiskAssessmentReport({
+        generatedAt: new Date().toLocaleString(),
+        patientName,
+        overallRiskScore: assessment.overallRiskScore,
+        riskLevel: assessment.riskLevel,
+        diseaseTrajectory: assessment.diseaseTrajectory,
+        nextCheckupDueDate: assessment.nextCheckupDueDate,
+        componentScores: assessment.componentScores,
+        criticalFactors: assessment.criticalFactors,
+        protectiveFactors: assessment.protectiveFactors,
+        predictions: assessment.predictions,
+        recommendations: assessment.recommendations,
+        aiPrediction: assessment.aiPrediction
+          ? {
+              leprosyTypeName: assessment.aiPrediction.leprosyTypeName,
+              leprosyTypeCode: assessment.aiPrediction.leprosyTypeCode,
+              riskLevel: assessment.aiPrediction.riskLevel,
+              description: assessment.aiPrediction.description,
+              confidencePercent: assessment.aiPrediction.confidencePercent ?? (assessment.aiPrediction.confidence ?? 0) * 100,
+              classProbabilities: assessment.aiPrediction.classProbabilities,
+              clinicalInterpretation: assessment.aiPrediction.clinicalInterpretation,
+            }
+          : undefined,
+      })
+      const filename = `Leprosy_Risk_Assessment_${assessment.riskLevel}_${Date.now()}.pdf`
+      await downloadReportAsPDF(html, filename)
+    } finally {
+      setReportLoading(false)
+    }
+  }
 
   const fetchLatestAssessment = async () => {
     try {
@@ -289,8 +328,29 @@ export default function RiskAnalysisComponent() {
         )}
       </div>
 
-      {/* Recalculate Button */}
-      <div className="flex justify-end">
+      {/* Action Buttons */}
+      <div className="flex flex-wrap justify-end gap-3">
+        <button
+          onClick={handleDownloadReport}
+          disabled={reportLoading}
+          className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${
+            reportLoading
+              ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+              : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-md'
+          }`}
+        >
+          {reportLoading ? (
+            <>
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <FileDown className="w-4 h-4" />
+              Download Report
+            </>
+          )}
+        </button>
         <button
           onClick={calculateRiskScore}
           disabled={loading}
@@ -302,7 +362,7 @@ export default function RiskAnalysisComponent() {
         >
           {loading ? (
             <>
-              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
               Recalculating...
             </>
           ) : (
