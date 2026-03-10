@@ -231,7 +231,7 @@ router.post('/compute-xai', (req: Request, res: Response) => {
       success: true,
       data: {
         results: gradcamResults,
-        overallConfidence: Math.min(100, overallScore * 1.2), // Scale to 100
+        overallConfidence: Math.min(100, Math.max(0, overallScore)), // Ensure 0-100 range
         doshaType: primaryDosha,
         totalQuestions: answers.length,
         timestamp: new Date().toISOString(),
