@@ -128,18 +128,18 @@ class LeprosyXAIService {
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'Visible skin manifestations increase risk',
+          explanation: 'New or changing skin patches are a primary sign of active leprosy. They form because Mycobacterium leprae bacteria infects the skin\'s nerve endings, causing patches that are discoloured, dry, and numb. Active patches mean the disease is not yet fully controlled and needs treatment or closer monitoring.',
           category: 'symptom'
         })
       }
 
       if (latestLog.symptoms?.numbness) {
         features.push({
-          name: 'Numbness',
+          name: 'Numbness or Loss of Sensation',
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'Sensory involvement indicates nerve damage',
+          explanation: 'Numbness means leprosy bacteria have damaged your nerves — typically in the hands, feet, or face. This is one of the hallmark signs of leprosy nerve involvement. Loss of sensation is dangerous because you may not feel cuts or burns, leading to unnoticed wounds that can become infected and cause disability if untreated.',
           category: 'symptom'
         })
       }
@@ -150,7 +150,7 @@ class LeprosyXAIService {
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'Motor weakness suggests disease progression',
+          explanation: 'Weakness in your hands or feet means the nerve damage from leprosy has progressed to affect muscle control (motor nerve fibres). If untreated, this leads to permanent disability such as "claw hand" or "foot drop". Muscle weakness is classified as WHO Disability Grade 1 or 2 and requires urgent attention.',
           category: 'symptom'
         })
       }
@@ -161,18 +161,18 @@ class LeprosyXAIService {
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'Ocular involvement risk severe complications',
+          explanation: 'Leprosy can damage the nerves that control eye blinking and sensation. Without blinking, the cornea dries out and can ulcerate, leading to permanent vision loss. Eye involvement is classified as WHO Disability Grade 2 — the most serious level — and requires urgent specialist review to prevent blindness.',
           category: 'symptom'
         })
       }
 
       if (latestLog.symptoms?.painfulNerves) {
         features.push({
-          name: 'Nerve Pain',
+          name: 'Nerve Pain (Neuritis)',
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'Painful nerve involvement increases severity',
+          explanation: 'Pain in the nerves (neuritis) is a warning sign of a leprosy reaction — a sudden episode of inflammation that can destroy nerve tissue very quickly, sometimes within 24–48 hours. Reactions can cause lasting disability if not treated immediately with corticosteroids. Painful nerves require urgent medical attention.',
           category: 'symptom'
         })
       }
@@ -201,7 +201,7 @@ class LeprosyXAIService {
           value: 'rapid',
           importance: 0,
           direction: 'positive',
-          explanation: 'Fast-spreading symptoms indicate aggressive disease',
+          explanation: 'Rapidly spreading symptoms mean the Mycobacterium leprae bacteria are actively multiplying. This increases the risk of new nerve damage and makes the disease harder to control. Fast progression is a key sign that the current treatment plan may need to be started or reviewed by your doctor urgently.',
           category: 'symptom'
         })
       }
@@ -219,8 +219,8 @@ class LeprosyXAIService {
           direction: adherence.medicationCompliancePercent < 80 ? 'positive' : 'negative',
           explanation:
             adherence.medicationCompliancePercent < 80
-              ? 'Low compliance increases treatment failure risk'
-              : 'Good compliance reduces risk',
+              ? 'WHO guidelines require over 90% dose completion for a successful leprosy cure. At below 80% compliance, surviving bacteria can become drug-resistant, making future treatment much harder. Incomplete treatment is a leading global cause of leprosy relapse.'
+              : 'Taking MDT medications consistently — as you are doing — is the single most important factor in curing leprosy and preventing nerve damage. Good compliance significantly reduces your risk of treatment failure, reactions, and disability.',
           category: 'adherence'
         })
       }
@@ -231,18 +231,18 @@ class LeprosyXAIService {
           value: adherence.missedDosesLastMonth,
           importance: 0,
           direction: 'positive',
-          explanation: `${adherence.missedDosesLastMonth} doses missed compromises treatment`,
+          explanation: `You missed ${adherence.missedDosesLastMonth} dose(s) last month. Each missed dose allows leprosy bacteria to remain active in the body for longer. MDT (Multi-Drug Therapy) requires uninterrupted doses over 6–12 months to fully eliminate the bacteria. Missing doses risks drug resistance and increases the chance of relapse.`,
           category: 'adherence'
         })
       }
 
       if (adherence.missedAppointmentsLastMonth && adherence.missedAppointmentsLastMonth > 0) {
         features.push({
-          name: 'Missed Check-ups',
+          name: 'Missed Follow-up Appointments',
           value: adherence.missedAppointmentsLastMonth,
           importance: 0,
           direction: 'positive',
-          explanation: 'Missed appointments prevent proper monitoring',
+          explanation: 'Regular clinic visits are how your doctor checks for nerve damage, leprosy reactions (Type 1/Type 2), and treatment progress. Missing check-ups means complications can go undetected. A leprosy reaction can cause irreversible nerve damage within hours, making regular appointments critical for early detection.',
           category: 'adherence'
         })
       }
@@ -260,8 +260,8 @@ class LeprosyXAIService {
           direction: clinical.whoDisabilityGrade > 0 ? 'positive' : 'negative',
           explanation:
             clinical.whoDisabilityGrade > 0
-              ? `Grade ${clinical.whoDisabilityGrade} disability increases risk`
-              : 'No disability is protective',
+              ? `Your WHO Disability Grade is ${clinical.whoDisabilityGrade}. Grade 1 means loss of protective sensation; Grade 2 means visible disability (such as ulcers, claw hand, foot drop, or eye damage). A higher grade shows the disease has already caused lasting harm and increases the risk of further complications without proper rehabilitation and care.`
+              : 'Having no disability (Grade 0) is a strong protective sign — it means leprosy has not yet caused lasting nerve or eye damage. This is achieved by taking medications consistently and attending regular check-ups.',
           category: 'clinical'
         })
       }
@@ -274,7 +274,7 @@ class LeprosyXAIService {
             value: severeThickenings.length,
             importance: 0,
             direction: 'positive',
-            explanation: `${severeThickenings.length} severely thickened nerves indicate advanced disease`,
+            explanation: `${severeThickenings.length} severely thickened nerve(s) detected. Thickened nerves are a direct sign that leprosy bacteria are infecting nerve tissue. Once a nerve becomes severely thickened, it is at high risk of sudden function loss during a leprosy reaction, potentially causing permanent conditions like claw hand, wrist drop, or foot drop.`,
             category: 'clinical'
           })
         }
@@ -286,7 +286,7 @@ class LeprosyXAIService {
           value: clinical.eyeStatus,
           importance: 0,
           direction: 'positive',
-          explanation: 'Ocular involvement increases complication risk',
+          explanation: 'An abnormal eye status suggests leprosy may be affecting the nerves or tissues of the eye. Without normal blinking and corneal sensation, the eye surface dries out and can form ulcers, potentially leading to vision loss. Any eye involvement in leprosy should be reviewed by an eye specialist promptly.',
           category: 'clinical'
         })
       }
@@ -302,7 +302,7 @@ class LeprosyXAIService {
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'HIV significantly increases leprosy complications',
+          explanation: 'HIV weakens the CD4+ T-cells that the immune system uses to keep leprosy bacteria under control. People with both HIV and leprosy are at significantly higher risk of severe leprosy reactions, faster disease progression, and medication side effects. Both conditions must be managed together under medical supervision.',
           category: 'clinical'
         })
       }
@@ -313,7 +313,7 @@ class LeprosyXAIService {
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'TB co-infection increases immunosuppression',
+          explanation: 'Tuberculosis (TB) and leprosy are both caused by mycobacteria and both weaken the immune system. Having both together makes it harder for the body to fight either disease. Some TB drugs can also interact with leprosy treatment (MDT), so both conditions must be carefully managed together by your doctor.',
           category: 'clinical'
         })
       }
@@ -324,7 +324,7 @@ class LeprosyXAIService {
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'Diabetes compromises immune response',
+          explanation: 'Poorly controlled blood sugar impairs the immune cells that fight leprosy bacteria. Diabetes also reduces blood flow to nerve endings, making nerve damage from leprosy worse and healing slower. Diabetic patients with leprosy are at higher risk of foot ulcers and disability due to reduced sensation in the feet.',
           category: 'clinical'
         })
       }
@@ -335,7 +335,7 @@ class LeprosyXAIService {
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'Poor nutrition weakens immune system',
+          explanation: 'The immune system needs adequate vitamins (especially A, D, and B12), protein, and minerals to fight leprosy bacteria. Malnutrition reduces the body\'s ability to respond to MDT treatment and increases the risk of reactions. Good nutrition — including protein-rich foods and vegetables — supports faster healing and better treatment outcomes.',
           category: 'clinical'
         })
       }
@@ -347,11 +347,11 @@ class LeprosyXAIService {
 
       if (lifestyle.treatmentAccess === 'limited' || lifestyle.treatmentAccess === 'poor') {
         features.push({
-          name: 'Limited Treatment Access',
+          name: 'Limited Access to Treatment',
           value: lifestyle.treatmentAccess,
           importance: 0,
           direction: 'positive',
-          explanation: 'Poor treatment access increases disease progression risk',
+          explanation: 'MDT medicines must be taken every day for 6–12 months without interruption. If you have difficulty accessing a clinic or pharmacy, doses may be missed or delayed, which allows leprosy bacteria to remain active. Treatment interruption is one of the leading causes of leprosy relapse worldwide, according to WHO.',
           category: 'environmental'
         })
       }
@@ -362,7 +362,7 @@ class LeprosyXAIService {
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'Chronic stress impairs immune function',
+          explanation: 'Chronic psychological stress raises cortisol levels, which suppresses T-cell activity — the immune cells responsible for keeping leprosy bacteria dormant. High stress is a medically recognised trigger for Type 1 leprosy reactions (reversal reactions), which can cause sudden, severe nerve damage. Stress management is a recognised part of leprosy care.',
           category: 'environmental'
         })
       }
@@ -373,7 +373,7 @@ class LeprosyXAIService {
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'Smoking weakens immune response',
+          explanation: 'Tobacco smoking suppresses immune cell function and reduces blood flow to the skin and nerves. This makes it harder for the body to fight leprosy bacteria and slows the healing of damaged tissue. Smokers with leprosy also have a higher risk of nerve complications and slower recovery after reactions.',
           category: 'environmental'
         })
       }
@@ -384,7 +384,7 @@ class LeprosyXAIService {
           value: true,
           importance: 0,
           direction: 'positive',
-          explanation: 'Poor hygiene increases infection risk',
+          explanation: 'Leprosy spreads through close, prolonged contact with the nose and mouth secretions of an untreated patient. Poor hygiene and overcrowded living conditions increase the risk of transmission to household contacts. Good personal hygiene also prevents secondary bacterial infections in open leprosy skin lesions or wounds.',
           category: 'environmental'
         })
       }
@@ -516,7 +516,7 @@ class LeprosyXAIService {
   }
 
   /**
-   * Generate overall explanation text
+   * Generate overall explanation text — plain language for patients
    */
   private generateOverallExplanation(
     riskScore: number,
@@ -524,77 +524,66 @@ class LeprosyXAIService {
     protectiveFactors: FeatureContribution[],
     componentScores: any
   ): string {
-    let explanation = ''
-
-    // 1. Risk Level Assessment
+    // 1. Plain-language risk summary
     let riskLevel = ''
-    let riskContext = ''
+    let riskMessage = ''
     if (riskScore > 75) {
-      riskLevel = 'CRITICAL'
-      riskContext =
-        'requires immediate clinical attention and aggressive management to prevent complications'
+      riskLevel = 'Critical'
+      riskMessage =
+        'Your condition needs urgent attention. The AI has detected multiple serious warning signs that increase your risk of permanent nerve damage or disability. Please contact your healthcare provider or leprosy clinic as soon as possible and do not stop your medications.'
     } else if (riskScore > 50) {
-      riskLevel = 'HIGH'
-      riskContext = 'indicates significant disease activity and requires close monitoring'
+      riskLevel = 'High'
+      riskMessage =
+        'There are several important warning signs present. You should keep all scheduled doctor appointments, report any new or changing symptoms promptly, and follow your medication schedule strictly. Your doctor may need to adjust your treatment plan.'
     } else if (riskScore > 25) {
-      riskLevel = 'MODERATE'
-      riskContext = 'suggests ongoing disease management needs'
+      riskLevel = 'Moderate'
+      riskMessage =
+        'Your leprosy is being managed, but there are areas that need improvement — such as taking your medicines consistently or addressing lifestyle factors — to reduce the risk of complications like nerve damage or reactions.'
     } else {
-      riskLevel = 'LOW'
-      riskContext = 'indicates good disease control with continued adherence'
+      riskLevel = 'Low'
+      riskMessage =
+        'Your condition is well-controlled. Continue taking your MDT medications on schedule, attend your regular check-ups, and monitor your skin and sensation daily to maintain this good progress.'
     }
 
-    explanation = `Your risk assessment shows a ${riskLevel} risk level (${riskScore}/100), which ${riskContext}. `
+    let explanation = `Your overall risk score is ${riskScore} out of 100 — rated as ${riskLevel} Risk.\n\n${riskMessage}\n\n`
 
-    // 2. Top Key Drivers with Importance Scores
+    // 2. Why this result was predicted — key drivers in plain language
     if (keyDrivers.length > 0) {
-      explanation += `The Grad-CAM analysis identified the following key factors driving this prediction:\n\n`
-
-      // Top 3 drivers with importance percentages
-      const topDrivers = keyDrivers.slice(0, 3)
-      topDrivers.forEach((driver, index) => {
-        const position = index === 0 ? 'Primary' : index === 1 ? 'Secondary' : 'Tertiary'
-        const importancePercent = Math.round(driver.importance)
-        explanation += `${position} Driver (${importancePercent}% importance): ${driver.name} - ${driver.explanation}. `
+      explanation += 'Why this risk level was predicted:\n'
+      keyDrivers.slice(0, 3).forEach((driver, index) => {
+        explanation += `${index + 1}. ${driver.name}: ${driver.explanation}\n`
       })
-
       explanation += '\n'
     }
 
-    // 3. Component Contribution Breakdown
-    explanation += `This prediction is based on six medical assessment components: `
-    explanation += `Symptom Progression (${Math.round(componentScores.symptomScore) || 0}/100), `
-    explanation += `Treatment Adherence (${Math.round(componentScores.adherenceScore) || 0}/100), `
-    explanation += `Complications (${Math.round(componentScores.complicationScore) || 0}/100), `
-    explanation += `Sensorimotor Impact (${Math.round(componentScores.sensoriMotorScore) || 0}/100), `
-    explanation += `Immune Activity (${Math.round(componentScores.immuneStatusScore) || 0}/100), and `
-    explanation += `Lifestyle Factors (${Math.round(componentScores.lifestyleScore) || 0}/100). `
+    // 3. Six components in plain language — using correct key names
+    const symptomScore = Math.round(componentScores.symptomProgressionRisk ?? 0)
+    const adherenceScore = Math.round(componentScores.treatmentAdherenceRisk ?? 0)
+    const complicationScore = Math.round(componentScores.complicationRisk ?? 0)
+    const sensoriScore = Math.round(componentScores.sensorimotorCompromiseRisk ?? 0)
+    const immuneScore = Math.round(componentScores.immuneResponseRisk ?? 0)
+    const lifeScore = Math.round(componentScores.lifeconditionsRisk ?? 0)
 
-    // 4. Protective Factors Impact
+    explanation += 'How each area contributes to your risk:\n'
+    explanation += `\u2022 Symptom Progression (${symptomScore}/100): How active and changing your visible leprosy symptoms are right now.\n`
+    explanation += `\u2022 Treatment Adherence (${adherenceScore}/100): How consistently you are taking your MDT medicines and attending follow-up appointments.\n`
+    explanation += `\u2022 Complication Risk (${complicationScore}/100): The likelihood of serious events such as a Type 1 or Type 2 leprosy reaction, which can rapidly damage nerves.\n`
+    explanation += `\u2022 Nerve & Muscle Function (${sensoriScore}/100): The extent to which your nerves or muscles have been affected, impacting your sensation and physical ability.\n`
+    explanation += `\u2022 Immune Health (${immuneScore}/100): How well your immune system is managing the leprosy bacteria, including the impact of other conditions like diabetes or HIV.\n`
+    explanation += `\u2022 Living Conditions (${lifeScore}/100): Lifestyle and environmental factors such as stress levels, nutrition, smoking, hygiene, and your ability to access treatment.\n\n`
+
+    // 4. Protective factors
     if (protectiveFactors.length > 0) {
-      explanation += `Positive factors moderating your risk: `
-      protectiveFactors.slice(0, 2).forEach((factor, index) => {
-        const importancePercent = Math.round(Math.abs(factor.importance))
-        explanation += `${factor.name} (${importancePercent}% protective effect) `
-        if (index === 0 && protectiveFactors.length > 1) explanation += 'and '
+      explanation += 'Factors working in your favour:\n'
+      protectiveFactors.slice(0, 2).forEach((factor) => {
+        explanation += `\u2713 ${factor.name}: ${factor.explanation}\n`
       })
-      explanation += `. ${protectiveFactors[0].explanation}. `
+      explanation += '\n'
     }
 
-    // 5. Normalized Score Interpretation
-    explanation += `On a normalized scale where 0 = minimal risk and 100 = severe risk, your current score of ${riskScore} indicates `
-    if (riskScore < 25) {
-      explanation += 'well-controlled disease with good prognosis if adherence continues. '
-    } else if (riskScore < 50) {
-      explanation += 'moderate disease activity requiring optimization of current management. '
-    } else if (riskScore < 75) {
-      explanation += 'elevated risk requiring intervention to prevent progression. '
-    } else {
-      explanation += 'critical risk requiring urgent clinical review and management adjustment. '
-    }
-
-    // 6. Actionable Recommendation
-    explanation += `Prioritize addressing the primary driver (${keyDrivers.length > 0 ? keyDrivers[0].name : 'identified factors'}) in consultation with your healthcare provider.`
+    // 5. Bottom line
+    explanation +=
+      'Important: This prediction is based on the health information and symptoms you have entered. The more complete your profile and symptom history are, the more accurate this result will be. Always discuss your results with your doctor or leprosy care nurse before making any changes to your treatment.'
 
     return explanation
   }

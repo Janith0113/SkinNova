@@ -2,7 +2,25 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Brain, AlertCircle, CheckCircle, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Brain, AlertCircle, CheckCircle, ChevronDown, ChevronUp, RotateCcw, FileDown } from 'lucide-react';
+import { generateLeprosyReport, downloadReportAsPDF } from '@/utils/reportGenerator';
+
+interface XAITopFeature {
+  feature: string;
+  display_name: string;
+  shap_value: number;
+  feature_value: number;
+  direction: 'positive' | 'negative';
+}
+
+interface XAIExplanation {
+  image_base64: string | null;
+  base_value: number;
+  prediction_score: number;
+  shap_values: Record<string, number>;
+  top_features: XAITopFeature[];
+  error?: string;
+}
 
 interface PredictionResult {
   success: boolean;
@@ -24,6 +42,8 @@ interface PredictionResult {
     key_clinical_notes: string[];
   };
   feature_importance: Record<string, number>;
+  xai_explanation: XAIExplanation | null;
+  xai_narrative: string | null;
   disclaimer: string;
   timestamp: string;
 }
@@ -50,6 +70,136 @@ const BAR_COLORS: Record<string, string> = {
   BL: 'bg-orange-500',
   LL: 'bg-red-500',
 };
+
+const FEATURE_ICONS: Record<string, string> = {
+  age: '👤',
+  gender: '⚧️',
+  duration_of_illness_months: '📅',
+  number_of_lesions: '🩹',
+  largest_lesion_size_cm: '📏',
+  nerve_involvement: '🧠',
+  nerve_thickening: '🫀',
+  loss_of_sensation: '✋',
+  muscle_weakness: '💪',
+  eye_involvement: '👁️',
+  prev_treatment: '💊',
+  household_contacts: '👨‍👩‍👧',
+  skin_smear_right: '🔬',
+  skin_smear_left: '🔬',
+  bacillus_index: '🦠',
+  morphological_index: '📊',
+};
+
+const LEPROSY_PATIENT_GUIDANCE: Record<string, { title: string; explanation: string; action: string; borderColor: string }> = {
+  TT: {
+    title: 'Tuberculoid Leprosy (TT) — What this means for you',
+    explanation:
+      'Your results suggest Tuberculoid Leprosy, the mildest form of the disease. This type typically involves very few skin patches (usually 1–5), well-defined borders, and limited nerve damage. Your immune system is responding strongly, which is a positive sign. With proper Multi-Drug Therapy (MDT), this type is highly treatable.',
+    action: 'Start a 6-month MDT (Paucibacillary regimen) under medical supervision.',
+    borderColor: 'border-green-200 bg-green-50',
+  },
+  BT: {
+    title: 'Borderline Tuberculoid (BT) — What this means for you',
+    explanation:
+      'Your results suggest Borderline Tuberculoid Leprosy. You have several skin patches with some nerve involvement. While more advanced than TT, this form still responds well to early treatment. Protecting your nerves and skin is important to prevent long-term complications.',
+    action: 'Begin a 12-month MDT (Multibacillary regimen) and attend regular nerve function assessments.',
+    borderColor: 'border-lime-200 bg-lime-50',
+  },
+  BB: {
+    title: 'Mid-Borderline Leprosy (BB) — What this means for you',
+    explanation:
+      'Your results indicate Mid-Borderline Leprosy. This is an unstable form that can shift toward a milder (TT) or more severe (LL) type depending on your immune response. Timely treatment is especially important to prevent nerve damage and disability.',
+    action: 'Start 12-month MDT immediately and monitor closely for Type 1 (reversal) reactions.',
+    borderColor: 'border-yellow-200 bg-yellow-50',
+  },
+  BL: {
+    title: 'Borderline Lepromatous (BL) — What this means for you',
+    explanation:
+      'Your results suggest Borderline Lepromatous Leprosy. This type involves more widespread skin lesions and a higher bacterial load. Your immune system needs support through treatment. With consistent Multi-Drug Therapy, the bacterial count will drop significantly over time.',
+    action: 'Begin 12-month MDT, monitor skin smear results every 6 months, and watch for nerve function changes.',
+    borderColor: 'border-orange-200 bg-orange-50',
+  },
+  LL: {
+    title: 'Lepromatous Leprosy (LL) — What this means for you',
+    explanation:
+      'Your results indicate Lepromatous Leprosy, the most advanced form. There is a high bacterial load present and the immune response to the bacteria is reduced. However, this is treatable. Consistent medication will eliminate the bacteria and halt disease progression over the course of your treatment.',
+    action: 'Start 12-month MDT urgently, protect all numb areas from injury, and schedule eye and nerve examinations.',
+    borderColor: 'border-red-200 bg-red-50',
+  },
+};
+
+function getFeatureExplanation(
+  feature: string,
+  value: number,
+  direction: 'positive' | 'negative',
+  typeCode: string
+): string {
+  const explanations: Record<string, (v: number, dir: 'positive' | 'negative') => string> = {
+    number_of_lesions: (v, dir) =>
+      dir === 'positive'
+        ? `You reported ${v} skin lesion(s). A higher number of lesions is associated with more widespread forms of leprosy (LL / BL).`
+        : `You reported ${v} skin lesion(s), which is relatively low — a pattern more typical of milder forms (TT / BT).`,
+    largest_lesion_size_cm: (v, dir) =>
+      dir === 'positive'
+        ? `Your largest lesion is ${v} cm. Larger lesion sizes suggest the disease has progressed beyond the earliest stage.`
+        : `Your largest lesion is ${v} cm, which is small — consistent with an early or mild presentation.`,
+    bacillus_index: (v, dir) =>
+      dir === 'positive'
+        ? `Your Bacillus Index (BI) of ${v} indicates a measurable bacterial presence, characteristic of multibacillary leprosy.`
+        : `Your Bacillus Index (BI) of ${v} is low or absent, suggesting minimal bacterial load — more typical of paucibacillary leprosy.`,
+    morphological_index: (v, dir) =>
+      dir === 'positive'
+        ? `Your Morphological Index of ${v}% indicates a proportion of live, active bacteria — a sign the disease is actively progressing.`
+        : `Your Morphological Index of ${v}% is low, suggesting most bacteria may be non-viable — a positive indicator.`,
+    nerve_involvement: (v, dir) =>
+      dir === 'positive'
+        ? `Nerve involvement was detected in your case. This is a key feature used to determine the type and severity of leprosy.`
+        : `No significant nerve involvement was detected, which is reassuring and typically seen in milder forms.`,
+    loss_of_sensation: (v, dir) =>
+      dir === 'positive'
+        ? `You reported loss of sensation in affected areas. This indicates that some nerve damage has already occurred.`
+        : `No loss of sensation was reported, suggesting your nerve function is currently well preserved.`,
+    muscle_weakness: (v, dir) =>
+      dir === 'positive'
+        ? `You reported muscle weakness, which can indicate motor nerve damage — a marker of significant nerve involvement.`
+        : `No muscle weakness was reported, suggesting your motor nerves are not significantly affected at this stage.`,
+    nerve_thickening: (v, dir) =>
+      dir === 'positive'
+        ? `Thickened, palpable nerves were detected. This is a direct physical sign of nerve involvement in leprosy.`
+        : `No palpable nerve thickening was detected, indicating limited nerve involvement.`,
+    eye_involvement: (v, dir) =>
+      dir === 'positive'
+        ? `Eye involvement is present. This is more common in LL / BL types and requires close ophthalmological monitoring.`
+        : `No eye involvement was detected — a reassuring finding, as eye complications are more typical of severe forms.`,
+    duration_of_illness_months: (v, dir) =>
+      dir === 'positive'
+        ? `Your condition has been present for ${v} months. A longer illness duration can allow the disease to develop features of more advanced types.`
+        : `Your condition has been present for ${v} months. A shorter duration suggests earlier-stage disease, typically associated with milder types.`,
+    skin_smear_right: (v, dir) =>
+      dir === 'positive'
+        ? `Your right-side skin smear score of ${v} detected bacteria, supporting a multibacillary classification.`
+        : `Your right-side skin smear score of ${v} showed minimal or no bacteria, consistent with paucibacillary disease.`,
+    skin_smear_left: (v, dir) =>
+      dir === 'positive'
+        ? `Your left-side skin smear score of ${v} detected bacteria, supporting a multibacillary classification.`
+        : `Your left-side skin smear score of ${v} showed minimal or no bacteria, consistent with paucibacillary disease.`,
+    age: (v) =>
+      `Your age of ${v} years was factored into the classification model as age influences how leprosy presents clinically.`,
+    prev_treatment: (v, dir) =>
+      dir === 'positive'
+        ? `You have had previous treatment for leprosy. A prior treatment history can affect how the disease currently presents.`
+        : `No prior treatment history was recorded, providing the model with a baseline first-presentation assessment.`,
+    household_contacts: (v, dir) =>
+      dir === 'positive'
+        ? `You reported ${v} household contact(s). Higher contact numbers can be associated with multibacillary forms due to greater exposure.`
+        : `You reported ${v} household contact(s), which did not significantly shift the prediction.`,
+  };
+  const fn = explanations[feature];
+  if (fn) return fn(value, direction);
+  return direction === 'positive'
+    ? 'This factor contributed toward the predicted classification.'
+    : 'This factor suggested a less severe presentation.';
+}
 
 export default function LeprosyPredictPage() {
   const router = useRouter();
@@ -137,6 +287,32 @@ export default function LeprosyPredictPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [reportLoading, setReportLoading] = useState(false);
+
+  const handleDownloadReport = async () => {
+    if (!result) return;
+    setReportLoading(true);
+    try {
+      const html = generateLeprosyReport({
+        timestamp: new Date(result.timestamp).toLocaleString(),
+        form,
+        prediction: result.prediction,
+        class_probabilities: result.class_probabilities,
+        clinical_interpretation: result.clinical_interpretation,
+        feature_importance: result.feature_importance,
+        xai_narrative: result.xai_narrative,
+        xai_top_features: result.xai_explanation?.top_features ?? [],
+        xai_base_value: result.xai_explanation?.base_value,
+        xai_prediction_score: result.xai_explanation?.prediction_score,
+        disclaimer: result.disclaimer,
+      });
+      const filename = `Leprosy_Risk_Report_${result.prediction.leprosy_type_code}_${Date.now()}.pdf`;
+      await downloadReportAsPDF(html, filename);
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -469,19 +645,258 @@ export default function LeprosyPredictPage() {
               </div>
             )}
 
+            {/* ── XAI Decision Narrative ── */}
+            {result.xai_narrative && (
+              <div className="rounded-3xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-lg p-6">
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-xl">
+                    🔍
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-indigo-900 mb-2">
+                      Why did the AI make this prediction?
+                    </h3>
+                    <p className="text-sm text-indigo-800 leading-relaxed">
+                      {result.xai_narrative}
+                    </p>
+                    <p className="mt-3 text-xs text-indigo-500 italic">
+                      This explanation is generated from SHAP (SHapley Additive Explanations) values —
+                      a mathematically rigorous method that attributes each feature's contribution to
+                      the model's output, analogous to Grad-CAM in image-based AI.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Patient-Friendly Result Explanation ── */}
+            {result.xai_explanation !== null && result.xai_explanation.top_features.length > 0 && (
+              <div className="bg-white rounded-3xl border border-indigo-100 shadow-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-xl shrink-0">
+                    💡
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Understanding Your Result</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Plain-language explanation of the key factors that led the AI to classify your condition as{' '}
+                      <span className="font-semibold text-indigo-700">{result.prediction.leprosy_type_name}</span>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Supporting vs. Mitigating factors */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                  {/* Factors pushing toward this diagnosis */}
+                  <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
+                    <p className="text-xs font-bold text-red-700 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+                      Factors supporting this diagnosis
+                    </p>
+                    <div className="space-y-3">
+                      {result.xai_explanation!.top_features
+                        .filter(f => f.direction === 'positive')
+                        .slice(0, 4)
+                        .map(f => (
+                          <div key={f.feature} className="flex items-start gap-2.5">
+                            <span className="text-lg shrink-0">{FEATURE_ICONS[f.feature] ?? '📌'}</span>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800">{f.display_name}</p>
+                              <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
+                                {getFeatureExplanation(f.feature, f.feature_value, 'positive', typeCode)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      {result.xai_explanation!.top_features.filter(f => f.direction === 'positive').length === 0 && (
+                        <p className="text-xs text-red-500 italic">No strongly supporting factors detected.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Factors suggesting milder presentation */}
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                    <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                      Factors suggesting a milder presentation
+                    </p>
+                    <div className="space-y-3">
+                      {result.xai_explanation!.top_features
+                        .filter(f => f.direction === 'negative')
+                        .slice(0, 4)
+                        .map(f => (
+                          <div key={f.feature} className="flex items-start gap-2.5">
+                            <span className="text-lg shrink-0">{FEATURE_ICONS[f.feature] ?? '📌'}</span>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800">{f.display_name}</p>
+                              <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
+                                {getFeatureExplanation(f.feature, f.feature_value, 'negative', typeCode)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      {result.xai_explanation!.top_features.filter(f => f.direction === 'negative').length === 0 && (
+                        <p className="text-xs text-blue-500 italic">No significant mitigating factors detected.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* What this means for the patient */}
+                {LEPROSY_PATIENT_GUIDANCE[typeCode] && (
+                  <div className={`rounded-2xl p-4 border ${LEPROSY_PATIENT_GUIDANCE[typeCode].borderColor}`}>
+                    <p className="text-sm font-bold text-gray-800 mb-1.5">
+                      {LEPROSY_PATIENT_GUIDANCE[typeCode].title}
+                    </p>
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {LEPROSY_PATIENT_GUIDANCE[typeCode].explanation}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-gray-800">
+                      ✅ Recommended next step: {LEPROSY_PATIENT_GUIDANCE[typeCode].action}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Grad-CAM Style XAI Explanation ── */}
+            {result.xai_explanation && (
+              <div className="rounded-3xl border border-gray-200 shadow-xl overflow-hidden"
+                   style={{ background: '#0f172a' }}>
+                {/* Header */}
+                <div className="px-6 py-5 border-b border-slate-700"
+                     style={{ background: '#1e293b' }}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        🧠 Explainable AI — Grad-CAM Analysis
+                      </h3>
+                      <p className="text-sm text-slate-400 mt-1">
+                        SHAP (SHapley Additive Explanations) — the tabular-data equivalent of
+                        image Grad-CAM. Each feature is coloured by how strongly it pushed the
+                        model toward (red/warm) or away from (blue/cool) the predicted class.
+                      </p>
+                    </div>
+                    <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                      SHAP v TreeExplainer
+                    </span>
+                  </div>
+
+                  {/* Score summary row */}
+                  {result.xai_explanation.base_value !== undefined && (
+                    <div className="mt-4 flex flex-wrap gap-4">
+                      <div className="flex items-center gap-2 bg-slate-700/60 rounded-xl px-4 py-2">
+                        <span className="text-xs text-slate-400 uppercase tracking-wide">Base Score</span>
+                        <span className="text-sm font-bold text-slate-200">
+                          {result.xai_explanation.base_value.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-indigo-500/20 rounded-xl px-4 py-2 border border-indigo-500/30">
+                        <span className="text-xs text-indigo-300 uppercase tracking-wide">Prediction Score</span>
+                        <span className="text-sm font-bold text-indigo-200">
+                          {result.xai_explanation.prediction_score.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-amber-500/10 rounded-xl px-4 py-2 border border-amber-500/20">
+                        <span className="text-xs text-amber-400 uppercase tracking-wide">SHAP Δ</span>
+                        <span className="text-sm font-bold text-amber-300">
+                          {(result.xai_explanation.prediction_score - result.xai_explanation.base_value) >= 0 ? '+' : ''}
+                          {(result.xai_explanation.prediction_score - result.xai_explanation.base_value).toFixed(4)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Grad-CAM image */}
+                {result.xai_explanation.image_base64 ? (
+                  <div className="p-4">
+                    <img
+                      src={`data:image/png;base64,${result.xai_explanation.image_base64}`}
+                      alt="Grad-CAM style feature activation map"
+                      className="w-full rounded-2xl"
+                      style={{ imageRendering: 'crisp-edges' }}
+                    />
+                  </div>
+                ) : (
+                  result.xai_explanation.error && (
+                    <div className="p-6 text-sm text-red-400">
+                      ⚠️ Could not generate visual map: {result.xai_explanation.error}
+                    </div>
+                  )
+                )}
+
+                {/* Top feature table */}
+                {result.xai_explanation.top_features?.length > 0 && (
+                  <div className="px-6 pb-6">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                      Top Feature Contributions
+                    </p>
+                    <div className="space-y-2">
+                      {result.xai_explanation.top_features.slice(0, 8).map((f, i) => {
+                        const pct = Math.min(100, Math.abs(f.shap_value) * 200);
+                        const isPos = f.direction === 'positive';
+                        return (
+                          <div key={f.feature} className="flex items-center gap-3">
+                            <span className="w-5 text-xs text-slate-500 text-right shrink-0">{i + 1}</span>
+                            <span className="w-44 text-xs font-medium text-slate-300 truncate shrink-0">
+                              {f.display_name}
+                            </span>
+                            <span className="w-14 text-xs text-amber-400 text-right shrink-0 font-mono">
+                              {f.feature_value}
+                            </span>
+                            <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${isPos ? 'bg-red-500' : 'bg-blue-500'}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className={`w-16 text-xs font-bold text-right shrink-0 font-mono ${isPos ? 'text-red-400' : 'text-blue-400'}`}>
+                              {f.shap_value >= 0 ? '+' : ''}{f.shap_value.toFixed(4)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4 flex gap-4 text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                        Increases predicted probability
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                        Decreases predicted probability
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Disclaimer */}
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-xs text-gray-500 italic text-center">
               {result.disclaimer}
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleReset}
                 className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border-2 border-indigo-600 text-indigo-600 font-bold rounded-2xl hover:bg-indigo-50 transition-colors"
               >
                 <RotateCcw className="w-4 h-4" />
                 New Prediction
+              </button>
+              <button
+                onClick={handleDownloadReport}
+                disabled={reportLoading}
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold rounded-2xl hover:shadow-lg transition-all disabled:opacity-50"
+              >
+                {reportLoading ? (
+                  <><div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> Generating...</>
+                ) : (
+                  <><FileDown className="w-4 h-4" /> Download Report</>
+                )}
               </button>
               <button
                 onClick={() => router.push('/leprosy/assistant')}
