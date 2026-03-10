@@ -6,6 +6,7 @@ import LeprosyUserProfile from '../models/LeprosyUserProfile'
 import LeprosyRiskAssessment from '../models/LeprosyRiskAssessment'
 import leprosyKnowledgeService from '../services/leprosyKnowledgeService'
 import leprosyRiskAnalysisService from '../services/leprosyRiskAnalysisService'
+import leprosyXAIService from '../services/leprosyXAIService'
 import { generateGeminiContent } from '../services/gemini.service'
 
 const router = express.Router()
@@ -223,7 +224,7 @@ router.post('/chat/leprosy-assistant', requireAuth, async (req: any, res: any) =
     const searchResults = leprosyKnowledgeService.searchKnowledge(message)
 
     // Use KB result only when it is a confident, specific match (score >= 60)
-    const confidentResults = searchResults.filter((r: any) => (r.matchScore || 0) >= 60)
+    const confidentResults = searchResults.filter((r: any) => (r.matchScore || 0) >= 40)
 
     let reply: string
     let sources: any[]
@@ -1135,7 +1136,7 @@ router.post('/risk-assessment/auto-trigger', requireAuth, async (req: any, res: 
       return res.json({
         success: false,
         message: `Assessment calculated ${Math.round(hoursElapsed)} hours ago. Next auto-calculation in ${Math.round(24 - hoursElapsed)} hours.`,
-        lastCalculated: lastAssessment.timestamp
+        lastCalculated: lastAssessment?.timestamp
       })
     }
 
@@ -1156,6 +1157,7 @@ router.post('/risk-assessment/auto-trigger', requireAuth, async (req: any, res: 
 })
 
 // Get XAI explanation for latest assessment
+// Always regenerates fresh so explanations use the latest logic and correct component score keys
 router.get('/risk-assessment/xai/latest', requireAuth, async (req: any, res: any) => {
   try {
     const userId = req.user?.id || req.query?.userId
@@ -1164,32 +1166,35 @@ router.get('/risk-assessment/xai/latest', requireAuth, async (req: any, res: any
       return res.status(400).json({ error: 'User ID is required' })
     }
 
-    const assessment = await LeprosyRiskAssessment.findOne({ userId }).sort({
-      timestamp: -1
-    })
+    const assessment = await LeprosyRiskAssessment.findOne({ userId }).sort({ timestamp: -1 })
 
     if (!assessment) {
-      return res.status(404).json({
-        error: 'No risk assessment found'
-      })
+      return res.status(404).json({ error: 'No risk assessment found' })
     }
 
-    if (!assessment.assessment.xai) {
-      return res.status(404).json({
-        error: 'XAI explanation not available for this assessment'
-      })
-    }
+    // Fetch current profile and symptom data for fresh XAI generation
+    const [profile, symptomLogs] = await Promise.all([
+      LeprosyUserProfile.findOne({ userId }),
+      SymptomLog.find({ userId }).sort({ timestamp: -1 }).limit(30)
+    ])
+
+    // Regenerate XAI fresh so it always uses the latest explanation logic
+    const xai = await leprosyXAIService.generateXAIExplanation(
+      userId,
+      assessment.assessment.overallRiskScore,
+      assessment.assessment.componentScores,
+      profile,
+      symptomLogs
+    )
 
     res.json({
       success: true,
-      xai: assessment.assessment.xai,
+      xai,
       calculatedAt: assessment.timestamp
     })
   } catch (error: any) {
     console.error('Error fetching XAI explanation:', error)
-    res.status(500).json({
-      error: 'Failed to fetch XAI explanation'
-    })
+    res.status(500).json({ error: 'Failed to fetch XAI explanation' })
   }
 })
 

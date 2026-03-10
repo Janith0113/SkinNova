@@ -1,4 +1,5 @@
-import { Schema, model, Document } from 'mongoose'
+import { Schema, model, Document, Model } from 'mongoose'
+import mongoose from 'mongoose'
 
 export interface IDoctorAvailability extends Document {
   doctorId: string
@@ -34,4 +35,4 @@ const DoctorAvailabilitySchema = new Schema<IDoctorAvailability>(
 // Compound index for efficient queries
 DoctorAvailabilitySchema.index({ doctorId: 1, dayOfWeek: 1 })
 
-export default model<IDoctorAvailability>('DoctorAvailability', DoctorAvailabilitySchema)
+export default (mongoose.models.DoctorAvailability as Model<IDoctorAvailability>) || model<IDoctorAvailability>('DoctorAvailability', DoctorAvailabilitySchema)
