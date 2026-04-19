@@ -1,8 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Wind, Droplets, AlertCircle, TrendingUp, Shield, Zap, Lightbulb, BarChart3, Brain } from "lucide-react";
-import { generatePsoriasisRiskReport, downloadReportAsPDF, type PsoriasisRiskReportData } from "@/utils/reportGenerator";
+import { AlertCircle, ArrowRight, Cloud, Zap, TrendingUp, Lightbulb } from "lucide-react";
 
 interface RiskFactor {
   label: string;
@@ -40,27 +39,26 @@ interface ApiResponse {
   riskAnalysis: RiskAnalysis;
 }
 
-interface GradCAMData {
-  risk_score: number;
-  grad_cam_heatmap: number[];
-  factor_importance: Record<string, number>;
-  feature_values: Record<string, number>;
-  color_map: Record<string, string>;
-}
-
-export default function PsoriasisRiskAnalysis() {
+export default function RiskAnalysisOverview() {
   const [weatherData, setWeatherData] = useState<ApiResponse['weather'] | null>(null);
   const [location, setLocation] = useState<string>("");
   const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-  const [expandedFactor, setExpandedFactor] = useState<number | null>(null);
-  const [gradcamData, setGradcamData] = useState<GradCAMData | null>(null);
-  const [gradcamLoading, setGradcamLoading] = useState(false);
-  const [generatingReport, setGeneratingReport] = useState(false);
 
-  // Fetch weather data from backend API
+  const getColorGradient = (level: string): string => {
+    switch (level) {
+      case 'Very High':
+        return 'from-red-600 to-red-500';
+      case 'High':
+        return 'from-orange-600 to-orange-500';
+      case 'Moderate':
+        return 'from-yellow-600 to-yellow-500';
+      default:
+        return 'from-green-600 to-green-500';
+    }
+  };
+
   const fetchWeatherData = async (latitude: number, longitude: number) => {
     try {
       const response = await fetch(
@@ -85,11 +83,22 @@ export default function PsoriasisRiskAnalysis() {
           data.riskAnalysis.trend,
         explainableInsights: data.riskAnalysis.explainableInsights,
       });
-      setLastUpdate(new Date());
       setError(null);
       
-      // Fetch Grad-CAM explanation
-      fetchGradCAMExplanation(data.weather);
+      // Store in sessionStorage for other pages
+      sessionStorage.setItem('riskAnalysisData', JSON.stringify({
+        weather: data.weather,
+        location: data.location,
+        riskAnalysis: {
+          score: data.riskAnalysis.score,
+          level: data.riskAnalysis.level,
+          color: getColorGradient(data.riskAnalysis.level),
+          factors: data.riskAnalysis.factors,
+          suggestions: data.riskAnalysis.suggestions,
+          trend: `${data.weather.temperatureTrend} - ${data.riskAnalysis.trend}`,
+          explainableInsights: data.riskAnalysis.explainableInsights,
+        }
+      }));
     } catch (err) {
       console.error('Error fetching weather data:', err);
       setError("Unable to fetch weather data. Please check your location permissions.");
@@ -98,115 +107,6 @@ export default function PsoriasisRiskAnalysis() {
     }
   };
 
-  // Fetch Grad-CAM explanation for neural network interpretability
-  const fetchGradCAMExplanation = async (weather: ApiResponse['weather']) => {
-    try {
-      setGradcamLoading(true);
-      const response = await fetch('http://localhost:4000/api/psoriasis/grad-cam', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          temperature: weather.temperature,
-          humidity: weather.humidity,
-          trend_value: weather.temperatureTrend === 'warming' ? 1 : 
-                       weather.temperatureTrend === 'cooling' ? -1 : 0,
-          wind_speed: weather.windSpeed,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch Grad-CAM explanation');
-      }
-
-      const data = await response.json();
-      setGradcamData(data.gradcamExplanation);
-    } catch (err) {
-      console.error('Error fetching Grad-CAM:', err);
-      // Grad-CAM is optional, don't set error state
-    } finally {
-      setGradcamLoading(false);
-    }
-  };
-
-  // Helper function to get color gradient based on risk level
-  const getColorGradient = (level: string): string => {
-    switch (level) {
-      case 'Very High':
-        return 'from-red-600 to-red-500';
-      case 'High':
-        return 'from-orange-600 to-orange-500';
-      case 'Moderate':
-        return 'from-yellow-600 to-yellow-500';
-      default:
-        return 'from-green-600 to-green-500';
-    }
-  };
-
-  // Grad-CAM: Calculate activation intensity for each factor (0-1 scale)
-  const calculateGradCAMActivation = (factors: RiskFactor[]): Record<string, number> => {
-    const maxValue = Math.max(...factors.map(f => f.value), 1);
-    const activations: Record<string, number> = {};
-    
-    factors.forEach(factor => {
-      // Normalize factor value to 0-1 scale
-      activations[factor.label] = factor.value / maxValue;
-    });
-    
-    return activations;
-  };
-
-  // Get RGB color from heatmap based on ACTUAL RISK POINTS (not relative ranking)
-  // 0-10 pts = Blue (safe) | 10-20 pts = Green (low) | 20-35 pts = Yellow (moderate) | 35+ pts = Red (critical)
-  const getHeatmapColor = (points: number): string => {
-    if (points < 10) return '#3b82f6'; // Blue - minimal risk
-    if (points < 20) return '#10b981'; // Green - low risk
-    if (points < 35) return '#fbbf24'; // Yellow - moderate risk
-    return '#ef4444'; // Red - high/critical risk
-  };
-
-  const handleGenerateReport = async () => {
-    if (!riskAnalysis || !weatherData) {
-      alert("Please wait for data to load first");
-      return;
-    }
-
-    try {
-      setGeneratingReport(true);
-      const reportData: PsoriasisRiskReportData = {
-        timestamp: new Date().toLocaleString(),
-        location,
-        riskScore: riskAnalysis.score,
-        riskLevel: riskAnalysis.level,
-        weatherData: {
-          temperature: weatherData.temperature,
-          humidity: weatherData.humidity,
-          feelsLike: weatherData.feelsLike,
-          windSpeed: weatherData.windSpeed,
-          condition: weatherData.condition,
-        },
-        riskFactors: riskAnalysis.factors,
-        suggestions: riskAnalysis.suggestions,
-        explainableInsights: riskAnalysis.explainableInsights,
-      };
-
-      const htmlContent = generatePsoriasisRiskReport(reportData);
-      await downloadReportAsPDF(
-        htmlContent,
-        `Psoriasis_Risk_Report_${new Date().getTime()}.pdf`
-      );
-
-      alert("✅ Report generated and downloaded successfully!");
-    } catch (err) {
-      console.error("Error generating report:", err);
-      alert("Failed to generate report. Please try again.");
-    } finally {
-      setGeneratingReport(false);
-    }
-  };
-
-  // Get user location and fetch weather
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -214,30 +114,49 @@ export default function PsoriasisRiskAnalysis() {
           fetchWeatherData(position.coords.latitude, position.coords.longitude);
         },
         (err) => {
-          // Default to London if location access denied
           fetchWeatherData(51.5074, -0.1278);
         }
       );
     }
   }, []);
 
-  // Auto-refresh every 10 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            fetchWeatherData(position.coords.latitude, position.coords.longitude);
-          }
-        );
-      }
-    }, 600000); // 10 minutes
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center py-12 px-4">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+          <p className="text-gray-700 font-semibold">Loading risk analysis data...</p>
+        </div>
+      </div>
+    );
+  }
 
-    return () => clearInterval(interval);
-  }, []);
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Link
+            href="/psoriasis"
+            className="inline-flex items-center gap-2 text-purple-700 hover:text-purple-800 font-semibold mb-8"
+          >
+            ← Back to Psoriasis
+          </Link>
+          <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-6 flex items-start gap-4">
+            <AlertCircle className="text-red-500 flex-shrink-0 mt-1" size={24} />
+            <div>
+              <h3 className="font-bold text-red-800 text-lg">Error</h3>
+              <p className="text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!weatherData || !riskAnalysis) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Back Button */}
         <Link
@@ -246,6 +165,101 @@ export default function PsoriasisRiskAnalysis() {
         >
           ← Back to Psoriasis
         </Link>
+
+        {/* Header */}
+        <div className="mb-12">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="text-5xl">📊</div>
+            <div>
+              <h1 className="text-4xl sm:text-5xl font-bold text-gray-900">
+                Psoriasis Risk Analysis
+              </h1>
+              <p className="text-gray-600 mt-2">Explore detailed environmental impact on your skin health</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Overview Card */}
+        <div className={`bg-gradient-to-r ${riskAnalysis.color} rounded-3xl p-8 shadow-2xl mb-8 text-white`}>
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-white/90 mb-2">Current Risk Score</p>
+              <div className="text-7xl font-bold mb-2">{riskAnalysis.score.toFixed(2)}</div>
+              <div className="inline-block bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full font-bold">
+                {riskAnalysis.level} Risk
+              </div>
+            </div>
+            <div className="text-6xl">🎯</div>
+          </div>
+        </div>
+
+        {/* Navigation Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Weather Conditions */}
+          <Link
+            href="/psoriasis/risk-analysis/weather"
+            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border-2 border-blue-200 hover:border-blue-400"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <Cloud className="text-blue-500 group-hover:scale-110 transition-transform" size={32} />
+              <ArrowRight className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Environmental Conditions</h3>
+            <p className="text-gray-600 text-sm">Current weather, temperature, humidity, and wind</p>
+            <p className="text-blue-600 text-sm font-semibold mt-3">View Details →</p>
+          </Link>
+
+          {/* Risk Assessment */}
+          <Link
+            href="/psoriasis/risk-analysis/assessment"
+            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border-2 border-orange-200 hover:border-orange-400"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <Zap className="text-orange-500 group-hover:scale-110 transition-transform" size={32} />
+              <ArrowRight className="text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Risk Assessment</h3>
+            <p className="text-gray-600 text-sm">Overall risk score, gauge, and AI insights</p>
+            <p className="text-orange-600 text-sm font-semibold mt-3">View Details →</p>
+          </Link>
+
+          {/* Risk Factors */}
+          <Link
+            href="/psoriasis/risk-analysis/factors"
+            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border-2 border-purple-200 hover:border-purple-400"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <TrendingUp className="text-purple-500 group-hover:scale-110 transition-transform" size={32} />
+              <ArrowRight className="text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Risk Factors</h3>
+            <p className="text-gray-600 text-sm">Detailed breakdown of contributing factors</p>
+            <p className="text-purple-600 text-sm font-semibold mt-3">View Details →</p>
+          </Link>
+
+          {/* AI Explanations */}
+          <Link
+            href="/psoriasis/risk-analysis/ai-insights"
+            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border-2 border-cyan-200 hover:border-cyan-400"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <Lightbulb className="text-cyan-500 group-hover:scale-110 transition-transform" size={32} />
+              <ArrowRight className="text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity" size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">AI Insights & Grad-CAM</h3>
+            <p className="text-gray-600 text-sm">Neural network explanations and recommendations</p>
+            <p className="text-cyan-600 text-sm font-semibold mt-3">View Details →</p>
+          </Link>
+        </div>
+
+        {/* Location Info */}
+        <div className="text-center text-gray-600 text-sm">
+          <p>📍 Analysis for <span className="font-semibold">{location}</span></p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
         {/* Header */}
         <div className="mb-12">

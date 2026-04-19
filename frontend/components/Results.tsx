@@ -16,6 +16,11 @@ export default function Results({ predictions }: ResultsProps) {
   const topPrediction = sortedPredictions[0];
   const confidence = topPrediction.probability * 100;
   const [animatedConfidence, setAnimatedConfidence] = useState(0);
+  
+  // Check if this is psoriasis result for label customization
+  const isPsoriasis = topPrediction.className.toLowerCase().includes('psoriasis') || 
+                      (typeof window !== 'undefined' && window.location.pathname.includes('/psoriasis'));
+  const confidenceLabel = isPsoriasis ? 'Detection Clarity' : 'Confidence';
 
   // Determine if this is a Melanoma result
   const isMelanoma = topPrediction.className.toLowerCase().includes('melanoma');
@@ -81,17 +86,20 @@ export default function Results({ predictions }: ResultsProps) {
             {topPrediction.className}
           </h2>
 
-          <div className="flex items-end gap-3 mb-6">
-            <div className="text-6xl font-black tracking-tighter">
-              {animatedConfidence.toFixed(1)}
+          {!isPsoriasis && (
+            <div className="flex items-end gap-3 mb-6">
+              <div className="text-6xl font-black tracking-tighter">
+                {animatedConfidence.toFixed(1)}
+              </div>
+              <div className="mb-2">
+                <div className="text-lg font-bold opacity-90">%</div>
+                <div className="text-xs font-semibold opacity-75">{confidenceLabel}</div>
+              </div>
             </div>
-            <div className="mb-2">
-              <div className="text-lg font-bold opacity-90">%</div>
-              <div className="text-xs font-semibold opacity-75">Confidence</div>
-            </div>
-          </div>
+          )}
 
           {/* Confidence bar */}
+          {!isPsoriasis && (
           <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden backdrop-blur-sm">
             <div
               className="h-full rounded-full transition-all duration-700 shadow-lg"
@@ -102,6 +110,7 @@ export default function Results({ predictions }: ResultsProps) {
               }}
             ></div>
           </div>
+          )}
         </div>
 
         {/* Border glow effect */}
@@ -111,11 +120,25 @@ export default function Results({ predictions }: ResultsProps) {
         ></div>
       </div>
 
+      {/* Reason for psoriasis */}
+      {isPsoriasis && (
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border-2 border-blue-200 shadow-md">
+          <p className="text-sm text-gray-700 leading-relaxed">
+            <span className="font-bold text-blue-900">Why {topPrediction.className.toLowerCase()}?</span> {' '}
+            {topPrediction.className.toLowerCase() === 'negative' 
+              ? "The AI analysis indicates no significant signs of psoriasis were detected in the image. The skin characteristics analyzed do not match typical psoriasis patterns. However, for accurate diagnosis, please consult with a dermatologist."
+              : "The AI analysis has detected characteristics consistent with psoriasis in the image. These may include scaling, erythema, or other distinctive features. Please schedule an appointment with a dermatologist for professional confirmation and appropriate treatment."}
+          </p>
+        </div>
+      )}
+
       {/* All Results - Creative Grid */}
       <div className="space-y-4">
-        <h3 className="text-2xl font-black text-gray-900 flex items-center gap-2 mb-6">
-          <span className="text-3xl">{colorConfig.icon}</span> Detailed Analysis
-        </h3>
+        <div>
+          <h3 className="text-2xl font-black text-gray-900 flex items-center gap-2 mb-2">
+            <span className="text-3xl">{colorConfig.icon}</span> Detailed Analysis
+          </h3>
+        </div>
 
         {sortedPredictions.map((pred, idx) => {
           const percentage = pred.probability * 100;
@@ -159,42 +182,46 @@ export default function Results({ predictions }: ResultsProps) {
                       {pred.className}
                     </span>
                   </div>
-                  <span 
-                    className="text-2xl font-black font-mono transition-colors"
-                    style={{
-                      background: isTopResult ? colorConfig.progressGradient : undefined,
-                      backgroundClip: isTopResult ? 'text' : undefined,
-                      WebkitBackgroundClip: isTopResult ? 'text' : undefined,
-                      WebkitTextFillColor: isTopResult ? 'transparent' : undefined,
-                      color: !isTopResult ? '#4b5563' : undefined
-                    }}
-                  >
-                    {percentage.toFixed(1)}%
-                  </span>
+                  {!isPsoriasis && (
+                    <span 
+                      className="text-2xl font-black font-mono transition-colors"
+                      style={{
+                        background: isTopResult ? colorConfig.progressGradient : undefined,
+                        backgroundClip: isTopResult ? 'text' : undefined,
+                        WebkitBackgroundClip: isTopResult ? 'text' : undefined,
+                        WebkitTextFillColor: isTopResult ? 'transparent' : undefined,
+                        color: !isTopResult ? '#4b5563' : undefined
+                      }}
+                    >
+                      {percentage.toFixed(1)}%
+                    </span>
+                  )}
                 </div>
 
                 {/* Enhanced progress bar */}
-                <div className="relative h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ 
-                      width: `${percentage}%`,
-                      background: isTopResult ? colorConfig.progressGradient : 'linear-gradient(to right, #9ca3af, #6b7280)',
-                      boxShadow: isTopResult ? `0 0 10px ${colorConfig.shadowColor}` : 'none',
-                      animation: isTopResult ? `expandBar 1s ease-out` : "none"
-                    }}
-                  ></div>
-                  
-                  {/* Shimmer effect for top result */}
-                  {isTopResult && (
-                    <div 
-                      className="absolute top-0 left-0 h-full w-1 bg-white/50 blur-sm animate-pulse"
-                      style={{
-                        animation: `shimmer 2s infinite`
+                {!isPsoriasis && (
+                  <div className="relative h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ 
+                        width: `${percentage}%`,
+                        background: isTopResult ? colorConfig.progressGradient : 'linear-gradient(to right, #9ca3af, #6b7280)',
+                        boxShadow: isTopResult ? `0 0 10px ${colorConfig.shadowColor}` : 'none',
+                        animation: isTopResult ? `expandBar 1s ease-out` : "none"
                       }}
                     ></div>
-                  )}
-                </div>
+                    
+                    {/* Shimmer effect for top result */}
+                    {isTopResult && (
+                      <div 
+                        className="absolute top-0 left-0 h-full w-1 bg-white/50 blur-sm animate-pulse"
+                        style={{
+                          animation: `shimmer 2s infinite`
+                        }}
+                      ></div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Hover border effect */}
