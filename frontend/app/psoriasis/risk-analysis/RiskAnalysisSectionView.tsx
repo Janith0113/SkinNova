@@ -70,32 +70,42 @@ const sectionLinks: { key: RiskSection; label: string; href: string; emoji: stri
 
 function SectionNavigation({ currentSection }: { currentSection: RiskSection }) {
   return (
-    <div className="mb-8 rounded-3xl border-2 border-indigo-200 bg-white/80 backdrop-blur-sm p-4 shadow-lg">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <nav
+      aria-label="Risk analysis sections"
+      className="mb-8 rounded-[2rem] border border-indigo-200/80 bg-white/75 p-3 shadow-[0_14px_40px_-24px_rgba(79,70,229,0.65)] backdrop-blur-xl"
+    >
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 rounded-[1.5rem] bg-gradient-to-r from-slate-50 via-indigo-50/70 to-cyan-50/70 p-2">
         {sectionLinks.map((item) => {
           const active = item.key === currentSection;
           return (
             <Link
               key={item.key}
               href={item.href}
-              className={`group relative overflow-hidden rounded-2xl px-4 py-3 text-center font-bold transition-all duration-300 ${
+              aria-current={active ? "page" : undefined}
+              className={`group relative overflow-hidden rounded-xl px-4 py-3 text-center transition-all duration-300 ${
                 active
-                  ? "bg-gradient-to-r from-indigo-600 via-cyan-600 to-teal-500 text-white shadow-lg scale-[1.02]"
-                  : "bg-gradient-to-r from-indigo-50 to-cyan-50 text-indigo-800 border border-indigo-200 hover:shadow-lg hover:scale-[1.02]"
+                  ? "bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 text-white shadow-[0_12px_24px_-14px_rgba(59,130,246,0.95)]"
+                  : "text-slate-700 hover:text-indigo-900"
               }`}
             >
-              <span className="relative z-10 flex items-center justify-center gap-2 text-sm sm:text-base">
+              <span className="relative z-10 flex items-center justify-center gap-2 text-sm sm:text-base font-semibold">
                 <span>{item.emoji}</span>
                 <span>{item.label}</span>
               </span>
               {!active && (
-                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-indigo-100/60 to-cyan-100/60" />
+                <>
+                  <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/70" />
+                  <span className="absolute inset-x-6 bottom-1 h-0.5 rounded-full bg-gradient-to-r from-indigo-400 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </>
+              )}
+              {active && (
+                <span className="absolute inset-x-6 bottom-1 h-0.5 rounded-full bg-white/85" />
               )}
             </Link>
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }
 

@@ -151,6 +151,51 @@ export default function PsoriasisDetection() {
         }
     };
 
+    const sortedPredictions = predictions
+        ? [...predictions].sort((a, b) => b.probability - a.probability)
+        : [];
+
+    const topPrediction = sortedPredictions[0] || null;
+    const secondPrediction = sortedPredictions[1] || null;
+
+    const confidenceBand = topPrediction
+        ? topPrediction.probability >= 0.85
+            ? "High"
+            : topPrediction.probability >= 0.65
+            ? "Moderate"
+            : "Low"
+        : null;
+
+    const separationBand = topPrediction && secondPrediction
+        ? topPrediction.probability - secondPrediction.probability >= 0.25
+            ? "Clear"
+            : topPrediction.probability - secondPrediction.probability >= 0.1
+            ? "Moderate"
+            : "Close"
+        : null;
+
+    const isPositiveResult = topPrediction
+        ? topPrediction.className.toLowerCase().includes("positive")
+        : false;
+
+    const resultReason = topPrediction
+        ? {
+            title: `Why result is ${isPositiveResult ? "Positive" : "Negative"}`,
+            points: [
+                `The strongest pattern match was '${topPrediction.className}'.`,
+                isPositiveResult
+                    ? "This image has skin changes that are more consistent with psoriasis, so the result is positive."
+                    : "This image does not show strong psoriasis-type changes, so the result is negative.",
+                confidenceBand
+                    ? `My confidence in this result is ${confidenceBand.toLowerCase()}.`
+                    : null,
+                secondPrediction && separationBand
+                    ? `Compared with the next possible condition ('${secondPrediction.className}'), this result looks ${separationBand.toLowerCase()}.`
+                    : null,
+            ].filter(Boolean) as string[],
+        }
+        : null;
+
     return (
         <main className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50 relative overflow-hidden">
             {/* Charming animated background elements */}
@@ -311,7 +356,20 @@ export default function PsoriasisDetection() {
                                         <div className="space-y-6 animate-fadeIn">
                                             {/* Results Details */}
                                             <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-lg">
-                                                <Results predictions={predictions} />
+                                                <Results predictions={predictions} showPercentages={false} />
+
+                                                {resultReason && (
+                                                    <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                                                        <p className="text-sm font-bold text-indigo-900 mb-2">{resultReason.title}</p>
+                                                        <ul className="space-y-1">
+                                                            {resultReason.points.map((point, idx) => (
+                                                                <li key={idx} className="text-sm text-indigo-900 leading-relaxed">
+                                                                    • {point}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     ) : (

@@ -343,6 +343,15 @@ export default function PatientDashboard() {
     }
   }, [user]);
 
+  const handleUnauthorized = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setAppointments([]);
+    setScanData({});
+    setUser(null);
+    router.push("/login");
+  };
+
   const fetchAppointments = async () => {
     try {
       setLoadingAppointments(true);
@@ -362,9 +371,14 @@ export default function PatientDashboard() {
         },
       });
 
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+
       if (!response.ok) {
         const errorDetails = await response.text();
-        console.error(
+        console.warn(
           `API Error: ${response.status} ${response.statusText}`,
           errorDetails
         );
@@ -412,6 +426,12 @@ export default function PatientDashboard() {
     try {
       setLoadingScans(true);
       const token = localStorage.getItem("token");
+
+      if (!token) {
+        setScanData({});
+        return;
+      }
+
       const response = await fetch("http://localhost:4000/api/analysis/all-scans", {
         method: "GET",
         headers: {
@@ -420,8 +440,13 @@ export default function PatientDashboard() {
         },
       });
 
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+
       if (!response.ok) {
-        console.error("Error fetching scans:", response.status);
+        console.warn("Error fetching scans:", response.status);
         return;
       }
 
@@ -441,6 +466,11 @@ export default function PatientDashboard() {
   const fetchDoctorAvailability = async (doctorId: string) => {
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        setDoctorAvailability([]);
+        return;
+      }
+
       const response = await fetch(`http://localhost:4000/api/availability/${doctorId}`, {
         method: "GET",
         headers: {
@@ -448,6 +478,11 @@ export default function PatientDashboard() {
           "Content-Type": "application/json",
         },
       });
+
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Failed to fetch doctor availability");
