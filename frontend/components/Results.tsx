@@ -92,9 +92,7 @@ export default function Results({ predictions, showPercentages = true }: Results
                 <div className="text-xs font-semibold opacity-75">Confidence</div>
               </div>
             </div>
-          ) : (
-            <div className="mb-6 text-xs font-semibold opacity-75">Confidence</div>
-          )}
+          ) : null}
 
           {/* Confidence bar */}
           <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden backdrop-blur-sm">
