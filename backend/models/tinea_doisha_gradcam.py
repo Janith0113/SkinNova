@@ -137,7 +137,7 @@ class TineaDoishaGradCAM:
             }
             
             # GradCAM score (0-100)
-            gradcam_score = min(100, max(0, feature_importance['normalized_importance']))
+            gradcam_score = min(100, max(0, feature_importance['normalized_importance'] * 1.2))
             
             # Generate explanation
             explanation = self._generate_explanation(feature_name, answer, doisha_type)

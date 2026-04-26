@@ -670,7 +670,7 @@ export default function LeprosyPredictPage() {
             )}
 
             {/* ── Patient-Friendly Result Explanation ── */}
-            {result.xai_explanation !== null && result.xai_explanation.top_features.length > 0 && (
+            {result.xai_explanation !== null && result.xai_explanation.top_features && result.xai_explanation.top_features.length > 0 && (
               <div className="bg-white rounded-3xl border border-indigo-100 shadow-xl p-6">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-xl shrink-0">
@@ -783,7 +783,7 @@ export default function LeprosyPredictPage() {
                   </div>
 
                   {/* Score summary row */}
-                  {result.xai_explanation.base_value !== undefined && (
+                  {result.xai_explanation?.base_value !== undefined && result.xai_explanation?.prediction_score !== undefined && (
                     <div className="mt-4 flex flex-wrap gap-4">
                       <div className="flex items-center gap-2 bg-slate-700/60 rounded-xl px-4 py-2">
                         <span className="text-xs text-slate-400 uppercase tracking-wide">Base Score</span>
@@ -809,7 +809,7 @@ export default function LeprosyPredictPage() {
                 </div>
 
                 {/* Grad-CAM image */}
-                {result.xai_explanation.image_base64 ? (
+                {result.xai_explanation?.image_base64 ? (
                   <div className="p-4">
                     <img
                       src={`data:image/png;base64,${result.xai_explanation.image_base64}`}
@@ -819,7 +819,7 @@ export default function LeprosyPredictPage() {
                     />
                   </div>
                 ) : (
-                  result.xai_explanation.error && (
+                  result.xai_explanation?.error && (
                     <div className="p-6 text-sm text-red-400">
                       ⚠️ Could not generate visual map: {result.xai_explanation.error}
                     </div>

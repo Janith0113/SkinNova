@@ -9,9 +9,10 @@ interface Prediction {
 
 interface ResultsProps {
   predictions: Prediction[];
+  showPercentages?: boolean;
 }
 
-export default function Results({ predictions }: ResultsProps) {
+export default function Results({ predictions, showPercentages = true }: ResultsProps) {
   const sortedPredictions = [...predictions].sort((a, b) => b.probability - a.probability);
   const topPrediction = sortedPredictions[0];
   const confidence = topPrediction.probability * 100;
@@ -81,15 +82,17 @@ export default function Results({ predictions }: ResultsProps) {
             {topPrediction.className}
           </h2>
 
-          <div className="flex items-end gap-3 mb-6">
-            <div className="text-6xl font-black tracking-tighter">
-              {animatedConfidence.toFixed(1)}
+          {showPercentages ? (
+            <div className="flex items-end gap-3 mb-6">
+              <div className="text-6xl font-black tracking-tighter">
+                {animatedConfidence.toFixed(1)}
+              </div>
+              <div className="mb-2">
+                <div className="text-lg font-bold opacity-90">%</div>
+                <div className="text-xs font-semibold opacity-75">Confidence</div>
+              </div>
             </div>
-            <div className="mb-2">
-              <div className="text-lg font-bold opacity-90">%</div>
-              <div className="text-xs font-semibold opacity-75">Confidence</div>
-            </div>
-          </div>
+          ) : null}
 
           {/* Confidence bar */}
           <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden backdrop-blur-sm">
@@ -145,7 +148,7 @@ export default function Results({ predictions }: ResultsProps) {
 
               {/* Content */}
               <div className="relative p-5 space-y-3">
-                <div className="flex justify-between items-center">
+                <div className={showPercentages ? "flex justify-between items-center" : "flex items-center"}>
                   <div className="flex items-center gap-3">
                     <span className={`text-2xl ${isTopResult ? "scale-125" : ""} transition-transform`}>
                       {isTopResult ? colorConfig.icon : "○"}
@@ -159,18 +162,20 @@ export default function Results({ predictions }: ResultsProps) {
                       {pred.className}
                     </span>
                   </div>
-                  <span 
-                    className="text-2xl font-black font-mono transition-colors"
-                    style={{
-                      background: isTopResult ? colorConfig.progressGradient : undefined,
-                      backgroundClip: isTopResult ? 'text' : undefined,
-                      WebkitBackgroundClip: isTopResult ? 'text' : undefined,
-                      WebkitTextFillColor: isTopResult ? 'transparent' : undefined,
-                      color: !isTopResult ? '#4b5563' : undefined
-                    }}
-                  >
-                    {percentage.toFixed(1)}%
-                  </span>
+                  {showPercentages && (
+                    <span 
+                      className="text-2xl font-black font-mono transition-colors"
+                      style={{
+                        background: isTopResult ? colorConfig.progressGradient : undefined,
+                        backgroundClip: isTopResult ? 'text' : undefined,
+                        WebkitBackgroundClip: isTopResult ? 'text' : undefined,
+                        WebkitTextFillColor: isTopResult ? 'transparent' : undefined,
+                        color: !isTopResult ? '#4b5563' : undefined
+                      }}
+                    >
+                      {percentage.toFixed(1)}%
+                    </span>
+                  )}
                 </div>
 
                 {/* Enhanced progress bar */}
