@@ -12,6 +12,11 @@ export async function signup(req: Request, res: Response) {
   try {
     const { name, email, password, role } = req.body
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' })
+    // Basic validation
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email format' })
+    const pwdErr = validatePassword(password)
+    if (pwdErr) return res.status(400).json({ error: pwdErr })
+    if (name && name.trim().length < 2) return res.status(400).json({ error: 'Name is too short' })
     
     // Normalize role to lowercase
     const normalizedRole = role ? role.toLowerCase() : 'patient'
@@ -48,12 +53,13 @@ export async function login(req: Request, res: Response) {
   try {
     const { email, password } = req.body
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' })
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email format' })
 
     const user = await User.findOne({ email })
     if (!user) return res.status(401).json({ error: 'Invalid credentials' })
 
     const ok = await bcrypt.compare(password, user.password)
-    if (!ok) return res.status(401).json({ error: 'Invalid credentials' })
+    if (!ok) return res.status(401).json({ error: 'Incorrect password' })
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({ user: { id: user._id, name: user.name, email: user.email, role: user.role, profile: user.profile, verified: user.verified }, token })
@@ -61,6 +67,18 @@ export async function login(req: Request, res: Response) {
     console.error(err)
     return res.status(500).json({ error: 'Server error' })
   }
+}
+
+// --- Validation helpers ---
+function isValidEmail(email: string) {
+  return /^[\w-.]+@[\w-]+\.[A-Za-z]{2,}$/.test(email)
+}
+
+function validatePassword(password: string) {
+  if (password.length < 8) return 'Password must be at least 8 characters'
+  if (!/[0-9]/.test(password)) return 'Password must include at least one number'
+  if (!/[!@#$%^&*()_+\-=[\]{};:\"\\|,.<>/?]/.test(password)) return 'Password must include at least one special character'
+  return null
 }
 
 export async function me(req: Request, res: Response) {
