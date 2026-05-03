@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
+import Toasts from './Toasts'
 import { useRouter } from 'next/navigation'
 
 type Props = {
@@ -14,7 +15,15 @@ export default function AuthForm({ mode, compact = false }: Props) {
   const [name, setName] = useState('')
   const [role, setRole] = useState<'patient' | 'doctor'>('patient')
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<{[k:string]:string}>({})
   const [loading, setLoading] = useState(false)
+  const [toasts, setToasts] = useState<{id:number,type:'success'|'error'|'info',message:string}[]>([])
+
+  const addToast = (type: 'success'|'error'|'info', message: string) => {
+    const id = Date.now() + Math.floor(Math.random()*1000)
+    setToasts(prev => [...prev, { id, type, message }])
+  }
+  const removeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id))
   const [remember, setRemember] = useState(false)
   const [userCount, setUserCount] = useState(0)
 
@@ -45,6 +54,24 @@ export default function AuthForm({ mode, compact = false }: Props) {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setFieldErrors({})
+    // Client-side validation
+    const errs: {[k:string]:string} = {}
+    if (mode === 'signup') {
+      if (!name || name.trim().length < 2) errs.name = 'Please enter your full name'
+    }
+    if (!/^[\w-.]+@[\w-]+\.[A-Za-z]{2,}$/.test(email)) errs.email = 'Enter a valid email address'
+    if (!password || password.length < 8) errs.password = 'Password must be at least 8 characters'
+    if (password && !/[0-9]/.test(password)) errs.password = (errs.password ? errs.password + '; include a number' : 'Password must include a number')
+    if (password && !/[!@#$%^&*()_+\-=[\]{};:\"\\|,.<>/?]/.test(password)) errs.password = (errs.password ? errs.password + '; include a special character' : 'Password must include a special character')
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
+      setLoading(false)
+      // show creative popup for validation errors
+      const first = Object.values(errs)[0]
+      addToast('error', first)
+      return
+    }
     setLoading(true)
 
     try {
@@ -63,7 +90,10 @@ export default function AuthForm({ mode, compact = false }: Props) {
       console.log(`Response status: ${res.status}`, data)
 
       if (!res.ok) {
-        throw new Error(data.error || 'Auth failed')
+        // show server validation message as toast
+        const msg = data.error || 'Auth failed'
+        addToast('error', msg)
+        throw new Error(msg)
       }
 
       // Store token in localStorage
@@ -74,6 +104,9 @@ export default function AuthForm({ mode, compact = false }: Props) {
         else localStorage.removeItem('remember')
       }
       console.log('User stored:', data.user)
+
+      addToast('success', mode === 'login' ? 'Signed in successfully' : 'Account created successfully')
+      await new Promise(resolve => setTimeout(resolve, 900))
 
       // Redirect to role-specific dashboard
       const userRole = data.user?.role
@@ -88,6 +121,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
     } catch (err: any) {
       console.error('Auth error:', err)
       setError(err.message || 'An error occurred')
+      if (!toasts.find(t => t.message === (err.message || 'An error occurred'))) addToast('error', err.message || 'An error occurred')
     } finally {
       setLoading(false)
     }
@@ -95,6 +129,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
 
   return (
     <div className={`min-h-screen flex items-center justify-center px-4 py-4 ${compact ? 'bg-transparent' : 'bg-gradient-to-br from-slate-50 via-white to-slate-50'}`}>
+      <Toasts toasts={toasts} onRemove={removeToast} />
       <div className={`${compact ? 'max-w-5xl' : 'max-w-7xl'} w-full grid grid-cols-1 md:grid-cols-2 gap-0 ${compact ? 'bg-white/95 backdrop-blur-sm' : 'bg-white'} rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl`}>
         
         {/* Left: Form Section */}
@@ -120,6 +155,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all duration-200" 
                     placeholder="Jane Doe" 
                   />
+                  {fieldErrors.name && <p className="mt-2 text-sm text-red-600">{fieldErrors.name}</p>}
                 </div>
 
                 {/* Email Address */}
@@ -134,6 +170,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all duration-200" 
                     placeholder="you@example.com" 
                   />
+                  {fieldErrors.email && <p className="mt-2 text-sm text-red-600">{fieldErrors.email}</p>}
                 </div>
 
                 {/* Password */}
@@ -148,6 +185,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all duration-200" 
                     placeholder="••••••••" 
                   />
+                  {fieldErrors.password && <p className="mt-2 text-sm text-red-600">{fieldErrors.password}</p>}
                 </div>
 
                 {/* Account Type */}
@@ -180,6 +218,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all duration-200" 
                     placeholder="you@example.com" 
                   />
+                  {fieldErrors.email && <p className="mt-2 text-sm text-red-600">{fieldErrors.email}</p>}
                 </div>
 
                 <div className="group">
@@ -193,6 +232,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all duration-200" 
                     placeholder="••••••••" 
                   />
+                  {fieldErrors.password && <p className="mt-2 text-sm text-red-600">{fieldErrors.password}</p>}
                 </div>
               </>
             )}
