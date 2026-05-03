@@ -21,10 +21,6 @@ import profileRoutes from './routes/profile'
 import leprosyRoutes from './routes/leprosy'
 import psoriasisRiskRoutes from './routes/psoriasisRisk'
 import contactRoutes from './routes/contact'
-import geminiRoutes from './routes/gemini.routes'
-import gradcamRoutes from './routes/gradcam'
-import xaiDoshaRoutes from './routes/xai-dosha'
-import tineaXaiRoutes from './routes/tinea-xai'
 import { testEmailConnection } from './services/mailService'
 
 const app = express()
@@ -74,14 +70,15 @@ app.use('/api/leprosy', leprosyRoutes)
 app.use('/api/new-detection', newDetectionRoutes)
 app.use('/api/psoriasis', psoriasisRiskRoutes)
 app.use('/api/contact', contactRoutes)
-app.use('/api/gemini', geminiRoutes)
-app.use('/api/xai', gradcamRoutes)
-app.use('/api/xai', xaiDoshaRoutes)
-app.use('/api/tinea-xai', tineaXaiRoutes)
 
 async function start() {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://Skin123:Skin123%23@cluster0.ycpp8kz.mongodb.net/?appName=Cluster0'
-  await connectDb(uri)
+  
+  try {
+    await connectDb(uri)
+  } catch (err) {
+    console.error('Failed to connect to MongoDB, continuing without database:', err)
+  }
   
   // Skip email connection test - configure in .env if needed
   console.log('Email service: Skipped (configure GMAIL_USER and GMAIL_APP_PASSWORD in .env to enable)')
@@ -129,6 +126,6 @@ async function start() {
 
 start().catch(err => {
   console.error('Failed to start server', err)
-  process.exit(1)
+  // Still exit - but MongoDB connection errors are handled gracefully above
 })
 
