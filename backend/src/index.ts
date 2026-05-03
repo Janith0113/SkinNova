@@ -73,7 +73,12 @@ app.use('/api/contact', contactRoutes)
 
 async function start() {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://Skin123:Skin123%23@cluster0.ycpp8kz.mongodb.net/?appName=Cluster0'
-  await connectDb(uri)
+  
+  try {
+    await connectDb(uri)
+  } catch (err) {
+    console.error('Failed to connect to MongoDB, continuing without database:', err)
+  }
   
   // Skip email connection test - configure in .env if needed
   console.log('Email service: Skipped (configure GMAIL_USER and GMAIL_APP_PASSWORD in .env to enable)')
@@ -121,6 +126,6 @@ async function start() {
 
 start().catch(err => {
   console.error('Failed to start server', err)
-  process.exit(1)
+  // Still exit - but MongoDB connection errors are handled gracefully above
 })
 
