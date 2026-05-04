@@ -155,4 +155,50 @@ Be specific, detailed, and provide medical and wellness guidance. Format with cl
   }
 })
 
+// POST /api/gemini/tinea-chat - Tinea chatbot conversation
+router.post('/tinea-chat', async (req: Request, res: Response) => {
+  try {
+    const { message, context } = req.body
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' })
+    }
+
+    const systemPrompt = `You are TineaGuard, a helpful and knowledgeable assistant about Tinea (ringworm) diseases. You provide accurate medical information about:
+- All types of tinea (Corporis, Pedis, Cruris, Capitis, Unguium, Faciei, Barbae)
+- Symptoms, causes, and transmission
+- Treatment options and prevention
+- When to see a doctor
+- Home care and management tips
+
+Guidelines:
+- Be friendly and supportive in tone
+- Provide accurate medical information
+- Always recommend consulting a healthcare professional for serious conditions
+- Keep responses concise and clear
+- Use relevant emojis when appropriate
+- Focus on tinea-related topics
+
+Context: ${context || 'Initial greeting or conversation start'}
+
+User Message: ${message}
+
+Provide a helpful, informative response about tinea. If the question is not related to tinea, politely redirect to tinea topics.`
+
+    const response = await generateGeminiContent(systemPrompt)
+
+    res.json({
+      success: true,
+      reply: response,
+      timestamp: new Date(),
+    })
+  } catch (error) {
+    console.error('Tinea chat error:', error)
+    res.status(500).json({
+      error: 'Failed to process chat message',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
 export default router

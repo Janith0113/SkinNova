@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { tineaModel } from './tineaModelClient';
+import TineaChatbot from '@/components/TineaChatbot';
 
 interface TineaResult {
   success: boolean;
@@ -1000,6 +1001,9 @@ export default function TinePage() {
           </div>
         )}
       </div>
+
+      {/* Tinea Chatbot */}
+      <TineaChatbot tineaType={result?.tineaType} confidence={result?.confidence} />
     </div>
   );
 }
