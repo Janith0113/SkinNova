@@ -1,9 +1,45 @@
 import express, { Request, Response } from 'express';
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
+import { spawn } from 'child_process'
 import { getWeatherData, getWeatherCondition } from '../services/weatherService';
 import { calculatePsoriasisRisk } from '../services/psoriasisRiskService';
 import psoriasisKnowledgeService from '../services/psoriasisKnowledgeService'
 
 const router = express.Router();
+
+const predictionUploadDir = path.join(__dirname, '../../uploads/psoriasis-predictions')
+
+if (!fs.existsSync(predictionUploadDir)) {
+  fs.mkdirSync(predictionUploadDir, { recursive: true })
+}
+
+const predictionStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, predictionUploadDir)
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9)
+    cb(null, `psoriasis-${uniqueSuffix}${path.extname(file.originalname)}`)
+  },
+})
+
+const predictionUpload = multer({
+  storage: predictionStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|webp/
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase())
+    const mimetype = allowedTypes.test(file.mimetype)
+
+    if (mimetype && extname) {
+      return cb(null, true)
+    }
+
+    cb(new Error('Only image files are allowed (JPG, PNG, WebP)'))
+  },
+})
 
 /**
  * GET /api/psoriasis/weather-risk
@@ -153,6 +189,120 @@ router.post('/weather-risk', async (req: Request, res: Response) => {
     });
   }
 });
+
+/**
+ * POST /api/psoriasis/predict
+ * Upload a skin image and run the Python psoriasis model.
+ */
+router.post('/predict', predictionUpload.single('image'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' })
+    }
+
+    const imagePath = req.file.path
+    const pythonScript = path.join(__dirname, '../../models/predict.py')
+    const pythonBinary = process.env.PYTHON_BINARY || 'python'
+
+    const pythonProcess = spawn(pythonBinary, [pythonScript, imagePath], {
+      windowsHide: true,
+    })
+
+    let outputData = ''
+    let errorData = ''
+    let responded = false
+
+    const cleanup = () => {
+      if (fs.existsSync(imagePath)) {
+        fs.unlink(imagePath, (unlinkError) => {
+          if (unlinkError) {
+            console.error('Error deleting psoriasis upload:', unlinkError)
+          }
+        })
+      }
+    }
+
+    const sendOnce = (status: number, payload: Record<string, unknown>) => {
+      if (responded) return
+      responded = true
+      cleanup()
+      res.status(status).json(payload)
+    }
+
+    const timeout = setTimeout(() => {
+      pythonProcess.kill()
+      sendOnce(504, { error: 'Psoriasis prediction timed out' })
+    }, 60000)
+
+    pythonProcess.stdout.on('data', (data) => {
+      outputData += data.toString()
+    })
+
+    pythonProcess.stderr.on('data', (data) => {
+      errorData += data.toString()
+    })
+
+    pythonProcess.on('error', (error) => {
+      clearTimeout(timeout)
+      sendOnce(500, {
+        error: 'Failed to spawn Python process',
+        message: error.message,
+      })
+    })
+
+    pythonProcess.on('close', (code) => {
+      clearTimeout(timeout)
+
+      if (responded) return
+
+      if (code !== 0) {
+        return sendOnce(500, {
+          error: 'Psoriasis prediction failed',
+          stdout: outputData,
+          stderr: errorData,
+        })
+      }
+
+      try {
+        const result = JSON.parse(outputData.trim())
+
+        if (result?.error) {
+          return sendOnce(500, {
+            error: result.error,
+          })
+        }
+
+        const rawConfidence = Number(result?.confidence ?? 0)
+        const confidence = rawConfidence > 1 ? rawConfidence / 100 : rawConfidence
+        const label = result?.label || 'Psoriasis'
+
+        return sendOnce(200, {
+          success: true,
+          label,
+          confidence,
+          rawPrediction: result?.raw_prediction ?? null,
+          mock: Boolean(result?.mock),
+          message:
+            label === 'Psoriasis'
+              ? 'Psoriasis detected. Please review the result with a dermatologist.'
+              : 'No psoriasis detected by the model.',
+        })
+      } catch (parseError) {
+        return sendOnce(500, {
+          error: 'Failed to parse prediction output',
+          details: outputData,
+          stderr: errorData,
+        })
+      }
+    })
+  } catch (error) {
+    console.error('Error running psoriasis prediction:', error)
+    res.status(500).json({
+      error: 'Psoriasis prediction request failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
 
 /**
  * GET /api/psoriasis/knowledge-base-info

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { spawn } from 'child_process';
 
 const router = Router();
 
@@ -39,238 +40,188 @@ const upload = multer({
   },
 });
 
-// Mock detection function - Replace with your actual ML model
-async function runDetection(imagePath: string, diseaseType: string): Promise<any> {
-  // This is a mock implementation
-  // Replace this with your actual ML model inference
-  
-  // Simulating detection results
-  const mockResults: Record<string, any> = {
-    psoriasis: {
-      is_psoriasis: Math.random() > 0.5,
-      confidence: Math.random() * 0.3 + 0.7, // 70-100% confidence
-      details: "Analysis shows patches consistent with psoriasis pattern. Plaque characteristics detected."
-    },
-    tinea: {
-      is_tinea: Math.random() > 0.5,
-      confidence: Math.random() * 0.3 + 0.7,
-      details: "Ring-like pattern characteristics identified. Fungal infection markers present."
-    },
-    leprosy: {
-      is_leprosy: Math.random() > 0.5,
-      confidence: Math.random() * 0.3 + 0.7,
-      details: "Skin lesion analysis complete. Consultation with dermatologist recommended."
-    },
-    melanoma: {
-      is_melanoma: Math.random() > 0.5,
-      confidence: Math.random() * 0.3 + 0.7,
-      details: "Melanoma risk assessment completed. Asymmetry and pigmentation analysis done."
-    }
-  };
+// Helper to run disease detection with timeout and proper response handling
+const runDiseaseDetection = (
+  diseaseType: 'tinea' | 'leprosy' | 'melanoma',
+  pythonScript: string,
+  imagePath: string,
+  res: Response
+) => {
+  const pythonBinary = process.env.PYTHON_BINARY || 'python';
+  const pythonProcess = spawn(pythonBinary, [pythonScript, imagePath], {
+    windowsHide: true,
+  });
 
-  return mockResults[diseaseType] || {
-    error: "Unknown disease type",
-    is_positive: false,
-    confidence: 0,
-    details: "Disease type not recognized"
-  };
-}
+  let outputData = '';
+  let errorData = '';
+  let responded = false;
 
-// Ensemble detection function - runs 20 inferences and uses majority voting
-async function runEnsembleDetection(imagePath: string, diseaseType: string): Promise<any> {
-  const iterations = 20;
-  let positiveCount = 0;
-  let negativeCount = 0;
-  const confidences: number[] = [];
-
-  // Run detection 20 times
-  for (let i = 0; i < iterations; i++) {
-    const result = await runDetection(imagePath, diseaseType);
-    
-    const positiveKey = `is_${diseaseType}`;
-    if (result[positiveKey]) {
-      positiveCount++;
-    } else {
-      negativeCount++;
-    }
-    
-    confidences.push(result.confidence);
-  }
-
-  // Calculate majority result
-  const isPositive = positiveCount > negativeCount;
-  const averageConfidence = confidences.reduce((a, b) => a + b, 0) / confidences.length;
-  const positivePercentage = (positiveCount / iterations) * 100;
-
-  return {
-    is_positive: isPositive,
-    confidence: averageConfidence,
-    positiveCount,
-    negativeCount,
-    positivePercentage,
-    details: isPositive 
-      ? `Detection confirmed across ${positiveCount}/20 analyses. High consistency in results.`
-      : `No detection found. Only ${positiveCount}/20 analyses showed positive results.`
-  };
-}
-
-// Triple Ensemble detection function - runs ensemble 3 times and uses majority voting on results
-async function runTripleEnsembleDetection(imagePath: string, diseaseType: string): Promise<any> {
-  let ensemblePositiveCount = 0;
-  let ensembleNegativeCount = 0;
-  const ensembleResults: any[] = [];
-  const allConfidences: number[] = [];
-
-  // Run ensemble detection 3 times (3 × 20 = 60 total inferences)
-  for (let run = 0; run < 3; run++) {
-    const ensembleResult = await runEnsembleDetection(imagePath, diseaseType);
-    ensembleResults.push(ensembleResult);
-    
-    if (ensembleResult.is_positive) {
-      ensemblePositiveCount++;
-    } else {
-      ensembleNegativeCount++;
-    }
-    
-    allConfidences.push(ensembleResult.confidence);
-  }
-
-  // Final majority voting across 3 ensemble runs
-  const finalResult = ensemblePositiveCount >= ensembleNegativeCount;
-  const averageConfidence = allConfidences.reduce((a, b) => a + b, 0) / allConfidences.length;
-  
-  // Total statistics (60 inferences across 3 runs)
-  const totalPositive = ensembleResults.reduce((sum, r) => sum + r.positiveCount, 0);
-  const totalNegative = ensembleResults.reduce((sum, r) => sum + r.negativeCount, 0);
-  const totalAccuracy = (totalPositive / 60) * 100;
-
-  return {
-    is_positive: finalResult,
-    confidence: averageConfidence,
-    ensembleRuns: 3,
-    totalInferences: 60,
-    totalPositiveCount: totalPositive,
-    totalNegativeCount: totalNegative,
-    totalAccuracy,
-    ensembleResults,
-    ensembleVote: {
-      positive: ensemblePositiveCount,
-      negative: ensembleNegativeCount
-    },
-    details: finalResult
-      ? `CONFIRMED: Detection verified across 3 independent ensemble runs (${totalPositive}/60 analyses positive). Very high confidence result.`
-      : `NEGATIVE: No detection across 3 independent ensemble runs (Only ${totalPositive}/60 analyses showed positive). Very high confidence result.`
-  };
-}
-
-// Detect Psoriasis
-router.post('/psoriasis', upload.single('file'), async (req: Request, res: Response) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
-    const imagePath = req.file.path;
-    const result = await runTripleEnsembleDetection(imagePath, 'psoriasis');
-
-    // Clean up uploaded file after processing
+  const cleanup = () => {
     if (fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath);
+      fs.unlink(imagePath, (unlinkError) => {
+        if (unlinkError) {
+          console.error(`Error deleting ${diseaseType} upload:`, unlinkError);
+        }
+      });
     }
+  };
 
-    res.json({
-      success: true,
-      is_psoriasis: result.is_positive,
-      confidence: result.confidence,
-      details: result.details,
-      totalInferences: result.totalInferences,
-      totalPositiveCount: result.totalPositiveCount,
-      totalNegativeCount: result.totalNegativeCount,
-      totalAccuracy: result.totalAccuracy,
-      ensembleRuns: result.ensembleRuns,
-      ensembleVote: result.ensembleVote,
-      message: result.is_positive 
-        ? `CONFIRMED: Psoriasis detected in ${result.totalPositiveCount}/60 analyses across 3 verification runs. Please consult a dermatologist.`
-        : `CONFIRMED NEGATIVE: No psoriasis detected. Only ${result.totalPositiveCount}/60 analyses showed positive results.`
+  const sendOnce = (status: number, payload: Record<string, unknown>) => {
+    if (responded) return;
+    responded = true;
+    cleanup();
+    res.status(status).json(payload);
+  };
+
+  const timeout = setTimeout(() => {
+    pythonProcess.kill();
+    sendOnce(504, { error: `${diseaseType} prediction timed out` });
+  }, 60000);
+
+  pythonProcess.stdout.on('data', (data) => {
+    outputData += data.toString();
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    errorData += data.toString();
+  });
+
+  pythonProcess.on('error', (error) => {
+    clearTimeout(timeout);
+    sendOnce(500, {
+      error: `Failed to spawn Python process for ${diseaseType}`,
+      message: error.message,
     });
-  } catch (error) {
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Detection failed' });
-  }
-});
+  });
 
-// Detect Tinea
+  pythonProcess.on('close', (code) => {
+    clearTimeout(timeout);
+
+    if (responded) return;
+
+    if (code !== 0) {
+      return sendOnce(500, {
+        error: `${diseaseType} prediction failed`,
+        stdout: outputData,
+        stderr: errorData,
+      });
+    }
+
+    try {
+      const result = JSON.parse(outputData.trim());
+
+      if (result?.error) {
+        return sendOnce(500, { error: result.error });
+      }
+
+      const rawConfidence = Number(result?.confidence ?? 0);
+      const confidence = rawConfidence > 1 ? rawConfidence / 100 : rawConfidence;
+
+      if (diseaseType === 'tinea') {
+        const label = result?.label || (result?.is_tinea ? 'Tinea Detected' : 'Normal Skin');
+        return sendOnce(200, {
+          success: true,
+          label,
+          confidence,
+          is_tinea: Boolean(result?.is_tinea ?? label === 'Tinea Detected'),
+          rawPrediction: result?.raw_prediction ?? null,
+          mock: Boolean(result?.mock),
+          message: label === 'Tinea Detected'
+            ? 'Tinea detected. Please review the result with a dermatologist.'
+            : 'No tinea detected by the model.',
+        });
+      }
+
+      if (diseaseType === 'leprosy') {
+        const label = result?.label || (result?.is_leprosy ? 'Leprosy Skin' : 'Normal Skin');
+        return sendOnce(200, {
+          success: true,
+          label,
+          confidence,
+          is_leprosy: Boolean(result?.is_leprosy ?? label === 'Leprosy Skin'),
+          rawPrediction: result?.raw_prediction ?? null,
+          mock: Boolean(result?.mock),
+          message: label === 'Leprosy Skin'
+            ? 'Leprosy detected. Please review the result with a dermatologist.'
+            : 'No leprosy detected by the model.',
+        });
+      }
+
+      if (diseaseType === 'melanoma') {
+        const label = result?.label || (result?.is_melanoma ? 'Melanoma' : 'Not Melanoma');
+        return sendOnce(200, {
+          success: true,
+          label,
+          confidence,
+          is_melanoma: Boolean(result?.is_melanoma ?? label === 'Melanoma'),
+          rawPrediction: result?.raw_prediction ?? null,
+          mock: Boolean(result?.mock),
+          message: label === 'Melanoma'
+            ? 'Melanoma detected. Please review the result with a dermatologist.'
+            : 'No melanoma detected by the model.',
+        });
+      }
+    } catch (parseError) {
+      return sendOnce(500, {
+        error: 'Failed to parse prediction output',
+        details: outputData,
+        stderr: errorData,
+      });
+    }
+  });
+};
+
 router.post('/tinea', upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
-      res.status(400).json({ error: 'No file uploaded' });
-      return;
+      return res.status(400).json({ error: 'No image file provided' });
     }
 
-    // TODO: Replace with actual tinea detection model
-    // For now, return mock predictions based on image analysis
-    const tineaTypes = ['Tinea Corporis', 'Tinea Pedis', 'Tinea Cruris', 'Tinea Capitis'];
-    const randomType = tineaTypes[Math.floor(Math.random() * tineaTypes.length)];
-    const confidence = 0.75 + Math.random() * 0.2; // 0.75 - 0.95
-
-    // Clean up uploaded file
-    if (fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-
-    res.status(200).json({
-      success: true,
-      tineaType: randomType,
-      confidence: Math.round(confidence * 100) / 100,
-      message: `Detected ${randomType} with ${Math.round(confidence * 100)}% confidence`
-    });
+    const imagePath = req.file.path;
+    const pythonScript = path.join(__dirname, '../../models/tinea_predict.py');
+    runDiseaseDetection('tinea', pythonScript, imagePath, res);
   } catch (error) {
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    res.status(500).json({ 
-      success: false,
-      error: error instanceof Error ? error.message : 'Detection failed',
-      message: 'An error occurred during image analysis'
+    console.error('Error running tinea detection:', error);
+    res.status(500).json({
+      error: 'Tinea detection request failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
 
-// Detect Leprosy - Model not available
 router.post('/leprosy', upload.single('file'), async (req: Request, res: Response) => {
   try {
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
     }
-    res.status(503).json({ 
-      error: 'Leprosy detection model is not currently available',
-      message: 'Only Psoriasis detection is available at this time. Please check back soon.'
-    });
+
+    const imagePath = req.file.path;
+    const pythonScript = path.join(__dirname, '../../models/leprosy_predict.py');
+    runDiseaseDetection('leprosy', pythonScript, imagePath, res);
   } catch (error) {
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Detection failed' });
+    console.error('Error running leprosy detection:', error);
+    res.status(500).json({
+      error: 'Leprosy detection request failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 });
 
-// Detect Melanoma - Model not available
 router.post('/melanoma', upload.single('file'), async (req: Request, res: Response) => {
   try {
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
     }
-    res.status(503).json({ 
-      error: 'Melanoma detection model is not currently available',
-      message: 'Only Psoriasis detection is available at this time. Please check back soon.'
-    });
+
+    const imagePath = req.file.path;
+    const pythonScript = path.join(__dirname, '../../models/melanoma_predict.py');
+    runDiseaseDetection('melanoma', pythonScript, imagePath, res);
   } catch (error) {
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Detection failed' });
+    console.error('Error running melanoma detection:', error);
+    res.status(500).json({
+      error: 'Melanoma detection request failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 });
 

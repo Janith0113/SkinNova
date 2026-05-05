@@ -310,7 +310,7 @@ export default function SkinCancerDetection() {
                              <h3 className="text-gray-700 font-bold">Step 1: Visual Analysis</h3>
                              <span className="text-green-600 font-bold text-sm">✓ Complete</span>
                           </div>
-                          <Results predictions={predictions} />
+                          <Results predictions={predictions ?? []} />
                        </div>
                        <ClinicalMetadataForm onSubmit={handleMetadataSubmit} onSkip={() => setShowMetadataForm(false)} />
                     </div>
@@ -318,7 +318,7 @@ export default function SkinCancerDetection() {
                     <div className="space-y-6 animate-fadeIn">
                       {/* Results Details */}
                       <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-lg">
-                        <Results predictions={predictions} />
+                        <Results predictions={predictions ?? []} />
                         
                          <div className="mt-8 border-t pt-6">
                             <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
