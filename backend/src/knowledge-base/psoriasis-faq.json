@@ -1,0 +1,38 @@
+{
+  "category": "psoriasis-faq",
+  "last_updated": "2026-05-05",
+  "trustedSources": [
+    { "name": "National Psoriasis Foundation", "organization": "NPF", "url": "https://www.psoriasis.org", "type": "official" },
+    { "name": "British Association of Dermatologists", "organization": "BAD", "url": "https://www.bad.org.uk", "type": "official" }
+  ],
+  "faqs": [
+    {
+      "id": "faq-001",
+      "question": "What is psoriasis?",
+      "answer": "Psoriasis is a chronic autoimmune skin condition that causes red, scaly patches due to accelerated skin cell growth. It often follows a relapsing-remitting course and can be associated with joint involvement (psoriatic arthritis).",
+      "category": "general",
+      "source": "National Psoriasis Foundation"
+    },
+    {
+      "id": "faq-002",
+      "question": "What triggers psoriasis flares?",
+      "answer": "Common triggers include stress, skin injury, infections (e.g., streptococcal), certain medications, cold/dry weather, smoking, and excessive alcohol. Managing triggers and good skin care helps reduce flares.",
+      "category": "triggers",
+      "source": "NPF"
+    },
+    {
+      "id": "faq-003",
+      "question": "How is psoriasis treated?",
+      "answer": "Treatment depends on severity and location: topical therapies (corticosteroids, vitamin D analogues), phototherapy (UVB), systemic agents (methotrexate, cyclosporine), and biologics for moderate-to-severe disease. Work with a dermatologist to choose the right plan.",
+      "category": "treatment",
+      "source": "NPF"
+    },
+    {
+      "id": "faq-004",
+      "question": "Can lifestyle changes help psoriasis?",
+      "answer": "Yes. Weight management, smoking cessation, limiting alcohol, stress reduction, and regular moisturizing can improve outcomes and reduce flare frequency.",
+      "category": "lifestyle",
+      "source": "NPF"
+    }
+  ]
+}

@@ -68,6 +68,15 @@ interface ILeprosyUserProfile extends Document {
     treatmentAccess?: 'good' | 'limited' | 'poor'
     hygiene_conditions?: 'poor' | 'moderate' | 'good'
   }
+  schedulingPreferences?: {
+    workSchedule?: 'flexible' | 'fixed-morning' | 'fixed-afternoon' | 'fixed-evening' | 'shift-work' | 'unemployed'
+    preferredAppointmentDays?: string[] // e.g., ['Monday', 'Wednesday', 'Friday']
+    preferredAppointmentTime?: string // e.g., '09:00 AM', '02:00 PM'
+    medicationTimes?: string[] // e.g., ['08:00 AM', '06:00 PM']
+    appointmentFrequency?: 'weekly' | 'biweekly' | 'monthly' | 'quarterly'
+    nextAppointmentDate?: Date
+    reminderPreference?: 'sms' | 'email' | 'app-notification' | 'none'
+  }
   goals?: string[]
   notes?: string
   createdAt: Date
@@ -187,6 +196,24 @@ const LeprosyUserProfileSchema = new Schema<ILeprosyUserProfile>(
         type: String,
         enum: ['poor', 'moderate', 'good'],
         default: 'moderate'
+      }
+    },
+    schedulingPreferences: {
+      workSchedule: {
+        type: String,
+        enum: ['flexible', 'fixed-morning', 'fixed-afternoon', 'fixed-evening', 'shift-work', 'unemployed']
+      },
+      preferredAppointmentDays: [String],
+      preferredAppointmentTime: String,
+      medicationTimes: [String],
+      appointmentFrequency: {
+        type: String,
+        enum: ['weekly', 'biweekly', 'monthly', 'quarterly']
+      },
+      nextAppointmentDate: Date,
+      reminderPreference: {
+        type: String,
+        enum: ['sms', 'email', 'app-notification', 'none']
       }
     },
     goals: [String],
