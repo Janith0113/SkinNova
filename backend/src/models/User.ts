@@ -4,7 +4,7 @@ import mongoose from 'mongoose'
 export interface IUser extends Document {
   name?: string
   email: string
-  password: string
+  password?: string
   role: 'admin' | 'doctor' | 'patient'
   profile?: any
   profilePhoto?: string
@@ -12,13 +12,15 @@ export interface IUser extends Document {
   verificationDocuments?: string
   resetToken?: string
   resetTokenExpires?: Date
+  googleId?: string
+  oauthProvider?: 'google' | 'local'
   createdAt: Date
 }
 
 const UserSchema = new Schema<IUser>({
   name: { type: String },
   email: { type: String, required: true, unique: true, index: true },
-  password: { type: String, required: true },
+  password: { type: String },
   role: { type: String, enum: ['admin', 'doctor', 'patient'], default: 'patient' },
   profile: { type: Schema.Types.Mixed },
   profilePhoto: { type: String },
@@ -26,6 +28,8 @@ const UserSchema = new Schema<IUser>({
   verificationDocuments: { type: String },
   resetToken: { type: String },
   resetTokenExpires: { type: Date },
+  googleId: { type: String, unique: true, sparse: true },
+  oauthProvider: { type: String, enum: ['google', 'local'], default: 'local' },
   createdAt: { type: Date, default: () => new Date() }
 })
 

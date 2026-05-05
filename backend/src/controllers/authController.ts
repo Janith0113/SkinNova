@@ -11,7 +11,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret'
 export async function signup(req: Request, res: Response) {
   try {
     const { name, email, password, role } = req.body
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' })
+    if (!email) return res.status(400).json({ error: 'Email is required' })
+    if (!password) return res.status(400).json({ error: 'Email and password required' })
     // Basic validation
     if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email format' })
     const pwdErr = validatePassword(password)
@@ -28,7 +29,7 @@ export async function signup(req: Request, res: Response) {
     if (existing) return res.status(409).json({ error: 'Email already in use' })
 
     const hashed = await bcrypt.hash(password, 10)
-    const user = new User({ name, email, password: hashed, role: normalizedRole, profile: {} })
+    const user = new User({ name, email, password: hashed, role: normalizedRole, profile: {}, oauthProvider: 'local' })
     await user.save()
 
     // Log user registration activity
