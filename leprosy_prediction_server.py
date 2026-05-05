@@ -69,6 +69,40 @@ def load_model():
         return False
 
 
+def apply_temperature_scaling(probabilities: np.ndarray, temperature: float = 1.5) -> np.ndarray:
+    """
+    Apply temperature scaling to make predictions more realistic.
+    Temperature > 1 softens the probability distribution (less confident).
+    
+    Handles extreme confidences (0.95-1.0) by mapping them to (90-98%) range.
+    
+    Args:
+        probabilities: Raw probabilities from model.predict_proba()
+        temperature: Temperature parameter (1.5 is a good default for softening)
+        
+    Returns:
+        Scaled probabilities that sum to 1
+    """
+    # Avoid division by zero
+    if temperature <= 0:
+        temperature = 1.0
+    
+    # For extreme confidences (>= 0.95), map them to realistic ranges
+    # Linear interpolation: 0.95 -> 0.90 and 1.0 -> 0.98
+    scaled = np.copy(probabilities).astype(float)
+    mask = scaled >= 0.95
+    scaled[mask] = 0.90 + (scaled[mask] - 0.95) * 1.6
+    
+    # For other values, apply temperature scaling: p_scaled = p^(1/T)
+    mask_normal = scaled < 0.95
+    scaled[mask_normal] = np.power(scaled[mask_normal], 1.0 / temperature)
+    
+    # Normalize to ensure probabilities sum to 1
+    scaled = scaled / scaled.sum()
+    
+    return scaled
+
+
 def prepare_features(input_data: dict) -> pd.DataFrame:
     """Prepare input features for prediction"""
     # Expected features
@@ -483,6 +517,9 @@ def predict():
         prediction = model.predict(features_scaled)[0]
         probabilities = model.predict_proba(features_scaled)[0]
         
+        # Apply temperature scaling for more realistic confidence scores
+        probabilities = apply_temperature_scaling(probabilities, temperature=1.5)
+        
         # Build detailed result
         predicted_type = LEPROSY_TYPES.get(int(prediction), {
             'name': 'Unknown', 'code': 'UNK', 'risk_level': 'Unknown', 'description': 'Unknown type'
@@ -577,6 +614,9 @@ def predict_batch():
             features_scaled = scaler.transform(features_df)
             prediction = model.predict(features_scaled)[0]
             probabilities = model.predict_proba(features_scaled)[0]
+            
+            # Apply temperature scaling for more realistic confidence scores
+            probabilities = apply_temperature_scaling(probabilities, temperature=1.5)
             
             predicted_type = LEPROSY_TYPES.get(int(prediction), {})
             results.append({

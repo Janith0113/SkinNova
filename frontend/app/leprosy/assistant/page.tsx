@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Heart, MessageCircle, Calendar, HelpCircle, Pill, Activity, ArrowLeft, User, Plus, X, ExternalLink, History, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import RiskAnalysisComponent from '../components/RiskAnalysis';
+import { startMedicationScheduler, stopMedicationScheduler, resetMedicationScheduler } from '@/utils/medicationScheduler';
 
 interface Message {
   id: string;
@@ -170,6 +171,201 @@ const DEFAULT_SCHEDULE: ScheduleItem[] = [
   }
 ];
 
+// Function to generate personalized schedule based on user profile
+function generatePersonalizedSchedule(profile: any): ScheduleItem[] {
+  const schedule: ScheduleItem[] = [];
+  let itemId = 1;
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  
+  // Extract scheduling preferences
+  const medicationTimes = profile.schedulingPreferences?.medicationTimes || ['08:00 AM', '06:00 PM'];
+  const workSchedule = profile.schedulingPreferences?.workSchedule || 'flexible';
+  const appointmentFrequency = profile.schedulingPreferences?.appointmentFrequency || 'monthly';
+  const preferredAppointmentDays = profile.schedulingPreferences?.preferredAppointmentDays || ['Monday', 'Wednesday'];
+  const appointmentTime = profile.schedulingPreferences?.preferredAppointmentTime || '10:00 AM';
+  
+  // Get medical info
+  const treatmentStatus = profile.medical?.treatmentStatus || 'ongoing';
+  const leprosyType = profile.medical?.leprosyType || 'unknown';
+  const nerveInvolvement = profile.leprosy?.nerveInvolvement || false;
+  const eyeInvolvement = profile.leprosy?.eyeInvolvement || false;
+  const disabilities = profile.leprosy?.disabilities || [];
+  const sleepHours = profile.lifestyle?.sleepHours || 7;
+  const physicalActivity = profile.lifestyle?.physicalActivity || 'moderate';
+  
+  // Determine work availability windows
+  const availableWorkDays = days.filter(d => !['Saturday', 'Sunday'].includes(d));
+  
+  // Daily medication schedule - ALL DAYS
+  for (const time of medicationTimes) {
+    for (let day of days) {
+      schedule.push({
+        id: `med-${itemId}`,
+        day: day,
+        time: time,
+        activity: 'MDT Medication',
+        description: `Take prescribed Multi-Drug Therapy (MDT) medications with water. Set phone reminder to ensure adherence. ${ day === 'Saturday' || day === 'Sunday' ? 'Weekend - ensure you have medication with you.' : ''}`
+      });
+      itemId++;
+    }
+  }
+  
+  // Daily skin care routine - morning
+  const skinCareTime = workSchedule.includes('morning') ? '07:00 AM' : '09:00 AM';
+  for (let day of days) {
+    schedule.push({
+      id: `skincare-${itemId}`,
+      day: day,
+      time: skinCareTime,
+      activity: 'Skin Care Routine',
+      description: 'Gently cleanse affected areas, apply moisturizer, check for new lesions or changes. Take photos if any changes detected.'
+    });
+    itemId++;
+  }
+  
+  // Nerve function check - 2-3 times per week
+  const nerveCheckDays = ['Tuesday', 'Thursday'];
+  if (nerveInvolvement) {
+    for (let day of nerveCheckDays) {
+      schedule.push({
+        id: `nerve-${itemId}`,
+        day: day,
+        time: '04:00 PM',
+        activity: 'Nerve Function Check',
+        description: 'Test sensation in hands, feet, and face. Perform mobility exercises. Document any numbness or weakness.'
+      });
+      itemId++;
+    }
+  }
+  
+  // Eye care if involved
+  if (eyeInvolvement) {
+    schedule.push({
+      id: `eye-${itemId}`,
+      day: 'Wednesday',
+      time: '08:30 AM',
+      activity: 'Eye Care & Vision Check',
+      description: 'Apply prescribed eye medications, wear protective eyewear, perform eye exercises. Watch for redness or vision changes.'
+    });
+    itemId++;
+  }
+  
+  // Physical activity based on disability level
+  if (!disabilities.includes('severe')) {
+    const activityDays = physicalActivity === 'vigorous' ? ['Monday', 'Wednesday', 'Friday'] : 
+                         physicalActivity === 'moderate' ? ['Tuesday', 'Thursday'] :
+                         ['Wednesday'];
+    const activityType = physicalActivity === 'vigorous' ? 'Structured Exercise' :
+                         physicalActivity === 'moderate' ? 'Light Exercise' :
+                         'Gentle Stretching';
+    const activityDesc = physicalActivity === 'vigorous' ? 'Moderate cardio or strength training (avoid excessive stress on affected areas)' :
+                         physicalActivity === 'moderate' ? 'Gentle stretching, walking, or low-impact exercises' :
+                         'Gentle stretching and mobility exercises to maintain flexibility';
+    
+    for (let day of activityDays) {
+      const time = workSchedule.includes('evening') ? '06:00 PM' : '07:00 AM';
+      schedule.push({
+        id: `activity-${itemId}`,
+        day: day,
+        time: time,
+        activity: activityType,
+        description: activityDesc
+      });
+      itemId++;
+    }
+  }
+  
+  // Symptom documentation - weekly
+  schedule.push({
+    id: `symptoms-${itemId}`,
+    day: 'Friday',
+    time: '10:00 AM',
+    activity: 'Weekly Symptom Review',
+    description: 'Document this week\'s symptoms, any changes in lesions, nerve function, or disability. Prepare list for doctor visit if upcoming.'
+  });
+  itemId++;
+  
+  // Doctor appointments - based on frequency
+  const appointmentDay = preferredAppointmentDays[0] || 'Monday';
+  let appointmentDescription = '';
+  if (appointmentFrequency === 'weekly') {
+    appointmentDescription = 'Routine checkup - discuss medication adherence and any concerns';
+  } else if (appointmentFrequency === 'biweekly') {
+    appointmentDescription = 'Biweekly appointment - discuss progress and treatment response';
+  } else if (appointmentFrequency === 'monthly') {
+    appointmentDescription = 'Monthly checkup - review medications, assess clinical response, perform examinations';
+  } else {
+    appointmentDescription = 'Quarterly review appointment - comprehensive assessment and treatment planning';
+  }
+  
+  schedule.push({
+    id: `appointment-${itemId}`,
+    day: appointmentDay,
+    time: appointmentTime,
+    activity: 'Doctor Appointment',
+    description: appointmentDescription
+  });
+  itemId++;
+  
+  // Sleep tracking - daily reminder at bedtime
+  const bedtime = Math.max(8, 24 - sleepHours) < 12 ? '11:00 PM' : '10:00 PM';
+  for (let day of days) {
+    schedule.push({
+      id: `sleep-${itemId}`,
+      day: day,
+      time: bedtime,
+      activity: 'Sleep Hygiene Check',
+      description: 'Ensure 6-9 hours of quality sleep. Avoid screens 30 minutes before bed. Document sleep quality if tracking.'
+    });
+    itemId++;
+  }
+  
+  // Weekly health review
+  schedule.push({
+    id: `review-${itemId}`,
+    day: 'Sunday',
+    time: '06:00 PM',
+    activity: 'Weekly Health Review',
+    description: 'Reflect on the week: medication adherence, symptom changes, exercise, diet, and stress levels. Plan for the week ahead.'
+  });
+  itemId++;
+  
+  // Dietary guidance - if needed
+  if (profile.lifestyle?.dietQuality === 'poor' || profile.lifestyle?.dietQuality === 'moderate') {
+    schedule.push({
+      id: `diet-${itemId}`,
+      day: 'Monday',
+      time: '12:00 PM',
+      activity: 'Nutrition Check',
+      description: 'Review your diet - ensure balanced meals with protein, vegetables, fruits. Stay hydrated (8 glasses/day).'
+    });
+    itemId++;
+  }
+  
+  // Stress management if high stress
+  if (profile.lifestyle?.stressLevel === 'high') {
+    schedule.push({
+      id: `stress-${itemId}`,
+      day: 'Thursday',
+      time: '04:00 PM',
+      activity: 'Stress Management',
+      description: 'Practice relaxation techniques: meditation, deep breathing, or yoga (30 minutes). Helps reduce treatment-related anxiety.'
+    });
+    itemId++;
+  }
+  
+  // Remove duplicates and return unique schedule
+  const uniqueSchedule = Array.from(new Map(schedule.map(item => [item.id + item.day + item.time, item])).values());
+  
+  return uniqueSchedule.sort((a, b) => {
+    const dayOrder = days.indexOf(a.day) - days.indexOf(b.day);
+    if (dayOrder !== 0) return dayOrder;
+    const timeA = new Date(`2000-01-01 ${a.time}`).getTime();
+    const timeB = new Date(`2000-01-01 ${b.time}`).getTime();
+    return timeA - timeB;
+  });
+}
+
 export default function LeprosyAssistantPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'chat' | 'symptoms' | 'schedule' | 'qa' | 'profile' | 'risk-analysis'>('chat');
@@ -247,6 +443,15 @@ export default function LeprosyAssistantPage() {
       treatmentAccess: 'good',
       hygiene_conditions: 'moderate'
     },
+    schedulingPreferences: {
+      workSchedule: 'flexible' as 'flexible' | 'fixed-morning' | 'fixed-afternoon' | 'fixed-evening' | 'shift-work' | 'unemployed',
+      preferredAppointmentDays: [] as string[],
+      preferredAppointmentTime: '09:00 AM',
+      medicationTimes: ['08:00 AM', '06:00 PM'] as string[],
+      appointmentFrequency: 'monthly' as 'weekly' | 'biweekly' | 'monthly' | 'quarterly',
+      nextAppointmentDate: undefined as Date | undefined,
+      reminderPreference: 'app-notification' as 'sms' | 'email' | 'app-notification' | 'none'
+    },
     goals: [] as string[],
     notes: ''
   });
@@ -259,6 +464,13 @@ export default function LeprosyAssistantPage() {
   const [areaInput, setAreaInput] = useState('');
   const [disabilityInput, setDisabilityInput] = useState('');
   const [goalInput, setGoalInput] = useState('');
+  const [medicationTimeInput, setMedicationTimeInput] = useState('');
+  const [appointmentDayInput, setAppointmentDayInput] = useState('');
+  
+  // Notification states
+  const [medicationNotificationsEnabled, setMedicationNotificationsEnabled] = useState(false);
+  const [notificationPermissionGranted, setNotificationPermissionGranted] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
 
 
   const scrollToBottom = () => {
@@ -276,17 +488,47 @@ export default function LeprosyAssistantPage() {
           }
         });
         
+        let profileData = null;
         if (response.ok) {
           const data = await response.json();
           if (data.profile) {
+            profileData = data.profile;
             setProfile(data.profile);
+            // Generate personalized schedule based on loaded profile
+            const personalizedSchedule = generatePersonalizedSchedule(data.profile);
+            setSchedule(personalizedSchedule);
+          }
+        }
+
+        // Load notification settings
+        const notifResponse = await fetch('http://localhost:4000/api/leprosy/notifications/settings', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (notifResponse.ok) {
+          const notifData = await notifResponse.json();
+          if (notifData.settings) {
+            setMedicationNotificationsEnabled(notifData.settings.notificationsEnabled);
+            
+            // If notifications are already enabled, start the scheduler with loaded medication times
+            if (notifData.settings.notificationsEnabled && profileData?.schedulingPreferences?.medicationTimes && profileData.schedulingPreferences.medicationTimes.length > 0) {
+              console.log('Notifications already enabled, starting scheduler with times:', profileData.schedulingPreferences.medicationTimes);
+              startMedicationScheduler(profileData.schedulingPreferences.medicationTimes);
+            }
           }
         }
       } catch (error) {
         console.log('No profile found, starting fresh');
+        // Use default schedule if no profile found
+        setSchedule(DEFAULT_SCHEDULE);
       }
     };
     
+    // Check notification permission
+    if ('Notification' in window) {
+      setNotificationPermissionGranted(Notification.permission === 'granted');
+    }
+
     loadProfile();
   }, []);
 
@@ -316,6 +558,25 @@ export default function LeprosyAssistantPage() {
     };
     
     loadSymptomLogs();
+  }, []);
+
+  // Update schedule when medication times change
+  useEffect(() => {
+    const personalizedSchedule = generatePersonalizedSchedule(profile);
+    setSchedule(personalizedSchedule);
+    
+    // Reset medication scheduler if notifications are enabled
+    if (medicationNotificationsEnabled && profile.schedulingPreferences?.medicationTimes && profile.schedulingPreferences.medicationTimes.length > 0) {
+      console.log('Medication times changed, resetting scheduler with new times:', profile.schedulingPreferences.medicationTimes);
+      resetMedicationScheduler(profile.schedulingPreferences.medicationTimes);
+    }
+  }, [profile.schedulingPreferences?.medicationTimes, medicationNotificationsEnabled]);
+
+  // Cleanup scheduler on component unmount
+  useEffect(() => {
+    return () => {
+      stopMedicationScheduler();
+    };
   }, []);
 
   useEffect(() => {
@@ -412,6 +673,85 @@ export default function LeprosyAssistantPage() {
     return 'Thank you for your question. Based on your concern, I recommend discussing this with your healthcare provider for personalized guidance. In the meantime, ensure you\'re following your medication schedule and keeping your skin care routine consistent.';
   };
 
+  const handleToggleMedicationNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+
+      if (medicationNotificationsEnabled) {
+        // Disable notifications
+        const response = await fetch('http://localhost:4000/api/leprosy/notifications/disable', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          stopMedicationScheduler();
+          setMedicationNotificationsEnabled(false);
+          setNotificationMessage('✓ Medication notifications disabled');
+          setTimeout(() => setNotificationMessage(''), 3000);
+        }
+      } else {
+        // Request permission first
+        if ('Notification' in window && Notification.permission !== 'granted') {
+          const permission = await Notification.requestPermission();
+          setNotificationPermissionGranted(permission === 'granted');
+
+          if (permission !== 'granted') {
+            setNotificationMessage('⚠ Notification permission required');
+            setTimeout(() => setNotificationMessage(''), 3000);
+            return;
+          }
+        }
+
+        // Enable notifications
+        const response = await fetch('http://localhost:4000/api/leprosy/notifications/enable', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            notificationMethod: 'browser',
+            notificationFrequency: 'on-time'
+          })
+        });
+
+        if (response.ok) {
+          setMedicationNotificationsEnabled(true);
+          setNotificationPermissionGranted(true);
+          setNotificationMessage('✓ Medication notifications enabled');
+          
+          // Start the medication scheduler with current medication times
+          if (profile.schedulingPreferences?.medicationTimes && profile.schedulingPreferences.medicationTimes.length > 0) {
+            startMedicationScheduler(profile.schedulingPreferences.medicationTimes);
+          }
+          
+          // Test notification
+          if ('Notification' in window && Notification.permission === 'granted') {
+            const audio = new Audio('/notification-sound.mp3');
+            audio.play().catch(() => console.log('Could not play notification sound'));
+            
+            new Notification('SkinNova Medication Reminder', {
+              body: 'Medication reminders are now active!',
+              icon: '/images/SKÍNOVA_Logo_Variation_4-removebg-preview (1).png',
+              sound: '/notification-sound.mp3',
+              vibrate: [200, 100, 200]
+            });
+          }
+          
+          setTimeout(() => setNotificationMessage(''), 3000);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling notifications:', error);
+      setNotificationMessage('✗ Failed to update notifications');
+      setTimeout(() => setNotificationMessage(''), 3000);
+    }
+  };
+
   const handleSaveProfile = async () => {
     setProfileLoading(true);
     setProfileMessage('');
@@ -440,7 +780,44 @@ export default function LeprosyAssistantPage() {
       });
 
       if (response.ok) {
-        setProfileMessage('✓ Profile saved successfully! Your personalized guidance will now be tailored to your needs.');
+        const data = await response.json();
+        // Update profile with saved data to ensure consistency
+        if (data.profile) {
+          setProfile(data.profile);
+        }
+        
+        // Generate personalized schedule based on updated profile
+        const personalizedSchedule = generatePersonalizedSchedule(profile);
+        setSchedule(personalizedSchedule);
+        
+        // If notifications exist, regenerate them with new medication times
+        try {
+          const notifResponse = await fetch('http://localhost:4000/api/leprosy/notifications/settings', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (notifResponse.ok) {
+            const notifData = await notifResponse.json();
+            if (notifData.settings?.notificationsEnabled) {
+              // Regenerate notifications to reflect new medication times
+              await fetch('http://localhost:4000/api/leprosy/notifications/enable', {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  notificationMethod: notifData.settings.notificationMethod,
+                  notificationFrequency: notifData.settings.notificationFrequency
+                })
+              });
+            }
+          }
+        } catch (err) {
+          console.log('Note: Could not update notifications (this is optional)', err);
+        }
+        
+        setProfileMessage('✓ Profile saved successfully! Your personalized schedule has been updated.');
         setTimeout(() => setProfileMessage(''), 3000);
       } else {
         const error = await response.json();
@@ -1006,32 +1383,113 @@ export default function LeprosyAssistantPage() {
         {/* Schedule Tab */}
         {activeTab === 'schedule' && (
           <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Daily Care Schedule</h2>
-            <p className="text-gray-600 mb-8">Follow this personalized schedule to manage your treatment and self-care effectively.</p>
-
-            <div className="space-y-4">
-              {schedule.map((item) => (
-                <div key={item.id} className="p-4 rounded-2xl border border-gray-200 hover:border-red-300 hover:bg-red-50/50 transition-all">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
-                          {item.day}
-                        </span>
-                        <span className="font-bold text-gray-900">{item.time}</span>
-                      </div>
-                      <p className="text-lg font-semibold text-gray-900">{item.activity}</p>
-                      <p className="text-sm text-gray-600 mt-1">{item.description}</p>
-                    </div>
-                    <Pill className="w-6 h-6 text-red-600 flex-shrink-0 mt-2" />
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Daily Care Schedule</h2>
+                <p className="text-gray-600 mt-2">Follow this personalized schedule to manage your treatment and self-care effectively.</p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <span className="text-sm font-semibold text-gray-700">Medication Reminders</span>
+                  <button
+                    onClick={handleToggleMedicationNotifications}
+                    className={`relative w-14 h-8 rounded-full transition-all ${
+                      medicationNotificationsEnabled ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-all transform ${
+                        medicationNotificationsEnabled ? 'translate-x-6' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </label>
+                {notificationMessage && (
+                  <div className={`text-xs font-medium px-2 py-1 rounded ${
+                    notificationMessage.includes('✓') ? 'bg-green-100 text-green-700' : 
+                    notificationMessage.includes('⚠') ? 'bg-yellow-100 text-yellow-700' : 
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {notificationMessage}
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
+            </div>
+
+            {/* Calendar-style schedule */}
+            <div className="space-y-6">
+              {/* Group schedule by day */}
+              {(() => {
+                const dayGroups: { [key: string]: typeof schedule } = {};
+                const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                
+                schedule.forEach(item => {
+                  if (!dayGroups[item.day]) {
+                    dayGroups[item.day] = [];
+                  }
+                  dayGroups[item.day].push(item);
+                });
+                
+                return dayOrder.map(day => {
+                  const items = dayGroups[day] || [];
+                  if (items.length === 0) return null;
+                  
+                  // Sort items by time
+                  const sortedItems = [...items].sort((a, b) => {
+                    const timeA = a.time.split(':')[0];
+                    const timeB = b.time.split(':')[0];
+                    return parseInt(timeA) - parseInt(timeB);
+                  });
+                  
+                  return (
+                    <div key={day} className="border-l-4 border-red-600 pl-4 py-2">
+                      <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm font-bold">
+                          {day}
+                        </span>
+                        <span className="text-gray-500 text-sm">({items.length} activities)</span>
+                      </h3>
+                      <div className="space-y-3">
+                        {sortedItems.map((item, idx) => {
+                          const isLastItem = idx === sortedItems.length - 1;
+                          return (
+                            <div key={item.id} className="relative">
+                              {/* Timeline dot */}
+                              <div className="absolute -left-7 top-2 w-4 h-4 rounded-full bg-red-500 border-4 border-white shadow-md"></div>
+                              
+                              {/* Timeline connector */}
+                              {!isLastItem && (
+                                <div className="absolute -left-5 top-6 w-0.5 h-12 bg-red-200"></div>
+                              )}
+                              
+                              {/* Activity card */}
+                              <div className="p-4 rounded-2xl border-2 border-gray-200 hover:border-red-300 hover:bg-red-50/30 transition-all hover:shadow-md">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <span className="font-bold text-red-600 text-lg min-w-[60px]">{item.time}</span>
+                                      <span className="inline-block px-2 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-semibold">
+                                        {item.activity}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 ml-[88px]">{item.description}</p>
+                                  </div>
+                                  <Pill className="w-5 h-5 text-red-500 flex-shrink-0 mt-1" />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
 
             <div className="mt-8 p-4 rounded-2xl bg-yellow-50 border border-yellow-200">
               <p className="text-sm text-yellow-800">
-                <strong>💡 Tip:</strong> Set phone reminders for each activity to ensure consistency. Adherence to your schedule is crucial for successful treatment.
+                <strong>💡 Tip:</strong> Enable medication reminders above to get in-app notifications when each medication time arrives. The reminders will include a sound notification.
               </p>
             </div>
           </div>
@@ -1588,6 +2046,155 @@ export default function LeprosyAssistantPage() {
                     <option value="good">Hygiene Conditions — Good</option>
                     <option value="moderate">Hygiene Conditions — Moderate</option>
                     <option value="poor">Hygiene Conditions — Poor</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Scheduling Preferences */}
+              <div className="pb-8 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-red-600" />
+                  Scheduling Preferences
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">Help us personalize your daily care schedule based on your lifestyle and availability.</p>
+                <div className="space-y-4">
+                  <select
+                    value={profile.schedulingPreferences?.workSchedule || 'flexible'}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      schedulingPreferences: {
+                        ...profile.schedulingPreferences,
+                        workSchedule: e.target.value
+                      }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="flexible">Work Schedule — Flexible</option>
+                    <option value="fixed-morning">Work Schedule — Fixed Morning (6am-2pm)</option>
+                    <option value="fixed-afternoon">Work Schedule — Fixed Afternoon (2pm-10pm)</option>
+                    <option value="fixed-evening">Work Schedule — Fixed Evening (10pm-6am)</option>
+                    <option value="shift-work">Work Schedule — Shift Work</option>
+                    <option value="unemployed">Not Working</option>
+                  </select>
+
+                  <select
+                    value={profile.schedulingPreferences?.appointmentFrequency || 'monthly'}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      schedulingPreferences: {
+                        ...profile.schedulingPreferences,
+                        appointmentFrequency: e.target.value
+                      }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="weekly">Doctor Visit Frequency — Weekly</option>
+                    <option value="biweekly">Doctor Visit Frequency — Biweekly</option>
+                    <option value="monthly">Doctor Visit Frequency — Monthly</option>
+                    <option value="quarterly">Doctor Visit Frequency — Quarterly</option>
+                  </select>
+
+                  <input
+                    type="time"
+                    value={profile.schedulingPreferences?.preferredAppointmentTime || '09:00'}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      schedulingPreferences: {
+                        ...profile.schedulingPreferences,
+                        preferredAppointmentTime: e.target.value
+                      }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  />
+                  <p className="text-xs text-gray-500">Preferred time for doctor appointments</p>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Medication Times</label>
+                    <div className="space-y-2 mb-3">
+                      {profile.schedulingPreferences?.medicationTimes?.map((time, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-red-50 p-2 rounded-2xl">
+                          <span className="flex-1 text-sm">{time}</span>
+                          <button
+                            onClick={async () => {
+                              const updatedProfile = {
+                                ...profile,
+                                schedulingPreferences: {
+                                  ...profile.schedulingPreferences,
+                                  medicationTimes: profile.schedulingPreferences?.medicationTimes?.filter((_, i) => i !== idx) || []
+                                }
+                              };
+                              setProfile(updatedProfile);
+                              
+                              // Save the updated profile immediately
+                              try {
+                                const token = localStorage.getItem('token');
+                                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                                const userId = user.id || user._id || user.userId;
+                                
+                                await fetch('http://localhost:4000/api/leprosy/profile', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    Authorization: `Bearer ${token}`
+                                  },
+                                  body: JSON.stringify({
+                                    userId: userId,
+                                    ...updatedProfile
+                                  })
+                                });
+                              } catch (error) {
+                                console.error('Error saving profile:', error);
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="time"
+                        value={medicationTimeInput}
+                        onChange={(e) => setMedicationTimeInput(e.target.value)}
+                        className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                      />
+                      <button
+                        onClick={() => {
+                          if (medicationTimeInput.trim()) {
+                            setProfile({
+                              ...profile,
+                              schedulingPreferences: {
+                                ...profile.schedulingPreferences,
+                                medicationTimes: [...(profile.schedulingPreferences?.medicationTimes || []), medicationTimeInput]
+                              }
+                            });
+                            setMedicationTimeInput('');
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-2xl hover:bg-red-700 flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <select
+                    value={profile.schedulingPreferences?.reminderPreference || 'app-notification'}
+                    onChange={(e) => setProfile({
+                      ...profile,
+                      schedulingPreferences: {
+                        ...profile.schedulingPreferences,
+                        reminderPreference: e.target.value
+                      }
+                    })}
+                    className="w-full px-4 py-2 rounded-2xl border border-gray-300 focus:outline-none focus:border-red-600"
+                  >
+                    <option value="app-notification">Reminders — App Notification</option>
+                    <option value="email">Reminders — Email</option>
+                    <option value="sms">Reminders — SMS</option>
+                    <option value="none">Reminders — None</option>
                   </select>
                 </div>
               </div>
