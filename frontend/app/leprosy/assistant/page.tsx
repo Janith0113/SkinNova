@@ -1416,29 +1416,80 @@ export default function LeprosyAssistantPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              {schedule.map((item) => (
-                <div key={item.id} className="p-4 rounded-2xl border border-gray-200 hover:border-red-300 hover:bg-red-50/50 transition-all">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
-                          {item.day}
+            {/* Calendar-style schedule */}
+            <div className="space-y-6">
+              {/* Group schedule by day */}
+              {(() => {
+                const dayGroups: { [key: string]: typeof schedule } = {};
+                const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                
+                schedule.forEach(item => {
+                  if (!dayGroups[item.day]) {
+                    dayGroups[item.day] = [];
+                  }
+                  dayGroups[item.day].push(item);
+                });
+                
+                return dayOrder.map(day => {
+                  const items = dayGroups[day] || [];
+                  if (items.length === 0) return null;
+                  
+                  // Sort items by time
+                  const sortedItems = [...items].sort((a, b) => {
+                    const timeA = a.time.split(':')[0];
+                    const timeB = b.time.split(':')[0];
+                    return parseInt(timeA) - parseInt(timeB);
+                  });
+                  
+                  return (
+                    <div key={day} className="border-l-4 border-red-600 pl-4 py-2">
+                      <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm font-bold">
+                          {day}
                         </span>
-                        <span className="font-bold text-gray-900">{item.time}</span>
+                        <span className="text-gray-500 text-sm">({items.length} activities)</span>
+                      </h3>
+                      <div className="space-y-3">
+                        {sortedItems.map((item, idx) => {
+                          const isLastItem = idx === sortedItems.length - 1;
+                          return (
+                            <div key={item.id} className="relative">
+                              {/* Timeline dot */}
+                              <div className="absolute -left-7 top-2 w-4 h-4 rounded-full bg-red-500 border-4 border-white shadow-md"></div>
+                              
+                              {/* Timeline connector */}
+                              {!isLastItem && (
+                                <div className="absolute -left-5 top-6 w-0.5 h-12 bg-red-200"></div>
+                              )}
+                              
+                              {/* Activity card */}
+                              <div className="p-4 rounded-2xl border-2 border-gray-200 hover:border-red-300 hover:bg-red-50/30 transition-all hover:shadow-md">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <span className="font-bold text-red-600 text-lg min-w-[60px]">{item.time}</span>
+                                      <span className="inline-block px-2 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-semibold">
+                                        {item.activity}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 ml-[88px]">{item.description}</p>
+                                  </div>
+                                  <Pill className="w-5 h-5 text-red-500 flex-shrink-0 mt-1" />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <p className="text-lg font-semibold text-gray-900">{item.activity}</p>
-                      <p className="text-sm text-gray-600 mt-1">{item.description}</p>
                     </div>
-                    <Pill className="w-6 h-6 text-red-600 flex-shrink-0 mt-2" />
-                  </div>
-                </div>
-              ))}
+                  );
+                });
+              })()}
             </div>
 
             <div className="mt-8 p-4 rounded-2xl bg-yellow-50 border border-yellow-200">
               <p className="text-sm text-yellow-800">
-                <strong>💡 Tip:</strong> Enable medication reminders above to get in-app notifications 15 minutes before each medication time. The reminders will include a sound notification.
+                <strong>💡 Tip:</strong> Enable medication reminders above to get in-app notifications when each medication time arrives. The reminders will include a sound notification.
               </p>
             </div>
           </div>
@@ -2064,13 +2115,37 @@ export default function LeprosyAssistantPage() {
                         <div key={idx} className="flex items-center gap-2 bg-red-50 p-2 rounded-2xl">
                           <span className="flex-1 text-sm">{time}</span>
                           <button
-                            onClick={() => setProfile({
-                              ...profile,
-                              schedulingPreferences: {
-                                ...profile.schedulingPreferences,
-                                medicationTimes: profile.schedulingPreferences?.medicationTimes?.filter((_, i) => i !== idx) || []
+                            onClick={async () => {
+                              const updatedProfile = {
+                                ...profile,
+                                schedulingPreferences: {
+                                  ...profile.schedulingPreferences,
+                                  medicationTimes: profile.schedulingPreferences?.medicationTimes?.filter((_, i) => i !== idx) || []
+                                }
+                              };
+                              setProfile(updatedProfile);
+                              
+                              // Save the updated profile immediately
+                              try {
+                                const token = localStorage.getItem('token');
+                                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                                const userId = user.id || user._id || user.userId;
+                                
+                                await fetch('http://localhost:4000/api/leprosy/profile', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    Authorization: `Bearer ${token}`
+                                  },
+                                  body: JSON.stringify({
+                                    userId: userId,
+                                    ...updatedProfile
+                                  })
+                                });
+                              } catch (error) {
+                                console.error('Error saving profile:', error);
                               }
-                            })}
+                            }}
                             className="text-red-600 hover:text-red-800"
                           >
                             <X className="w-4 h-4" />
