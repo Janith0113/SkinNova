@@ -202,7 +202,8 @@ export default function RiskAnalysisSectionView({ section }: RiskAnalysisSection
         : "Here is a more detailed explanation: ask me about your psoriasis risk, temperature, humidity, wind, or protective advice. I can break the information into simple steps, and this guidance is educational rather than a medical diagnosis.";
 
       try {
-        const aiResponse = await fetch("/api/psoriasis-chat", {
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000'
+        const aiResponse = await fetch(`${apiBase}/api/psoriasis/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -237,7 +238,7 @@ export default function RiskAnalysisSectionView({ section }: RiskAnalysisSection
         addBotMessage(
           riskAnalysis
             ? `Hello. I can help interpret your psoriasis risk in a more detailed ChatGPT-style way. Current level: ${riskAnalysis.level}. Ask me about risk, temperature, humidity, wind, or protective advice.`
-            : "Hello. Ask me anything about psoriasis risk once your data loads."
+            : "Ask me anything about psoriasis risk once your data loads."
         );
       }
     }, [section, chatMessages.length, riskAnalysis]);
