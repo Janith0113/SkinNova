@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
+import { GoogleLogin } from '@react-oauth/google'
 import Toasts from './Toasts'
 import { useRouter } from 'next/navigation'
 
@@ -18,6 +19,7 @@ export default function AuthForm({ mode, compact = false }: Props) {
   const [fieldErrors, setFieldErrors] = useState<{[k:string]:string}>({})
   const [loading, setLoading] = useState(false)
   const [toasts, setToasts] = useState<{id:number,type:'success'|'error'|'info',message:string}[]>([])
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   const addToast = (type: 'success'|'error'|'info', message: string) => {
     const id = Date.now() + Math.floor(Math.random()*1000)
@@ -49,6 +51,57 @@ export default function AuthForm({ mode, compact = false }: Props) {
     } catch (err) {
       console.error('Failed to fetch user count:', err)
     }
+  }
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      setGoogleLoading(true)
+      console.log('Google credential:', credentialResponse)
+
+      // Send credential to backend for verification
+      const response = await fetch('http://localhost:4000/api/auth/google/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: credentialResponse.credential }),
+      })
+
+      const data = await response.json()
+      console.log('Google auth response:', data)
+
+      if (!response.ok) {
+        const msg = data.error || 'Google authentication failed'
+        addToast('error', msg)
+        throw new Error(msg)
+      }
+
+      // Store token and user data
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+
+      addToast('success', 'Signed in successfully')
+      await new Promise(resolve => setTimeout(resolve, 900))
+
+      // Redirect to role-specific dashboard
+      const userRole = data.user?.role
+      console.log('User role:', userRole)
+      if (userRole === 'admin') {
+        router.push('/admin/dashboard')
+      } else if (userRole === 'doctor') {
+        router.push('/doctor/dashboard')
+      } else {
+        router.push('/patient/dashboard')
+      }
+    } catch (err: any) {
+      console.error('Google auth error:', err)
+      addToast('error', err.message || 'Google authentication failed')
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
+  const handleGoogleError = () => {
+    console.log('Google login failed')
+    addToast('error', 'Google sign-in failed. Please try again.')
   }
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -273,23 +326,12 @@ export default function AuthForm({ mode, compact = false }: Props) {
             {mode === 'login' && (
               <div className="mt-8 pt-6 border-t border-gray-200">
                 <p className="text-center text-sm text-gray-600 mb-4 font-medium">Or continue with</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    type="button" 
-                    onClick={() => alert('Google OAuth coming soon!')} 
-                    className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 text-gray-700 font-medium"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none"><path d="M21.35 11.1H12v2.8h5.35c-.23 1.4-1.07 2.59-2.28 3.38v2.83h3.69C20.54 19.05 22 15.47 22 12c0-.57-.05-1.13-.15-1.65z" fill="#4285F4"/><path d="M12 22c2.7 0 4.97-.9 6.63-2.45l-3.69-2.83C14.3 17.26 13.19 17.7 12 17.7c-2.9 0-5.36-1.95-6.24-4.58H2.01v2.88C3.66 19.86 7.54 22 12 22z" fill="#34A853"/><path d="M5.76 13.12c-.2-.56-.32-1.16-.32-1.78s.12-1.22.32-1.78V6.68H2.01C1.32 8.08 1 9.53 1 11c0 1.47.32 2.92 1.01 4.32l3.75-2.2z" fill="#FBBC05"/><path d="M12 4.2c1.47 0 2.79.5 3.83 1.49l2.87-2.87C16.96 1.15 14.7 0 12 0 7.54 0 3.66 2.14 2.01 5.32l3.75 2.88C6.64 6.15 9.1 4.2 12 4.2z" fill="#EA4335"/></svg>
-                    Google
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => alert('GitHub OAuth coming soon!')} 
-                    className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 text-gray-700 font-medium"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.75 5.48.75 11.75c0 5 3.25 9.25 7.75 10.75.57.1.78-.25.78-.56v-2c-3.16.69-3.83-1.42-3.83-1.42-.52-1.32-1.26-1.67-1.26-1.67-1.03-.7.08-.68.08-.68 1.14.08 1.74 1.17 1.74 1.17 1.01 1.74 2.65 1.24 3.3.95.1-.74.4-1.24.73-1.52-2.52-.29-5.18-1.26-5.18-5.6 0-1.24.44-2.24 1.16-3.04-.12-.29-.5-1.46.1-3.04 0 0 .94-.3 3.08 1.16.9-.25 1.86-.38 2.82-.38.96 0 1.92.13 2.82.38 2.14-1.46 3.08-1.16 3.08-1.16.6 1.58.22 2.75.1 3.04.72.8 1.16 1.8 1.16 3.04 0 4.36-2.66 5.31-5.2 5.6.41.36.78 1.06.78 2.14v3.17c0 .31.2.67.78.56 4.5-1.5 7.75-5.75 7.75-10.75C22.25 5.48 18.27.5 12 .5z"/></svg>
-                    GitHub
-                  </button>
+                <div className="w-full flex justify-center">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    size="large"
+                  />
                 </div>
               </div>
             )}

@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { signup, login, me, forgotPassword, resetPassword } from '../controllers/authController'
+import { googleCallback, verifyGoogleToken } from '../controllers/googleAuthController'
 import { requireAuth } from '../middleware/auth'
 import User from '../models/User'
 import bcrypt from 'bcryptjs'
@@ -11,6 +12,10 @@ router.post('/login', login)
 router.get('/me', requireAuth, me)
 router.post('/forgot-password', forgotPassword)
 router.post('/reset-password', resetPassword)
+
+// Google OAuth routes
+router.post('/google', googleCallback)
+router.post('/google/verify', verifyGoogleToken)
 
 // Test user creation endpoint
 router.post('/create-test-user', async (req, res) => {
