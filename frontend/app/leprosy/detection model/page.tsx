@@ -106,7 +106,7 @@ export default function LeprosyDetection() {
       <nav className="relative z-20 border-b border-gray-300 bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link href="/psoriasis" className="inline-flex items-center gap-2 text-purple-700 hover:text-purple-800 font-bold transition-colors text-sm sm:text-base">
+            <Link href="/leprosy" className="inline-flex items-center gap-2 text-purple-700 hover:text-purple-800 font-bold transition-colors text-sm sm:text-base">
               ← Back
             </Link>
             <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-700 to-indigo-700 bg-clip-text text-transparent">
@@ -126,10 +126,10 @@ export default function LeprosyDetection() {
               <span className="text-5xl sm:text-6xl">🔍</span>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 text-gray-900 leading-tight">
-              Psoriasis Detection
+              Leprosy Detection
             </h1>
             <p className="text-gray-700 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-medium">
-              Advanced AI-powered analysis to detect psoriasis from your skin images with high accuracy
+              Advanced AI-powered analysis to detect leprosy from your skin images with high accuracy
             </p>
           </div>
 
@@ -259,7 +259,7 @@ export default function LeprosyDetection() {
                     <div className="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-300 shadow-md">
                       <span className="text-6xl mb-4">👆</span>
                       <p className="text-gray-900 font-bold text-center text-lg">Ready to Analyze</p>
-                      <p className="text-gray-700 text-center mt-2">Click the button below to detect psoriasis</p>
+                      <p className="text-gray-700 text-center mt-2">Click the button below to detect leprosy</p>
                     </div>
                   )}
                 </div>
