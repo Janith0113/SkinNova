@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import * as tmImage from "@teachablemachine/image";
+import { useRef, useState } from "react";
 import Spinner from "@/components/Spinner";
 import Results from "@/components/Results";
 import ImageUpload from "@/components/ImageUpload";
@@ -9,7 +8,7 @@ import Link from "next/link";
 
 // Model configuration
 const MODEL_CONFIG = {
-  detectEndpoint: "/api//new-detection", 
+  detectEndpoint: "/api/detect/leprosy",
 
 };
 
@@ -19,36 +18,13 @@ interface Prediction {
 }
 
 export default function LeprosyDetection() {
-  const [model, setModel] = useState<tmImage.CustomMobileNet | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [classifying, setClassifying] = useState(false);
   const [predictions, setPredictions] = useState<Prediction[] | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
-
-  // Load model on mount
-  useEffect(() => {
-    const loadModel = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const loadedModel = await tmImage.load(MODEL_CONFIG.detectEndpoint);
-        setModel(loadedModel);
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to load model";
-        setError(message);
-        console.error("Error loading model:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadModel();
-  }, []);
 
   const handleImageSelect = (file: File) => {
     setSelectedImage(file);
@@ -62,8 +38,8 @@ export default function LeprosyDetection() {
   };
 
   const handleClassify = async () => {
-    if (!model || !imageRef.current || !selectedImage) {
-      setError("Please select an image and wait for the model to load");
+    if (!selectedImage) {
+      setError("Please select an image first");
       return;
     }
 
@@ -71,12 +47,34 @@ export default function LeprosyDetection() {
       setClassifying(true);
       setError(null);
 
-      const predictions = await model.predict(imageRef.current);
+      const formData = new FormData();
+      formData.append("file", selectedImage);
+
+      const response = await fetch(MODEL_CONFIG.detectEndpoint, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Failed to classify image");
+      }
+
+      const confidenceValue = Number(data.confidence ?? 0);
+      const normalizedConfidence = confidenceValue > 1 ? confidenceValue / 100 : confidenceValue;
+      const isLeprosy = Boolean(data.is_leprosy ?? String(data.label || "").toLowerCase().includes("leprosy"));
+
       setPredictions(
-        predictions.map((p) => ({
-          className: p.className,
-          probability: p.probability,
-        }))
+        isLeprosy
+          ? [
+              { className: "Leprosy Skin", probability: normalizedConfidence },
+              { className: "Normal Skin", probability: Math.max(0, 1 - normalizedConfidence) },
+            ]
+          : [
+              { className: "Normal Skin", probability: normalizedConfidence },
+              { className: "Leprosy Skin", probability: Math.max(0, 1 - normalizedConfidence) },
+            ]
       );
     } catch (err) {
       const message =
@@ -201,7 +199,7 @@ export default function LeprosyDetection() {
             <div className="space-y-8">
               <ImageUpload
                 onImageSelect={handleImageSelect}
-                disabled={!model}
+                disabled={classifying}
               />
 
               {/* Tips Section */}
@@ -277,7 +275,7 @@ export default function LeprosyDetection() {
                 </button>
                 <button
                   onClick={handleClassify}
-                  disabled={!model || classifying}
+                  disabled={!selectedImage || classifying}
                   className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg hover:shadow-xl text-base active:scale-95"
                 >
                   {classifying ? (

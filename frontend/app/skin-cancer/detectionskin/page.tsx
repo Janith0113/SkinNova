@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import * as tmImage from "@teachablemachine/image";
+import { useRef, useState } from "react";
 import Spinner from "@/components/Spinner";
 import Results from "@/components/Results";
 import ImageUpload from "@/components/ImageUpload";
@@ -13,9 +12,10 @@ import { calculateSkinCancerRisk, RiskResult } from "@/utils/skinRiskLogic";
 import { generatePDFReport, downloadReportAsPDF } from "@/utils/reportGenerator";
 
 // Model configuration for skin cancer detection
+// Model configuration
 const MODEL_CONFIG = {
-  modelURL: "/models/skincancer-model/public/model/model.json",
-  metadataURL: "/models/skincancer-model/public/model/metadata.json",
+  detectEndpoint: "/api/detect/melanoma",
+
 };
 
 interface Prediction {
@@ -24,41 +24,17 @@ interface Prediction {
 }
 
 export default function SkinCancerDetection() {
-  const [model, setModel] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [classifying, setClassifying] = useState(false);
   const [predictions, setPredictions] = useState<Prediction[] | null>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
   const metadataFormRef = useRef<HTMLDivElement>(null);
 
   // New State for Metadata & Risk
   const [showMetadataForm, setShowMetadataForm] = useState(false);
   const [riskResult, setRiskResult] = useState<RiskResult | null>(null);
-
-  // Load model on mount
-  useEffect(() => {
-    const loadModel = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const loadedModel = await tmImage.load(MODEL_CONFIG.modelURL, MODEL_CONFIG.metadataURL);
-        setModel(loadedModel);
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to load model";
-        setError(message);
-        console.error("Error loading model:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadModel();
-  }, []);
 
   const handleImageSelect = (file: File) => {
     setSelectedImage(file);
@@ -74,8 +50,8 @@ export default function SkinCancerDetection() {
   };
 
   const handleClassify = async () => {
-    if (!model || !imageRef.current || !selectedImage) {
-      setError("Please select an image and wait for the model to load");
+    if (!selectedImage) {
+      setError("Please select an image first");
       return;
     }
 
@@ -83,13 +59,35 @@ export default function SkinCancerDetection() {
       setClassifying(true);
       setError(null);
 
-      const predictions = await model.predict(imageRef.current);
-      const formattedPredictions = predictions.map((p: Prediction) => ({
-          className: p.className,
-          probability: p.probability,
-        }));
-      
-      setPredictions(formattedPredictions);
+      const formData = new FormData();
+      formData.append("file", selectedImage);
+
+      const response = await fetch(MODEL_CONFIG.detectEndpoint, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Failed to classify image");
+      }
+
+      const confidenceValue = Number(data.confidence ?? 0);
+      const normalizedConfidence = confidenceValue > 1 ? confidenceValue / 100 : confidenceValue;
+      const isMelanoma = Boolean(data.is_melanoma ?? String(data.label || "").toLowerCase().includes("melanoma"));
+
+      setPredictions(
+        isMelanoma
+          ? [
+              { className: "Melanoma", probability: normalizedConfidence },
+              { className: "Not Melanoma", probability: Math.max(0, 1 - normalizedConfidence) },
+            ]
+          : [
+              { className: "Not Melanoma", probability: normalizedConfidence },
+              { className: "Melanoma", probability: Math.max(0, 1 - normalizedConfidence) },
+            ]
+      );
       
       // Auto-advance removed as per user request to use manual button navigation
       
@@ -252,7 +250,7 @@ export default function SkinCancerDetection() {
             <div className="space-y-8">
               <ImageUpload
                 onImageSelect={handleImageSelect}
-                disabled={!model}
+                disabled={classifying}
               />
 
               {/* Tips Section */}
@@ -285,8 +283,7 @@ export default function SkinCancerDetection() {
                 <div className="lg:col-span-1">
                   <div className="bg-white rounded-2xl overflow-hidden border-2 border-gray-300 p-4 shadow-lg hover:shadow-xl transition-all group">
                     <div className="rounded-xl overflow-hidden bg-gray-100">
-                      <img
-                        ref={imageRef}
+                        <img
                         src={previewUrl}
                         alt="Preview"
                         className="w-full aspect-square object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
@@ -365,7 +362,7 @@ export default function SkinCancerDetection() {
                 </button>
                 <button
                   onClick={handleClassify}
-                  disabled={!model || classifying}
+                  disabled={!selectedImage || classifying}
                   className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg hover:shadow-xl text-base active:scale-95"
                 >
                   {classifying ? (
