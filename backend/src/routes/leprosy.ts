@@ -8,6 +8,7 @@ import leprosyKnowledgeService from '../services/leprosyKnowledgeService'
 import leprosyRiskAnalysisService from '../services/leprosyRiskAnalysisService'
 import leprosyXAIService from '../services/leprosyXAIService'
 import { generateGeminiContent } from '../services/gemini.service'
+import notificationService from '../services/notificationService'
 
 const router = express.Router()
 
@@ -16,7 +17,7 @@ const router = express.Router()
 // Create or update user profile
 router.post('/profile', requireAuth, async (req: any, res: any) => {
   try {
-    const { userId, personalInfo, medical, leprosy, lifestyle, goals, notes } = req.body
+    const { userId, personalInfo, medical, leprosy, lifestyle, goals, notes, schedulingPreferences } = req.body
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' })
@@ -30,6 +31,7 @@ router.post('/profile', requireAuth, async (req: any, res: any) => {
       profile.medical = { ...profile.medical, ...medical }
       profile.leprosy = { ...profile.leprosy, ...leprosy }
       profile.lifestyle = { ...profile.lifestyle, ...lifestyle }
+      if (schedulingPreferences) profile.schedulingPreferences = { ...profile.schedulingPreferences, ...schedulingPreferences }
       if (goals) profile.goals = goals
       if (notes) profile.notes = notes
     } else {
@@ -40,6 +42,7 @@ router.post('/profile', requireAuth, async (req: any, res: any) => {
         medical,
         leprosy,
         lifestyle,
+        schedulingPreferences,
         goals,
         notes
       })
@@ -1226,6 +1229,168 @@ router.get('/risk-assessment/full/:id', requireAuth, async (req: any, res: any) 
     res.status(500).json({
       error: 'Failed to fetch assessment'
     })
+  }
+})
+
+// ===============================
+// Medication Notification Routes
+// ===============================
+
+// Enable notifications
+router.post('/notifications/enable', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.userId
+    const { notificationMethod = 'browser', notificationFrequency = '15-min-before' } = req.body
+
+    const notificationSettings = await notificationService.enableNotifications(
+      userId,
+      notificationMethod,
+      notificationFrequency
+    )
+
+    res.json({
+      success: true,
+      message: 'Notifications enabled successfully',
+      settings: notificationSettings
+    })
+  } catch (error: any) {
+    console.error('Error enabling notifications:', error)
+    res.status(500).json({ error: 'Failed to enable notifications' })
+  }
+})
+
+// Disable notifications
+router.post('/notifications/disable', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.userId
+
+    const notificationSettings = await notificationService.disableNotifications(userId)
+
+    res.json({
+      success: true,
+      message: 'Notifications disabled successfully',
+      settings: notificationSettings
+    })
+  } catch (error: any) {
+    console.error('Error disabling notifications:', error)
+    res.status(500).json({ error: 'Failed to disable notifications' })
+  }
+})
+
+// Get notification settings
+router.get('/notifications/settings', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.userId
+
+    const notificationSettings = await notificationService.getNotificationSettings(userId)
+
+    res.json({
+      success: true,
+      settings: notificationSettings
+    })
+  } catch (error: any) {
+    console.error('Error fetching notification settings:', error)
+    res.status(500).json({ error: 'Failed to fetch notification settings' })
+  }
+})
+
+// Update notification settings
+router.put('/notifications/settings', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.userId
+    const { notificationMethod, notificationFrequency, allowSound, allowVibration } = req.body
+
+    const notificationSettings = await notificationService.updateNotificationSettings(userId, {
+      notificationMethod,
+      notificationFrequency,
+      allowSound,
+      allowVibration
+    })
+
+    res.json({
+      success: true,
+      message: 'Notification settings updated successfully',
+      settings: notificationSettings
+    })
+  } catch (error: any) {
+    console.error('Error updating notification settings:', error)
+    res.status(500).json({ error: 'Failed to update notification settings' })
+  }
+})
+
+// Get today's medication schedule
+router.get('/notifications/todays-schedule', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.userId
+
+    const schedule = await notificationService.getTodaysMedicationSchedule(userId)
+
+    res.json({
+      success: true,
+      schedule: schedule
+    })
+  } catch (error: any) {
+    console.error('Error fetching todays schedule:', error)
+    res.status(500).json({ error: 'Failed to fetch todays schedule' })
+  }
+})
+
+// Get medication statistics
+router.get('/notifications/stats', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.userId
+
+    const stats = await notificationService.getMedicationStats(userId)
+
+    res.json({
+      success: true,
+      stats: stats
+    })
+  } catch (error: any) {
+    console.error('Error fetching medication stats:', error)
+    res.status(500).json({ error: 'Failed to fetch medication stats' })
+  }
+})
+
+// Mark medication as completed
+router.post('/notifications/mark-completed', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.userId
+    const { notificationId } = req.body
+
+    if (!notificationId) {
+      return res.status(400).json({ error: 'Notification ID is required' })
+    }
+
+    const result = await notificationService.markMedicationCompleted(userId, notificationId)
+
+    res.json({
+      success: true,
+      message: 'Medication marked as completed',
+      result: result
+    })
+  } catch (error: any) {
+    console.error('Error marking medication as completed:', error)
+    res.status(500).json({ error: 'Failed to mark medication as completed' })
+  }
+})
+
+// Get all notification schedules
+router.get('/notifications/schedule', requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.userId
+
+    const notificationSettings = await notificationService.getNotificationSettings(userId)
+
+    res.json({
+      success: true,
+      schedule: notificationSettings?.notifications || [],
+      medicationTimes: notificationSettings?.medicationTimes || [],
+      notificationsEnabled: notificationSettings?.notificationsEnabled || false
+    })
+  } catch (error: any) {
+    console.error('Error fetching notification schedule:', error)
+    res.status(500).json({ error: 'Failed to fetch notification schedule' })
   }
 })
 

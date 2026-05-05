@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Heart, MessageCircle, Calendar, HelpCircle, Pill, Activity, ArrowLeft, User, Plus, X, ExternalLink, History, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import RiskAnalysisComponent from '../components/RiskAnalysis';
+import { startMedicationScheduler, stopMedicationScheduler, resetMedicationScheduler } from '@/utils/medicationScheduler';
 
 interface Message {
   id: string;
@@ -465,6 +466,11 @@ export default function LeprosyAssistantPage() {
   const [goalInput, setGoalInput] = useState('');
   const [medicationTimeInput, setMedicationTimeInput] = useState('');
   const [appointmentDayInput, setAppointmentDayInput] = useState('');
+  
+  // Notification states
+  const [medicationNotificationsEnabled, setMedicationNotificationsEnabled] = useState(false);
+  const [notificationPermissionGranted, setNotificationPermissionGranted] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
 
 
   const scrollToBottom = () => {
@@ -482,13 +488,33 @@ export default function LeprosyAssistantPage() {
           }
         });
         
+        let profileData = null;
         if (response.ok) {
           const data = await response.json();
           if (data.profile) {
+            profileData = data.profile;
             setProfile(data.profile);
             // Generate personalized schedule based on loaded profile
             const personalizedSchedule = generatePersonalizedSchedule(data.profile);
             setSchedule(personalizedSchedule);
+          }
+        }
+
+        // Load notification settings
+        const notifResponse = await fetch('http://localhost:4000/api/leprosy/notifications/settings', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (notifResponse.ok) {
+          const notifData = await notifResponse.json();
+          if (notifData.settings) {
+            setMedicationNotificationsEnabled(notifData.settings.notificationsEnabled);
+            
+            // If notifications are already enabled, start the scheduler with loaded medication times
+            if (notifData.settings.notificationsEnabled && profileData?.schedulingPreferences?.medicationTimes && profileData.schedulingPreferences.medicationTimes.length > 0) {
+              console.log('Notifications already enabled, starting scheduler with times:', profileData.schedulingPreferences.medicationTimes);
+              startMedicationScheduler(profileData.schedulingPreferences.medicationTimes);
+            }
           }
         }
       } catch (error) {
@@ -498,6 +524,11 @@ export default function LeprosyAssistantPage() {
       }
     };
     
+    // Check notification permission
+    if ('Notification' in window) {
+      setNotificationPermissionGranted(Notification.permission === 'granted');
+    }
+
     loadProfile();
   }, []);
 
@@ -527,6 +558,25 @@ export default function LeprosyAssistantPage() {
     };
     
     loadSymptomLogs();
+  }, []);
+
+  // Update schedule when medication times change
+  useEffect(() => {
+    const personalizedSchedule = generatePersonalizedSchedule(profile);
+    setSchedule(personalizedSchedule);
+    
+    // Reset medication scheduler if notifications are enabled
+    if (medicationNotificationsEnabled && profile.schedulingPreferences?.medicationTimes && profile.schedulingPreferences.medicationTimes.length > 0) {
+      console.log('Medication times changed, resetting scheduler with new times:', profile.schedulingPreferences.medicationTimes);
+      resetMedicationScheduler(profile.schedulingPreferences.medicationTimes);
+    }
+  }, [profile.schedulingPreferences?.medicationTimes, medicationNotificationsEnabled]);
+
+  // Cleanup scheduler on component unmount
+  useEffect(() => {
+    return () => {
+      stopMedicationScheduler();
+    };
   }, []);
 
   useEffect(() => {
@@ -623,6 +673,85 @@ export default function LeprosyAssistantPage() {
     return 'Thank you for your question. Based on your concern, I recommend discussing this with your healthcare provider for personalized guidance. In the meantime, ensure you\'re following your medication schedule and keeping your skin care routine consistent.';
   };
 
+  const handleToggleMedicationNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+
+      if (medicationNotificationsEnabled) {
+        // Disable notifications
+        const response = await fetch('http://localhost:4000/api/leprosy/notifications/disable', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          stopMedicationScheduler();
+          setMedicationNotificationsEnabled(false);
+          setNotificationMessage('✓ Medication notifications disabled');
+          setTimeout(() => setNotificationMessage(''), 3000);
+        }
+      } else {
+        // Request permission first
+        if ('Notification' in window && Notification.permission !== 'granted') {
+          const permission = await Notification.requestPermission();
+          setNotificationPermissionGranted(permission === 'granted');
+
+          if (permission !== 'granted') {
+            setNotificationMessage('⚠ Notification permission required');
+            setTimeout(() => setNotificationMessage(''), 3000);
+            return;
+          }
+        }
+
+        // Enable notifications
+        const response = await fetch('http://localhost:4000/api/leprosy/notifications/enable', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            notificationMethod: 'browser',
+            notificationFrequency: 'on-time'
+          })
+        });
+
+        if (response.ok) {
+          setMedicationNotificationsEnabled(true);
+          setNotificationPermissionGranted(true);
+          setNotificationMessage('✓ Medication notifications enabled');
+          
+          // Start the medication scheduler with current medication times
+          if (profile.schedulingPreferences?.medicationTimes && profile.schedulingPreferences.medicationTimes.length > 0) {
+            startMedicationScheduler(profile.schedulingPreferences.medicationTimes);
+          }
+          
+          // Test notification
+          if ('Notification' in window && Notification.permission === 'granted') {
+            const audio = new Audio('/notification-sound.mp3');
+            audio.play().catch(() => console.log('Could not play notification sound'));
+            
+            new Notification('SkinNova Medication Reminder', {
+              body: 'Medication reminders are now active!',
+              icon: '/images/SKÍNOVA_Logo_Variation_4-removebg-preview (1).png',
+              sound: '/notification-sound.mp3',
+              vibrate: [200, 100, 200]
+            });
+          }
+          
+          setTimeout(() => setNotificationMessage(''), 3000);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling notifications:', error);
+      setNotificationMessage('✗ Failed to update notifications');
+      setTimeout(() => setNotificationMessage(''), 3000);
+    }
+  };
+
   const handleSaveProfile = async () => {
     setProfileLoading(true);
     setProfileMessage('');
@@ -651,9 +780,42 @@ export default function LeprosyAssistantPage() {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        // Update profile with saved data to ensure consistency
+        if (data.profile) {
+          setProfile(data.profile);
+        }
+        
         // Generate personalized schedule based on updated profile
         const personalizedSchedule = generatePersonalizedSchedule(profile);
         setSchedule(personalizedSchedule);
+        
+        // If notifications exist, regenerate them with new medication times
+        try {
+          const notifResponse = await fetch('http://localhost:4000/api/leprosy/notifications/settings', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (notifResponse.ok) {
+            const notifData = await notifResponse.json();
+            if (notifData.settings?.notificationsEnabled) {
+              // Regenerate notifications to reflect new medication times
+              await fetch('http://localhost:4000/api/leprosy/notifications/enable', {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  notificationMethod: notifData.settings.notificationMethod,
+                  notificationFrequency: notifData.settings.notificationFrequency
+                })
+              });
+            }
+          }
+        } catch (err) {
+          console.log('Note: Could not update notifications (this is optional)', err);
+        }
         
         setProfileMessage('✓ Profile saved successfully! Your personalized schedule has been updated.');
         setTimeout(() => setProfileMessage(''), 3000);
@@ -1221,8 +1383,38 @@ export default function LeprosyAssistantPage() {
         {/* Schedule Tab */}
         {activeTab === 'schedule' && (
           <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Daily Care Schedule</h2>
-            <p className="text-gray-600 mb-8">Follow this personalized schedule to manage your treatment and self-care effectively.</p>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Daily Care Schedule</h2>
+                <p className="text-gray-600 mt-2">Follow this personalized schedule to manage your treatment and self-care effectively.</p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <span className="text-sm font-semibold text-gray-700">Medication Reminders</span>
+                  <button
+                    onClick={handleToggleMedicationNotifications}
+                    className={`relative w-14 h-8 rounded-full transition-all ${
+                      medicationNotificationsEnabled ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-all transform ${
+                        medicationNotificationsEnabled ? 'translate-x-6' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </label>
+                {notificationMessage && (
+                  <div className={`text-xs font-medium px-2 py-1 rounded ${
+                    notificationMessage.includes('✓') ? 'bg-green-100 text-green-700' : 
+                    notificationMessage.includes('⚠') ? 'bg-yellow-100 text-yellow-700' : 
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {notificationMessage}
+                  </div>
+                )}
+              </div>
+            </div>
 
             <div className="space-y-4">
               {schedule.map((item) => (
@@ -1246,7 +1438,7 @@ export default function LeprosyAssistantPage() {
 
             <div className="mt-8 p-4 rounded-2xl bg-yellow-50 border border-yellow-200">
               <p className="text-sm text-yellow-800">
-                <strong>💡 Tip:</strong> Set phone reminders for each activity to ensure consistency. Adherence to your schedule is crucial for successful treatment.
+                <strong>💡 Tip:</strong> Enable medication reminders above to get in-app notifications 15 minutes before each medication time. The reminders will include a sound notification.
               </p>
             </div>
           </div>
