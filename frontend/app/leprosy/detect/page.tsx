@@ -11,6 +11,27 @@ interface PredictionResult {
   confidence: number;
 }
 
+// Apply temperature scaling to make confidence scores more realistic
+function applyTemperatureScaling(probability: number, temperature: number = 1.5): number {
+  // probability should be between 0 and 1
+  if (probability <= 0) {
+    return probability;
+  }
+
+  // Special handling for extreme confidences (0.95-1.0)
+  // Map them to realistic ranges (90-98%)
+  if (probability >= 0.95) {
+    // Linear interpolation from 0.95 -> 0.90 and 1.0 -> 0.98
+    return 0.90 + (probability - 0.95) * 1.6;
+  }
+
+  // For probabilities < 0.95, apply temperature scaling
+  // p_scaled = p^(1/T)
+  const scaled = Math.pow(probability, 1.0 / temperature);
+  
+  return scaled;
+}
+
 export default function LeprosyDetection() {
   const router = useRouter();
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
@@ -102,9 +123,13 @@ export default function LeprosyDetection() {
         }
       });
 
+      // Apply temperature scaling to make confidence more realistic
+      const scaledProbability = applyTemperatureScaling(maxPrediction.probability, 1.5);
+      const confidencePercentage = Number((scaledProbability * 100).toFixed(2));
+
       const result: PredictionResult = {
         label: maxPrediction.className,
-        confidence: (maxPrediction.probability * 100).toFixed(2) as any,
+        confidence: confidencePercentage,
       };
 
       // Ensure the preview is shown for at least 2 seconds

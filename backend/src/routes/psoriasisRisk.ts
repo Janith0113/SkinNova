@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { getWeatherData, getWeatherCondition } from '../services/weatherService';
 import { calculatePsoriasisRisk } from '../services/psoriasisRiskService';
+import psoriasisKnowledgeService from '../services/psoriasisKnowledgeService'
 
 const router = express.Router();
 
@@ -152,5 +153,131 @@ router.post('/weather-risk', async (req: Request, res: Response) => {
     });
   }
 });
+
+/**
+ * GET /api/psoriasis/knowledge-base-info
+ * Return psoriasis KB statistics
+ */
+router.get('/knowledge-base-info', async (req: Request, res: Response) => {
+  try {
+    const stats = psoriasisKnowledgeService.getStatistics()
+    res.json({ success: true, stats, message: 'Psoriasis knowledge base loaded' })
+  } catch (error) {
+    console.error('Error fetching psoriasis KB info:', error)
+    res.status(500).json({ error: 'Failed to fetch knowledge base info' })
+  }
+})
+
+/**
+ * POST /api/psoriasis/search-knowledge
+ * Body: { query: string }
+ */
+router.post('/search-knowledge', async (req: Request, res: Response) => {
+  try {
+    const { query } = req.body
+    if (!query) return res.status(400).json({ error: 'Search query required' })
+    const results = psoriasisKnowledgeService.searchKnowledge(query)
+    res.json({ success: true, results, count: results.length })
+  } catch (error) {
+    console.error('Error searching psoriasis KB:', error)
+    res.status(500).json({ error: 'Failed to search knowledge base' })
+  }
+})
+
+/**
+ * POST /api/psoriasis/chat
+ * Chat endpoint that answers psoriasis questions using KB
+ * Body: { message: string }
+ */
+router.post('/chat', async (req: Request, res: Response) => {
+  try {
+    const { message } = req.body
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message is required' })
+    }
+
+    // Search KB for relevant info
+    const searchResults = psoriasisKnowledgeService.searchKnowledge(message)
+    const confidentResults = searchResults.filter((r: any) => (r.matchScore || 0) >= 30)
+
+    let reply: string
+    let sources: any[] = []
+
+    if (confidentResults.length > 0) {
+      // Use KB answer
+      const topResult = confidentResults[0]
+      reply = topResult.content
+
+      // Extract sources from KB
+      sources = psoriasisKnowledgeService.getTrustedSources()
+    } else {
+      // No confident KB match - provide general psoriasis guidance
+      reply = generatePsoriasisDefaultResponse(message)
+      sources = psoriasisKnowledgeService.getTrustedSources()
+    }
+
+    res.json({
+      success: true,
+      reply,
+      sources,
+      hasKnowledgeBaseCitation: confidentResults.length > 0,
+      disclaimer: 'This information is for educational purposes. Always consult a dermatologist for personalized medical advice.'
+    })
+  } catch (error) {
+    console.error('Error in psoriasis chat:', error)
+    res.status(500).json({ error: 'Failed to process message' })
+  }
+})
+
+/**
+ * Generate a default psoriasis response when KB doesn't have confident match
+ */
+function generatePsoriasisDefaultResponse(message: string): string {
+  const lowerMsg = message.toLowerCase()
+
+  // Greeting responses
+  if (['hi', 'hello', 'hey'].some(g => lowerMsg.includes(g))) {
+    return "👋 Hi! I'm your Psoriasis Assistant. I can help answer questions about psoriasis triggers, treatments, skin care, and lifestyle management. What would you like to know?"
+  }
+
+  // Symptom/flare responses
+  if (lowerMsg.includes('flare') || lowerMsg.includes('symptom') || lowerMsg.includes('worse')) {
+    return "Common psoriasis triggers include stress, infections, cold weather, smoking, and certain medications. If you're experiencing a flare, try: moisturizing regularly, avoiding irritants, managing stress, and consulting your dermatologist. They can adjust your treatment plan if needed."
+  }
+
+  // Treatment responses
+  if (lowerMsg.includes('treat') || lowerMsg.includes('medication') || lowerMsg.includes('medicine')) {
+    return "Psoriasis treatments range from topical (creams, phototherapy) to systemic (oral/injectable medications) depending on severity. Topical corticosteroids and vitamin D analogues are first-line. Moderate-to-severe cases may need biologic therapies. Your dermatologist will recommend what's best for you."
+  }
+
+  // Skin care responses
+  if (lowerMsg.includes('skin care') || lowerMsg.includes('skincare') || lowerMsg.includes('moistur') || lowerMsg.includes('soap')) {
+    return "Good skin care is essential: (1) Use fragrance-free moisturizers daily, (2) Avoid irritating soaps - use gentle cleansers, (3) Apply moisturizer while skin is still damp, (4) Avoid hot water, (5) Protect skin from injury. These habits reduce flares significantly."
+  }
+
+  // Lifestyle/trigger responses
+  if (lowerMsg.includes('trigger') || lowerMsg.includes('stress') || lowerMsg.includes('lifestyle')) {
+    return "Key lifestyle adjustments: manage stress (yoga, meditation), avoid smoking and excess alcohol, maintain healthy weight, get adequate sleep, and identify personal triggers. Keeping a symptom diary helps you spot patterns and avoid flares."
+  }
+
+  // Diet responses
+  if (lowerMsg.includes('diet') || lowerMsg.includes('food') || lowerMsg.includes('eat')) {
+    return "While no specific diet cures psoriasis, anti-inflammatory foods may help: omega-3 fatty acids (fish), fruits, vegetables, whole grains. Limit alcohol and processed foods. Some find gluten/dairy reduction helpful. Work with a nutritionist to find what works for you."
+  }
+
+  // Contagion responses
+  if (lowerMsg.includes('contagious') || lowerMsg.includes('spread') || lowerMsg.includes('catch')) {
+    return "Psoriasis is NOT contagious. You cannot catch it or spread it to others. It's an autoimmune condition triggered by genetics and environmental factors, not an infection."
+  }
+
+  // Cure responses
+  if (lowerMsg.includes('cure') || lowerMsg.includes('curable')) {
+    return "Psoriasis is a chronic condition, not curable, but highly manageable. Many people achieve clear skin with proper treatment and lifestyle changes. New biologic therapies have dramatically improved outcomes. Work with your dermatologist to find an effective management plan."
+  }
+
+  // Default helpful response
+  return "That's a great question about psoriasis! For detailed information, I recommend consulting with your dermatologist. In the meantime, focus on: (1) Consistent skin care, (2) Identifying your triggers, (3) Stress management, (4) Staying hydrated. Is there a specific aspect of psoriasis management you'd like to know more about?"
+}
 
 export default router;

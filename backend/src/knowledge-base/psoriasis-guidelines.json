@@ -1,0 +1,26 @@
+{
+  "category": "psoriasis-guidelines",
+  "last_updated": "2026-05-05",
+  "source": "National Psoriasis Foundation",
+  "trustedSources": [
+    { "name": "National Psoriasis Foundation", "organization": "NPF", "url": "https://www.psoriasis.org", "type": "official" },
+    { "name": "European Dermatology Forum", "organization": "EDF", "url": "https://www.eczema.org", "type": "official" }
+  ],
+  "sections": [
+    {
+      "id": "sec-01",
+      "title": "Overview and diagnosis",
+      "content": "Psoriasis diagnosis is clinical, based on typical plaques, distribution, and history. Consider skin biopsy if atypical. Check for psoriatic arthritis if joint symptoms occur."
+    },
+    {
+      "id": "sec-02",
+      "title": "Topical therapies",
+      "content": "First-line for mild disease: emollients, corticosteroids (potent/very potent for plaques), vitamin D analogues (calcipotriol). Avoid long-term high-potency steroid use on thin skin without supervision."
+    },
+    {
+      "id": "sec-03",
+      "title": "Phototherapy and systemic options",
+      "content": "Narrowband UVB phototherapy is effective for widespread disease. Systemic agents include methotrexate, cyclosporine, acitretin, and biologic agents targeting TNF, IL-17, IL-23 pathways for moderate-to-severe psoriasis."
+    }
+  ]
+}

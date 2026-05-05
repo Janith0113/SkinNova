@@ -7,6 +7,8 @@ import { generatePsoriasisRiskReport, downloadReportAsPDF, type PsoriasisRiskRep
 
 type RiskSection = "overview" | "grad-cam" | "chatbot" | "action-plan";
 
+const psoriasisChatbotName = "Psoriasis Support";
+
 interface RiskFactor {
   label: string;
   value: number;
@@ -64,7 +66,7 @@ interface RiskAnalysisSectionViewProps {
 const sectionLinks: { key: RiskSection; label: string; href: string; emoji: string }[] = [
   { key: "overview", label: "Overview", href: "/psoriasis/risk-analysis", emoji: "🌤️" },
   { key: "grad-cam", label: "Grad-CAM", href: "/psoriasis/risk-analysis/grad-cam", emoji: "🧠" },
-  { key: "chatbot", label: "Chatbot", href: "/psoriasis/risk-analysis/chatbot", emoji: "🤖" },
+  { key: "chatbot", label: psoriasisChatbotName, href: "/psoriasis/risk-analysis/chatbot", emoji: "💬" },
   { key: "action-plan", label: "Action Plan", href: "/psoriasis/risk-analysis/action-plan", emoji: "⚡" },
 ];
 
@@ -122,13 +124,25 @@ export default function RiskAnalysisSectionView({ section }: RiskAnalysisSection
   const [gradcamError, setGradcamError] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState("");
+
+  const getTemperatureHumidityProtectiveFactors = (factors: string[]): string[] => {
+    const keywords = ["temperature", "humidity", "weather", "wind", "climate", "condition"];
+    return factors.filter((factor) =>
+      keywords.some((keyword) => factor.toLowerCase().includes(keyword))
+    );
+  };
+
+  const getOtherProtectiveFactors = (factors: string[]): string[] => {
+    const weatherFactors = getTemperatureHumidityProtectiveFactors(factors);
+    return factors.filter((factor) => !weatherFactors.includes(factor));
+  };
+
   const insightSummary = riskAnalysis
     ? {
         totalRiskPoints: riskAnalysis.factors.reduce((sum, factor) => sum + factor.value, 0),
         highestFactor: [...riskAnalysis.factors].sort((a, b) => b.value - a.value)[0],
         elevatedCount: riskAnalysis.factors.filter((factor) => factor.value >= 15).length,
-        protectiveCount: riskAnalysis.explainableInsights.protectiveFactors.length,
+        protectiveCount: getTemperatureHumidityProtectiveFactors(riskAnalysis.explainableInsights.protectiveFactors).length,
       }
     : null;
 
@@ -147,100 +161,89 @@ export default function RiskAnalysisSectionView({ section }: RiskAnalysisSection
       return `Here is a more detailed explanation ${topic}: ${detail} If you want, I can also break this down into simpler steps or give practical self-care tips. This is educational information and does not replace a dermatologist's evaluation.`;
     };
 
-    const handleSendChat = async () => {
-      const message = chatInput.trim();
-      if (!message) return;
+    const getInstantSupportReply = (message: string) => {
+      const lowerMessage = message.toLowerCase();
+
+      if (lowerMessage.includes("risk")) {
+        return riskAnalysis
+          ? buildAssistantStyleResponse(
+              "for psoriasis risk",
+              `your current environmental risk level is ${riskAnalysis.level}. ${riskAnalysis.explainableInsights.holisticAssessment} In simple terms, this means the environment is either helping protect your skin or creating conditions that may make psoriasis symptoms more noticeable.`
+            )
+          : "Here is a more detailed explanation for psoriasis risk: the data is not available yet. Please wait for the assessment to finish, and then I can explain each factor clearly. This is educational information and does not replace a dermatologist's evaluation.";
+      }
+
+      if (lowerMessage.includes("temperature")) {
+        return buildAssistantStyleResponse(
+          "for temperature",
+          `the temperature is ${weatherData?.temperature ?? "not available"}°C, with a feels-like value of ${weatherData?.feelsLike ?? "-"}°C. Warm conditions can sometimes improve skin comfort by reducing dryness, while very hot or very cold conditions can irritate sensitive skin. This can help you understand how the weather may be affecting your risk score.`
+        );
+      }
+
+      if (lowerMessage.includes("humidity")) {
+        return buildAssistantStyleResponse(
+          "for humidity",
+          `humidity is ${weatherData?.humidity ?? "not available"}%. Balanced humidity can help the skin barrier stay comfortable, while very dry air can increase flaking and irritation. If humidity is too high, sweating and discomfort may also affect sensitive skin.`
+        );
+      }
+
+      if (lowerMessage.includes("wind")) {
+        return buildAssistantStyleResponse(
+          "for wind speed",
+          `wind speed is ${weatherData?.windSpeed ?? "not available"} km/h. Strong wind can dry the skin surface, remove moisture, and make irritation feel worse. For people with psoriasis, protecting the skin barrier becomes more important on windy days.`
+        );
+      }
+
+      if (lowerMessage.includes("protect") || lowerMessage.includes("advice")) {
+        return buildAssistantStyleResponse(
+          "for protective advice",
+          riskAnalysis?.explainableInsights.protectiveFactors.length
+            ? `the current protective factors are ${riskAnalysis.explainableInsights.protectiveFactors.join(
+                ", "
+              )}. A practical approach is to keep skin moisturized, avoid harsh soaps, monitor symptoms, and follow up with a dermatologist if redness, scaling, or itching worsens. I can also turn this into a simple daily routine if you want.`
+            : `no protective factors are available yet. A practical approach is to keep skin moisturized, avoid irritation, and monitor for symptom changes. I can also give you a simple skin-care routine if you want.`
+        );
+      }
+
+      if (lowerMessage.includes("routine") || lowerMessage.includes("today")) {
+        return buildAssistantStyleResponse(
+          "for a daily routine",
+          `start with gentle cleansing, moisturize after washing, avoid harsh products, wear breathable clothing, and notice any changes in itching, redness, or scaling during the day. This can help reduce irritation and make your skin more comfortable.`
+        );
+      }
+
+      if (lowerMessage.includes("doctor") || lowerMessage.includes("medical help") || lowerMessage.includes("see a doctor")) {
+        return buildAssistantStyleResponse(
+          "for medical follow-up",
+          `you should seek medical review if symptoms keep worsening, the plaques become painful or widespread, you notice cracking or bleeding, or your current care is not helping. A dermatologist can confirm the diagnosis and adjust treatment if needed.`
+        );
+      }
+
+      const topFactor = riskAnalysis ? [...riskAnalysis.factors].sort((a, b) => b.value - a.value)[0] : null;
+      return topFactor
+        ? buildAssistantStyleResponse(
+            "for the leading factor",
+            `the strongest factor right now is ${topFactor.label} at ${topFactor.value.toFixed(1)} points. I can explain why this factor matters, what it means for your skin, and what you can do next.`
+          )
+        : "Here is a more detailed explanation: ask me about your psoriasis risk, temperature, humidity, wind, or protective advice. I can break the information into simple steps, and this guidance is educational rather than a medical diagnosis.";
+    };
+
+    const handleSendChat = (message: string) => {
+      const trimmedMessage = message.trim();
+      if (!trimmedMessage) return;
 
       setChatMessages((current) => [
         ...current,
         {
           id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
           sender: "user",
-          text: message,
+          text: trimmedMessage,
         },
       ]);
-      setChatInput("");
 
-      const lowerMessage = message.toLowerCase();
-      const topFactor = riskAnalysis ? [...riskAnalysis.factors].sort((a, b) => b.value - a.value)[0] : null;
-      const fallbackAnswer = lowerMessage.includes("risk")
-        ? riskAnalysis
-          ? buildAssistantStyleResponse(
-              "for psoriasis risk",
-              `your current environmental risk level is ${riskAnalysis.level}. ${riskAnalysis.explainableInsights.holisticAssessment} In simple terms, this means the environment is either helping protect your skin or creating conditions that may make psoriasis symptoms more noticeable.`
-            )
-          : "Here is a more detailed explanation for psoriasis risk: the data is not available yet. Please wait for the assessment to finish, and then I can explain each factor clearly. This is educational information and does not replace a dermatologist's evaluation."
-        : lowerMessage.includes("temperature")
-        ? buildAssistantStyleResponse(
-            "for temperature",
-            `the temperature is ${weatherData?.temperature ?? "not available"}°C, with a feels-like value of ${weatherData?.feelsLike ?? "-"}°C. Warm conditions can sometimes improve skin comfort by reducing dryness, while very hot or very cold conditions can irritate sensitive skin. If you want, I can explain how this number relates to your risk score.`
-          )
-        : lowerMessage.includes("humidity")
-        ? buildAssistantStyleResponse(
-            "for humidity",
-            `humidity is ${weatherData?.humidity ?? "not available"}%. Balanced humidity can help the skin barrier stay comfortable, while very dry air can increase flaking and irritation. If humidity is too high, sweating and discomfort may also affect sensitive skin.`
-          )
-        : lowerMessage.includes("wind")
-        ? buildAssistantStyleResponse(
-            "for wind speed",
-            `wind speed is ${weatherData?.windSpeed ?? "not available"} km/h. Strong wind can dry the skin surface, remove moisture, and make irritation feel worse. For people with psoriasis, protecting the skin barrier becomes more important on windy days.`
-          )
-        : lowerMessage.includes("protect") || lowerMessage.includes("advice")
-        ? buildAssistantStyleResponse(
-            "for protective advice",
-            riskAnalysis?.explainableInsights.protectiveFactors.length
-              ? `the current protective factors are ${riskAnalysis.explainableInsights.protectiveFactors.join(
-                  ", "
-                )}. A practical approach is to keep skin moisturized, avoid harsh soaps, monitor symptoms, and follow up with a dermatologist if redness, scaling, or itching worsens. I can also turn this into a simple daily routine if you want.`
-              : `no protective factors are available yet. A practical approach is to keep skin moisturized, avoid irritation, and monitor for symptom changes. I can also give you a simple skin-care routine if you want.`
-          )
-        : topFactor
-        ? buildAssistantStyleResponse(
-            "for the leading factor",
-            `the strongest factor right now is ${topFactor.label} at ${topFactor.value.toFixed(1)} points. I can explain why this factor matters, what it means for your skin, and what you can do next.`
-          )
-        : "Here is a more detailed explanation: ask me about your psoriasis risk, temperature, humidity, wind, or protective advice. I can break the information into simple steps, and this guidance is educational rather than a medical diagnosis.";
-
-      try {
-        const aiResponse = await fetch("/api/psoriasis-chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message,
-            context: {
-              riskLevel: riskAnalysis?.level || null,
-              riskScore: riskAnalysis?.score || null,
-              temperature: weatherData?.temperature || null,
-              humidity: weatherData?.humidity || null,
-              windSpeed: weatherData?.windSpeed || null,
-              temperatureTrend: weatherData?.temperatureTrend || null,
-              protectiveFactors: riskAnalysis?.explainableInsights.protectiveFactors || [],
-              topRisks: riskAnalysis?.explainableInsights.topRisks || [],
-              holisticAssessment: riskAnalysis?.explainableInsights.holisticAssessment || "",
-            },
-          }),
-        });
-
-        if (!aiResponse.ok) {
-          throw new Error("AI response unavailable");
-        }
-
-        const data = await aiResponse.json();
-        addBotMessage(data.reply || fallbackAnswer);
-      } catch {
-        window.setTimeout(() => addBotMessage(fallbackAnswer), 300);
-      }
+      const fallbackAnswer = getInstantSupportReply(trimmedMessage);
+      addBotMessage(fallbackAnswer);
     };
-
-    useEffect(() => {
-      if (section === "chatbot" && chatMessages.length === 0) {
-        addBotMessage(
-          riskAnalysis
-            ? `Hello. I can help interpret your psoriasis risk in a more detailed ChatGPT-style way. Current level: ${riskAnalysis.level}. Ask me about risk, temperature, humidity, wind, or protective advice.`
-            : "Hello. Ask me anything about psoriasis risk once your data loads."
-        );
-      }
-    }, [section, chatMessages.length, riskAnalysis]);
 
   const fetchWeatherData = async (latitude: number, longitude: number) => {
     try {
@@ -821,15 +824,19 @@ export default function RiskAnalysisSectionView({ section }: RiskAnalysisSection
               <>
                 <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-indigo-200 mb-8">
                   <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="text-indigo-600">🤖</span>
-                    Psoriasis Assistant
+                    <span className="text-indigo-600">🩺</span>
+                    {psoriasisChatbotName}
                   </h3>
                   <p className="text-gray-600 mb-6">
                     Ask about your current risk, temperature, humidity, wind speed, or protective advice.
                   </p>
 
-                  <div className="min-h-[360px] rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 flex flex-col gap-4">
-                    <div className="flex-1 space-y-3 overflow-y-auto max-h-[320px] pr-1">
+                  <div className="relative min-h-[360px] overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4 flex flex-col gap-4">
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.18),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(34,211,238,0.16),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(168,85,247,0.10),_transparent_24%)]" />
+                    <div className="pointer-events-none absolute -right-10 top-12 h-40 w-40 rounded-full bg-cyan-300/20 blur-3xl" />
+                    <div className="pointer-events-none absolute -left-12 bottom-4 h-44 w-44 rounded-full bg-indigo-300/20 blur-3xl" />
+
+                    <div className="relative z-10 flex-1 space-y-3 overflow-y-auto max-h-[320px] pr-1">
                       {chatMessages.map((message) => (
                         <div
                           key={message.id}
@@ -848,41 +855,23 @@ export default function RiskAnalysisSectionView({ section }: RiskAnalysisSection
                       ))}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {[
                         "What is my risk level?",
                         "Explain the temperature impact.",
                         "What protective advice do you have?",
                         "How does humidity affect me?",
+                        "What should I do today?",
+                        "When should I see a doctor?",
                       ].map((prompt) => (
                         <button
                           key={prompt}
-                          onClick={() => setChatInput(prompt)}
-                          className="rounded-xl border border-indigo-200 bg-white px-4 py-3 text-left text-sm font-medium text-indigo-800 hover:bg-indigo-50 transition-colors"
+                          onClick={() => handleSendChat(prompt)}
+                          className="rounded-xl border border-indigo-200/80 bg-white/85 px-4 py-3 text-left text-sm font-medium text-indigo-800 shadow-sm backdrop-blur transition-colors hover:bg-white"
                         >
                           {prompt}
                         </button>
                       ))}
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <input
-                        value={chatInput}
-                        onChange={(event) => setChatInput(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            handleSendChat();
-                          }
-                        }}
-                        placeholder="Type a question about your psoriasis risk..."
-                        className="flex-1 rounded-2xl border-2 border-indigo-200 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-indigo-400"
-                      />
-                      <button
-                        onClick={handleSendChat}
-                        className="rounded-2xl bg-gradient-to-r from-indigo-600 via-cyan-600 to-teal-500 px-6 py-3 font-bold text-white shadow-lg hover:shadow-xl transition-all"
-                      >
-                        Send
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -935,11 +924,11 @@ export default function RiskAnalysisSectionView({ section }: RiskAnalysisSection
                     <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-green-200">
                       <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <Shield className="text-green-500" />
-                        Protective Factors
+                        Protective Signals
                       </h3>
-                      {riskAnalysis.explainableInsights.protectiveFactors.length > 0 ? (
+                      {getTemperatureHumidityProtectiveFactors(riskAnalysis.explainableInsights.protectiveFactors).length > 0 ? (
                         <ul className="space-y-3">
-                          {riskAnalysis.explainableInsights.protectiveFactors.map((factor, idx) => (
+                          {getTemperatureHumidityProtectiveFactors(riskAnalysis.explainableInsights.protectiveFactors).map((factor, idx) => (
                             <li key={idx} className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
                               <span className="text-green-600 font-bold">✓</span>
                               <span className="text-gray-700">{factor}</span>
